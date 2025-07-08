@@ -1,5 +1,9 @@
 # SnapTab
 
+<div align="center">
+  <img src="logo.png" alt="SnapTab Logo" width="300"/>
+</div>
+
 **The fastest way to track and split group travel expenses**
 
 SnapTab is a mobile-first Progressive Web App (PWA) that eliminates the friction of managing group expenses during travel. Simply snap a photo of any receipt, and our AI-powered scanner instantly extracts the details, splits the cost among your group, and keeps a running tally. No more spreadsheets, no more awkward conversations about money.
