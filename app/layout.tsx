@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 
@@ -9,13 +9,20 @@ export const metadata: Metadata = {
   title: "SnapTab - Split Group Expenses",
   description: "The fastest way to track and split group travel expenses",
   manifest: "/manifest.json",
-  themeColor: "#3B82F6",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "SnapTab",
   },
-    generator: 'v0.dev'
+  generator: 'v0.dev'
+}
+
+export const viewport: Viewport = {
+  themeColor: "#3B82F6",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({
@@ -25,8 +32,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50`}>
-        <div className="max-w-sm mx-auto bg-white min-h-screen">{children}</div>
+      <body className={`${inter.className} bg-background text-foreground`}>
+        <div className="min-h-screen w-full">{children}</div>
       </body>
     </html>
   )

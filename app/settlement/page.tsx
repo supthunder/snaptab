@@ -42,23 +42,23 @@ export default function SettlementPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 p-4 pt-12">
+      <header className="p-6 pt-16">
         <div className="flex items-center">
-          <Button variant="ghost" size="icon" className="mr-3" onClick={() => window.history.back()}>
+          <Button variant="ghost" size="icon" className="mr-4" onClick={() => window.history.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold">Settlement</h1>
+          <h1 className="text-xl font-medium">Settlement</h1>
         </div>
       </header>
 
-      <main className="flex-1 p-4 space-y-4 overflow-y-auto">
+      <main className="flex-1 px-6 pb-6 space-y-6 overflow-y-auto">
         {/* Current Balances */}
-        <Card>
+        <Card className="minimal-card">
           <CardHeader>
             <CardTitle className="text-base flex items-center">
-              <DollarSign className="h-5 w-5 mr-2 text-blue-600" />
+              <DollarSign className="h-5 w-5 mr-2 text-primary" />
               Current Balances
             </CardTitle>
           </CardHeader>
@@ -68,7 +68,7 @@ export default function SettlementPage() {
                 <span className="font-medium">{person.name}</span>
                 <span
                   className={`font-semibold ${
-                    person.balance > 0 ? "text-green-600" : person.balance < 0 ? "text-red-600" : "text-gray-600"
+                    person.balance > 0 ? "text-green-400" : person.balance < 0 ? "text-red-400" : "text-muted-foreground"
                   }`}
                 >
                   {person.balance > 0 ? "+" : ""}${person.balance.toFixed(2)}
@@ -79,24 +79,24 @@ export default function SettlementPage() {
         </Card>
 
         {/* Suggested Settlements */}
-        <Card>
+        <Card className="minimal-card">
           <CardHeader>
             <CardTitle className="text-base">Suggested Settlements</CardTitle>
-            <p className="text-sm text-gray-600">Minimum transactions to settle all debts</p>
+            <p className="text-sm text-muted-foreground">Minimum transactions to settle all debts</p>
           </CardHeader>
           <CardContent className="space-y-3">
             {settlements.map((settlement) => (
               <div
                 key={settlement.id}
-                className={`p-4 rounded-lg border-2 ${
-                  settlement.status === "completed" ? "border-green-200 bg-green-50" : "border-gray-200 bg-white"
+                className={`p-4 rounded-xl border ${
+                  settlement.status === "completed" ? "border-green-400/20 bg-green-400/10" : "border-border bg-background"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-2">
                       <span className="font-medium">{settlement.from}</span>
-                      <ArrowRight className="h-4 w-4 text-gray-400" />
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{settlement.to}</span>
                     </div>
                   </div>
@@ -108,19 +108,19 @@ export default function SettlementPage() {
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex items-center space-x-2">
                     {settlement.status === "completed" ? (
-                      <div className="flex items-center space-x-1 text-green-600">
+                      <div className="flex items-center space-x-1 text-green-400">
                         <Check className="h-4 w-4" />
                         <span className="text-sm font-medium">Paid</span>
                       </div>
                     ) : (
-                      <span className="text-sm text-gray-500">Pending</span>
+                      <span className="text-sm text-muted-foreground">Pending</span>
                     )}
                   </div>
 
                   {settlement.status === "pending" && settlement.from === "You" && (
                     <Button
                       size="sm"
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-primary hover:bg-primary/90 rounded-xl"
                       onClick={() => handleMarkPaid(settlement.id)}
                     >
                       Mark as Paid
@@ -133,18 +133,18 @@ export default function SettlementPage() {
         </Card>
 
         {/* Settlement Summary */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
+        <Card className="minimal-card bg-primary/5 border-primary/20">
+          <CardContent className="p-6">
             <div className="text-center">
-              <h3 className="font-semibold text-gray-900 mb-2">Settlement Summary</h3>
-              <p className="text-sm text-gray-600 mb-3">After all settlements are complete, everyone will be even.</p>
+              <h3 className="font-semibold mb-2">Settlement Summary</h3>
+              <p className="text-sm text-muted-foreground mb-4">After all settlements are complete, everyone will be even.</p>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-gray-600">Total to settle</p>
+                  <p className="text-muted-foreground">Total to settle</p>
                   <p className="font-semibold text-lg">$134.75</p>
                 </div>
                 <div>
-                  <p className="text-gray-600">Transactions needed</p>
+                  <p className="text-muted-foreground">Transactions needed</p>
                   <p className="font-semibold text-lg">2</p>
                 </div>
               </div>
@@ -153,7 +153,7 @@ export default function SettlementPage() {
         </Card>
 
         {/* Help Text */}
-        <div className="text-center text-sm text-gray-500 space-y-2">
+        <div className="text-center text-sm text-muted-foreground space-y-2">
           <p>💡 Tip: Mark payments as complete when money is transferred</p>
           <p>This helps keep everyone's balances accurate</p>
         </div>

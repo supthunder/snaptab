@@ -2,156 +2,252 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
-import { ArrowLeft, Camera, Upload, Loader2 } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { ArrowLeft, Camera, Loader2, Check, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
+interface ReceiptData {
+  merchantName: string
+  total: number
+  currency: string
+  transactionDate: string
+  items?: Array<{
+    name: string
+    price: number
+    quantity?: number
+  }>
+  tax?: number
+  tip?: number
+  confidence: number
+}
+
 export default function ScanPage() {
   const [isScanning, setIsScanning] = useState(false)
-  const [scannedData, setScannedData] = useState<any>(null)
+  const [scannedData, setScannedData] = useState<ReceiptData | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleScan = async () => {
-    setIsScanning(true)
+  // Check for pending file from homepage
+  useEffect(() => {
+    const pendingFile = sessionStorage.getItem('pendingReceiptFile')
+    if (pendingFile) {
+      try {
+        const fileData = JSON.parse(pendingFile)
+        sessionStorage.removeItem('pendingReceiptFile')
+        
+        // Convert data URL back to File
+        const response = fetch(fileData.data)
+        response.then(res => res.blob()).then(blob => {
+          const file = new File([blob], fileData.name, { type: fileData.type })
+          handleScan(file)
+        })
+      } catch (err) {
+        console.error('Error processing pending file:', err)
+        setError('Failed to process uploaded file')
+      }
+    }
+  }, [])
 
-    // Simulate AI processing
-    setTimeout(() => {
-      setScannedData({
-        total: 89.5,
-        currency: "USD",
-        merchantName: "Tokyo Ramen House",
-        transactionDate: "2024-01-15",
-        confidence: 0.95,
+  const handleScan = async (file: File) => {
+    setIsScanning(true)
+    setError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/scan-receipt', {
+        method: 'POST',
+        body: formData,
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to scan receipt')
+      }
+
+      const receiptData = await response.json()
+      setScannedData(receiptData)
+    } catch (err) {
+      console.error('Scanning error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to scan receipt')
+    } finally {
       setIsScanning(false)
-    }, 3000)
+    }
   }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      handleScan()
+      handleScan(file)
     }
   }
 
   const handleConfirm = () => {
-    // Navigate to add expense with pre-filled data
-    const params = new URLSearchParams({
-      amount: scannedData.total.toString(),
-      merchant: scannedData.merchantName,
-      date: scannedData.transactionDate,
-    })
-    window.location.href = `/add-expense?${params.toString()}`
+    if (scannedData) {
+      const params = new URLSearchParams({
+        amount: scannedData.total.toString(),
+        merchant: scannedData.merchantName,
+        date: scannedData.transactionDate,
+        currency: scannedData.currency,
+      })
+      window.location.href = `/add-expense?${params.toString()}`
+    }
+  }
+
+  const triggerCameraOptions = () => {
+    fileInputRef.current?.click()
+  }
+
+  const resetScan = () => {
+    setScannedData(null)
+    setError(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   return (
-    <div className="flex flex-col h-screen bg-black">
+    <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <header className="bg-black text-white p-4 pt-12 flex items-center">
-        <Button variant="ghost" size="icon" className="text-white mr-3" onClick={() => window.history.back()}>
+      <header className="p-6 pt-16 safe-area-top flex items-center">
+        <Button variant="ghost" size="icon" className="mr-4" onClick={() => window.history.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-semibold">Scan Receipt</h1>
+        <h1 className="text-xl font-medium">Scan Receipt</h1>
       </header>
 
       {/* Camera View */}
-      <div className="flex-1 relative bg-gray-900 flex items-center justify-center">
-        {!scannedData && !isScanning && (
-          <div className="text-center text-white space-y-4">
-            <div className="w-64 h-64 border-2 border-dashed border-white/50 rounded-lg flex items-center justify-center">
+      <div className="flex-1 mx-6 mb-32 rounded-2xl bg-card flex items-center justify-center">
+        {!scannedData && !isScanning && !error && (
+          <div className="text-center space-y-6">
+            <div className="w-48 h-48 border-2 border-dashed border-muted rounded-2xl flex items-center justify-center">
               <div className="text-center">
-                <Camera className="h-12 w-12 mx-auto mb-2 text-white/70" />
-                <p className="text-sm text-white/70">Position receipt in frame</p>
+                <Camera className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-muted-foreground">Position receipt here</p>
               </div>
             </div>
-            <p className="text-sm text-white/80">Make sure the receipt is well-lit and all text is visible</p>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Make sure the receipt is well-lit and all text is visible
+            </p>
           </div>
         )}
 
         {isScanning && (
-          <div className="text-center text-white space-y-4">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-400" />
+          <div className="text-center space-y-6">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
             <div className="space-y-2">
-              <p className="text-lg font-medium">Analyzing receipt...</p>
-              <p className="text-sm text-white/70">AI is extracting expense details</p>
+              <p className="text-lg font-medium">Analyzing...</p>
+              <p className="text-sm text-muted-foreground">AI is extracting receipt details</p>
             </div>
           </div>
         )}
 
+        {error && (
+          <Card className="minimal-card w-full max-w-sm mx-4">
+            <CardContent className="p-6 space-y-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <AlertCircle className="h-6 w-6 text-red-400" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Scan Failed</h3>
+                <p className="text-sm text-muted-foreground mb-4">{error}</p>
+              </div>
+
+              <Button className="w-full rounded-xl bg-primary hover:bg-primary/90" onClick={resetScan}>
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {scannedData && (
-          <div className="absolute inset-4 flex items-center justify-center">
-            <Card className="w-full max-w-sm bg-white">
-              <CardContent className="p-6 space-y-4">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Camera className="h-6 w-6 text-green-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Receipt Scanned!</h3>
-                  <p className="text-sm text-gray-600">AI extracted the following details:</p>
+          <Card className="minimal-card w-full max-w-sm mx-4">
+            <CardContent className="p-6 space-y-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Check className="h-6 w-6 text-green-400" />
                 </div>
+                <h3 className="text-lg font-medium mb-2">Receipt Scanned</h3>
+                {scannedData.confidence < 0.8 && (
+                  <p className="text-xs text-yellow-400 mb-2">
+                    Low confidence - please verify details
+                  </p>
+                )}
+              </div>
 
-                <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Merchant:</span>
-                    <span className="text-sm font-medium">{scannedData.merchantName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Amount:</span>
-                    <span className="text-lg font-bold text-green-600">${scannedData.total.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Date:</span>
-                    <span className="text-sm font-medium">{scannedData.transactionDate}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Confidence:</span>
-                    <span className="text-sm font-medium text-green-600">
-                      {(scannedData.confidence * 100).toFixed(0)}%
-                    </span>
-                  </div>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Merchant</span>
+                  <span className="font-medium">{scannedData.merchantName}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount</span>
+                  <span className="text-xl font-medium text-primary">
+                    {scannedData.currency} {scannedData.total.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Date</span>
+                  <span className="font-medium">{scannedData.transactionDate}</span>
+                </div>
+                {scannedData.tax && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tax</span>
+                    <span className="font-medium">{scannedData.currency} {scannedData.tax.toFixed(2)}</span>
+                  </div>
+                )}
+                {scannedData.tip && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tip</span>
+                    <span className="font-medium">{scannedData.currency} {scannedData.tip.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
 
-                <div className="flex space-x-3">
-                  <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setScannedData(null)}>
-                    Retry
-                  </Button>
-                  <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleConfirm}>
-                    Confirm
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              <div className="flex space-x-3">
+                <Button variant="secondary" className="flex-1 rounded-xl" onClick={resetScan}>
+                  Retry
+                </Button>
+                <Button className="flex-1 rounded-xl bg-primary hover:bg-primary/90" onClick={handleConfirm}>
+                  Confirm
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
 
       {/* Bottom Controls */}
       {!scannedData && !isScanning && (
-        <div className="p-6 space-y-4">
-          <Button className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-lg font-medium" onClick={handleScan}>
-            <Camera className="h-6 w-6 mr-2" />
-            Capture Receipt
-          </Button>
+        <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
+          <div className="p-6 bg-background/95 backdrop-blur-sm border-t border-border">
+            <div className="max-w-md mx-auto">
+              <Button
+                className="w-full h-14 bg-primary hover:bg-primary/90 text-lg font-medium rounded-2xl"
+                onClick={triggerCameraOptions}
+                disabled={isScanning}
+              >
+                <Camera className="h-6 w-6 mr-3" />
+                Scan Receipt
+              </Button>
 
-          <div className="flex items-center space-x-4">
-            <div className="flex-1 h-px bg-white/20"></div>
-            <span className="text-white/60 text-sm">or</span>
-            <div className="flex-1 h-px bg-white/20"></div>
+              {/* Hidden file input that triggers native iPhone camera/photo options */}
+              <input 
+                ref={fileInputRef} 
+                type="file" 
+                accept="image/*" 
+                capture="environment"
+                className="hidden" 
+                onChange={handleFileUpload} 
+              />
+            </div>
           </div>
-
-          <Button
-            variant="outline"
-            className="w-full h-12 border-white/30 text-white hover:bg-white/10 bg-transparent"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="h-5 w-5 mr-2" />
-            Upload from Gallery
-          </Button>
-
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
         </div>
       )}
     </div>
   )
 }
+
+
