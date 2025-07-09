@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       console.log('Calling OpenAI API with timeout...')
       
       const apiCallPromise = openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4.1-nano",
         messages: [
           {
             role: "user",
