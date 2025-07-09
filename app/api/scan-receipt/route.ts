@@ -100,9 +100,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'No response from OpenAI' }, { status: 500 })
       }
 
-      // Parse the JSON response
+      // Parse the JSON response (handle markdown code blocks)
       try {
-        const receiptData = JSON.parse(content)
+        // Remove markdown code blocks if present
+        let cleanContent = content.trim()
+        if (cleanContent.startsWith('```json')) {
+          cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+        } else if (cleanContent.startsWith('```')) {
+          cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '')
+        }
+        
+        const receiptData = JSON.parse(cleanContent)
         return NextResponse.json(receiptData)
       } catch (parseError) {
         console.error('Failed to parse OpenAI response:', content)
