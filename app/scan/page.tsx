@@ -204,32 +204,31 @@ export default function ScanPage() {
         )}
       </div>
 
-      {/* Bottom Action Button */}
+      {/* Bottom Action Button - Circular */}
       {!scannedData && !isScanning && (
         <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
           <div className="p-6 bg-background/95 backdrop-blur-sm border-t border-border">
-            <div className="max-w-md mx-auto">
+            <div className="max-w-md mx-auto flex justify-end pr-4">
               <Button
-                className="w-full h-14 bg-primary hover:bg-primary/90 text-lg font-medium rounded-2xl"
+                className="h-16 w-16 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group"
                 onClick={triggerImageUpload}
                 disabled={isScanning}
               >
-                <Camera className="h-6 w-6 mr-3" />
-                Add Image
+                <Camera className="h-7 w-7 group-hover:scale-110 transition-transform duration-200" />
               </Button>
-
-              {/* Hidden file input that triggers native camera/photo options */}
-              <input 
-                ref={fileInputRef} 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                onChange={handleFileUpload} 
-              />
             </div>
           </div>
         </div>
       )}
+
+      {/* Hidden file input that triggers native camera/photo options */}
+      <input 
+        ref={fileInputRef} 
+        type="file" 
+        accept="image/*" 
+        className="hidden" 
+        onChange={handleFileUpload} 
+      />
     </div>
   )
 }

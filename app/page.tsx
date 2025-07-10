@@ -362,25 +362,16 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - Circular Action Button */}
       <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
         <div className="p-6 bg-background/95 backdrop-blur-sm border-t border-border">
-          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+          <div className="max-w-md mx-auto flex justify-end pr-4">
             <Button
-              className="h-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl flex flex-col items-center justify-center space-y-1"
+              className="h-16 w-16 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group"
               onClick={handleScanClick}
               disabled={isScanning}
             >
-              <Camera className="h-6 w-6" />
-              <span className="text-sm font-medium">Add Image</span>
-            </Button>
-            <Button
-              variant="secondary"
-              className="h-14 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-2xl flex flex-col items-center justify-center space-y-1"
-              onClick={() => (window.location.href = "/add-expense")}
-            >
-              <Plus className="h-6 w-6" />
-              <span className="text-sm font-medium">Add</span>
+              <Camera className="h-7 w-7 group-hover:scale-110 transition-transform duration-200" />
             </Button>
           </div>
         </div>
