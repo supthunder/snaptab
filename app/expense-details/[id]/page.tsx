@@ -16,9 +16,9 @@ import {
 } from "@/lib/data"
 
 interface ExpenseDetailsPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) {
@@ -26,6 +26,7 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
   const [expense, setExpense] = useState<Expense | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
+  const [expenseId, setExpenseId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({
     description: '',
     amount: '',
@@ -34,26 +35,31 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
   })
 
   useEffect(() => {
-    // Load trip and find the specific expense
-    const trip = getActiveTrip()
-    if (trip) {
-      setActiveTrip(trip)
+    // First get the params
+    params.then((resolvedParams) => {
+      setExpenseId(resolvedParams.id)
       
-      // Find the expense by ID
-      const foundExpense = trip.expenses.find(exp => exp.id === params.id)
-      if (foundExpense) {
-        setExpense(foundExpense)
-        setEditForm({
-          description: foundExpense.description,
-          amount: foundExpense.amount.toString(),
-          paidBy: foundExpense.paidBy,
-          date: foundExpense.date
-        })
+      // Load trip and find the specific expense
+      const trip = getActiveTrip()
+      if (trip) {
+        setActiveTrip(trip)
+        
+        // Find the expense by ID
+        const foundExpense = trip.expenses.find(exp => exp.id === resolvedParams.id)
+        if (foundExpense) {
+          setExpense(foundExpense)
+          setEditForm({
+            description: foundExpense.description,
+            amount: foundExpense.amount.toString(),
+            paidBy: foundExpense.paidBy,
+            date: foundExpense.date
+          })
+        }
       }
-    }
-    
-    setIsLoading(false)
-  }, [params.id])
+      
+      setIsLoading(false)
+    })
+  }, [params])
 
   const formatTimeAgo = (dateString: string) => {
     const now = new Date()
