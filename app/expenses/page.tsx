@@ -5,7 +5,12 @@ import { ArrowLeft, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { getActiveTrip, getTripExpenses, type Trip, type Expense } from "@/lib/data"
+import { 
+  getActiveTrip, 
+  getTripExpenses, 
+  type Trip, 
+  type Expense 
+} from "@/lib/data"
 
 export default function ExpensesPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -56,6 +61,11 @@ export default function ExpensesPage() {
       JPY: "¥"
     }
     return symbols[currency] || currency
+  }
+
+  // Function to handle expense click
+  const handleExpenseClick = (expense: Expense) => {
+    window.location.href = `/expense-details/${expense.id}`
   }
 
   if (isLoading) {
@@ -180,7 +190,11 @@ export default function ExpensesPage() {
         ) : (
           <div className="space-y-3">
             {filteredExpenses.map((expense) => (
-              <Card key={expense.id} className="minimal-card">
+              <Card 
+                key={expense.id} 
+                className="minimal-card cursor-pointer hover:bg-card/80 transition-colors"
+                onClick={() => handleExpenseClick(expense)}
+              >
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">

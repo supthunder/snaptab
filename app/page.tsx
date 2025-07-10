@@ -4,7 +4,14 @@ import { useState, useRef, useEffect } from "react"
 import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { getActiveTrip, getRecentExpenses, getUserBalance, type Trip, type Expense } from "@/lib/data"
+
+import { 
+  getActiveTrip, 
+  getRecentExpenses, 
+  getUserBalance, 
+  type Trip, 
+  type Expense 
+} from "@/lib/data"
 
 interface ReceiptData {
   merchantName: string
@@ -139,6 +146,13 @@ export default function HomePage() {
     return symbols[currency] || currency
   }
 
+  // Updated function to navigate to expense details page
+  const handleExpenseClick = (expense: Expense) => {
+    window.location.href = `/expense-details/${expense.id}`
+  }
+
+
+
   if (isLoading) {
     return (
       <div className="flex flex-col h-screen bg-background">
@@ -183,7 +197,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Full-screen loading overlay */}
+     {/* Full-screen loading overlay */}
       {isScanning && (
         <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="text-center space-y-6">
@@ -337,7 +351,11 @@ export default function HomePage() {
         ) : (
           <div className="space-y-3">
             {recentExpenses.map((expense) => (
-              <Card key={expense.id} className="minimal-card">
+              <Card 
+                key={expense.id} 
+                className="minimal-card cursor-pointer hover:bg-card/80 transition-colors"
+                onClick={() => handleExpenseClick(expense)}
+              >
                 <CardContent className="p-4">
                   <div className="flex justify-between items-center">
                     <div className="flex-1">

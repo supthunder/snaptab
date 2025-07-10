@@ -300,7 +300,6 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - `app/create-trip/page.tsx` - Enhanced submit button design
 
 ---
-
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
