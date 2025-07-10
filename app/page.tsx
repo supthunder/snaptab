@@ -362,16 +362,16 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* Bottom Navigation - Circular Action Button */}
+      {/* Bottom Navigation - Large Circular Action Button */}
       <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
-        <div className="p-6 bg-background/95 backdrop-blur-sm border-t border-border">
-          <div className="max-w-md mx-auto flex justify-end pr-4">
+        <div className="p-8 bg-gradient-to-t from-background via-background/98 to-background/80 backdrop-blur-sm">
+          <div className="max-w-md mx-auto flex justify-center">
             <Button
-              className="h-16 w-16 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group"
+              className="h-20 w-20 bg-gradient-to-br from-primary via-primary to-primary/80 hover:from-primary/95 hover:via-primary/90 hover:to-primary/70 text-primary-foreground rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center group border-2 border-primary/20"
               onClick={handleScanClick}
               disabled={isScanning}
             >
-              <Camera className="h-7 w-7 group-hover:scale-110 transition-transform duration-200" />
+              <Camera className="h-9 w-9 group-hover:scale-125 transition-transform duration-300" />
             </Button>
           </div>
         </div>

@@ -235,11 +235,11 @@ export default function CreateTripPage() {
 
       {/* Bottom Submit Button */}
       <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
-        <div className="p-6 bg-background/95 backdrop-blur-sm border-t border-border">
+        <div className="p-8 bg-gradient-to-t from-background via-background/98 to-background/80 backdrop-blur-sm">
           <div className="max-w-md mx-auto">
             <Button
               type="submit"
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-lg font-medium rounded-2xl"
+              className="w-full h-16 bg-primary hover:bg-primary/90 text-lg font-medium rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
               disabled={!formData.name.trim() || isSubmitting}
               onClick={handleSubmit}
             >

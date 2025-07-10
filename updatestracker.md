@@ -273,6 +273,34 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #13: Enhanced Bottom Navigation - Remove Border Lines & Bigger Buttons
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Removed ugly border lines**: Eliminated `border-t border-border` from all bottom navigation areas across the app
+- **Enhanced visual design**: Replaced solid borders with elegant gradient backgrounds using `bg-gradient-to-t from-background via-background/98 to-background/80`
+- **Bigger buttons**: Increased button sizes from h-14 to h-16 for better touch targets and visual prominence
+- **Larger circular buttons**: Increased circular camera buttons from 64x64px to 80x80px (h-16 w-16 to h-20 w-20)
+- **Improved shadows**: Enhanced shadow effects with `shadow-2xl` and `hover:shadow-3xl` for circular buttons
+- **Better animations**: Extended transition durations from 200ms to 300ms for smoother interactions
+- **Centered layout**: Moved circular buttons from right-aligned to center-aligned for better accessibility
+- **Enhanced gradients**: Added subtle border highlights with `border-2 border-primary/20` for circular buttons
+
+### Visual Improvements:
+- Seamless gradient fade-out effect instead of harsh border lines
+- Larger, more prominent buttons for better mobile usability
+- Enhanced hover states with improved shadows and scaling effects
+- Consistent design language across all pages
+
+### Files Modified:
+- `app/page.tsx` - Enhanced circular camera button and removed border line
+- `app/scan/page.tsx` - Updated scan interface with bigger centered button
+- `app/add-expense/page.tsx` - Larger buttons and gradient background
+- `app/create-trip/page.tsx` - Enhanced submit button design
+
+---
+
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility

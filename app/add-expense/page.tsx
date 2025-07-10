@@ -448,19 +448,19 @@ export default function AddExpensePage() {
 
         {/* Bottom Actions */}
         <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
-          <div className="p-6 bg-background/95 backdrop-blur-sm border-t border-border">
+          <div className="p-8 bg-gradient-to-t from-background via-background/98 to-background/80 backdrop-blur-sm">
             <div className="max-w-md mx-auto">
               {currentStep === 0 && (
                 <div className="flex space-x-3">
                   <Button
                     variant="outline"
-                    className="flex-1 h-14 rounded-2xl"
+                    className="flex-1 h-16 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
                     onClick={finishItemAssignment}
                   >
                     Done
                   </Button>
                   <Button
-                    className="flex-1 h-14 bg-primary hover:bg-primary/90 rounded-2xl"
+                    className="flex-1 h-16 bg-primary hover:bg-primary/90 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
                     disabled={selectedItems.length === 0}
                     onClick={proceedToPersonSelection}
                   >
@@ -471,7 +471,7 @@ export default function AddExpensePage() {
               {currentStep === 1 && (
                 <Button
                   variant="outline"
-                  className="w-full h-14 rounded-2xl"
+                  className="w-full h-16 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
                   onClick={() => setCurrentStep(0)}
                 >
                   Back to Items
@@ -700,11 +700,11 @@ export default function AddExpensePage() {
 
       {/* Bottom Submit Button */}
       <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
-        <div className="p-6 bg-background/95 backdrop-blur-sm border-t border-border">
+        <div className="p-8 bg-gradient-to-t from-background via-background/98 to-background/80 backdrop-blur-sm">
           <div className="max-w-md mx-auto">
             <Button
               type="submit"
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-lg font-medium rounded-2xl"
+              className="w-full h-16 bg-primary hover:bg-primary/90 text-lg font-medium rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
               disabled={!formData.description || !formData.amount || selectedMembers.length === 0 || isSubmitting}
               onClick={handleSubmit}
             >
