@@ -203,7 +203,7 @@ BLOB_READ_WRITE_TOKEN=
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/snaptab.git
+git clone https://github.com/your-username/snaptab.git
 cd snaptab
 
 # Install dependencies
