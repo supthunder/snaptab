@@ -1,0 +1,265 @@
+# SnapTab Updates Tracker
+
+## Overview
+This file tracks all updates, features, and improvements made to the SnapTab expense tracking app.
+
+---
+
+## Update #1: Initial App Simplification
+**Date**: Initial implementation  
+**Status**: ✅ Complete
+
+### Changes Made:
+- Simplified main page with minimal header
+- Added trip information display
+- Implemented "More" icon (⋮) opening dialog with detailed trip data
+- Created "Add Bill" box with camera and plus button actions
+- Added quick action buttons for viewing expenses and settlements
+- Ensured all navigation works properly
+
+### Files Modified:
+- `app/page.tsx` - Main homepage redesign
+- `app/layout.tsx` - Header simplification
+
+---
+
+## Update #2: Design Overhaul from snaptab-pwa
+**Date**: Major redesign  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Layout**: Removed width constraints, added proper PWA metadata
+- **Global CSS**: Implemented dark theme with CSS variables
+- **Homepage**: New centered design with balance card and recent expenses
+- **New Pages**: Added trips page (timeline view), create-trip page
+- **Updated Pages**: Redesigned add-expense, scan, expenses, and settlement pages
+- **Theme**: Dark theme with better contrast and typography
+
+### Files Modified:
+- `app/layout.tsx` - PWA metadata and theme setup
+- `app/globals.css` - Dark theme implementation
+- `app/page.tsx` - New homepage design
+- `app/trips/page.tsx` - New trips timeline page
+- `app/create-trip/page.tsx` - New trip creation form
+- `app/add-expense/page.tsx` - Redesigned expense form
+- `app/scan/page.tsx` - Updated scan interface
+- `app/expenses/page.tsx` - Redesigned expenses list
+- `app/settlement/page.tsx` - Updated settlement page
+
+---
+
+## Update #3: PWA Layout Fixes
+**Date**: PWA optimization  
+**Status**: ✅ Complete
+
+### Changes Made:
+- Removed `max-w-sm` constraint for full-width layout
+- Properly configured viewport settings for mobile devices
+- Added safe area classes for iOS compatibility (`safe-area-top`, `safe-area-bottom`)
+- Fixed bottom action buttons for full-width layout
+- Updated multiple pages for proper PWA-friendly positioning
+- Ensured responsive design with `min-h-screen w-full`
+
+### Files Modified:
+- `app/layout.tsx` - Viewport configuration
+- `app/page.tsx` - Full-width layout
+- `app/add-expense/page.tsx` - Safe area padding
+- `app/scan/page.tsx` - Mobile optimization
+- `app/expenses/page.tsx` - Responsive design
+- `app/settlement/page.tsx` - PWA layout
+
+---
+
+## Update #4: Native Camera Integration
+**Date**: Camera enhancement  
+**Status**: ✅ Complete
+
+### Changes Made:
+- Updated scan button to show native iPhone options (camera, photo, file)
+- Replaced custom dialog with native HTML file input
+- Added `capture="environment"` attribute for iPhone camera trigger
+- Implemented on both homepage and scan page
+
+### Files Modified:
+- `app/page.tsx` - Native file input for scan
+- `app/scan/page.tsx` - Native camera integration
+
+---
+
+## Update #5: OpenAI Receipt Scanning Integration
+**Date**: AI-powered receipt processing  
+**Status**: ✅ Complete
+
+### Changes Made:
+- Created `.env.local` with OpenAI API key (gitignored for security)
+- Installed OpenAI SDK using pnpm
+- Created `/api/scan-receipt` API route
+- Implemented image processing (file upload → base64 conversion → OpenAI API call)
+- Added structured prompting for JSON receipt data extraction
+- Implemented comprehensive error handling and fallback mock responses
+- Created `OPENAI_INTEGRATION.md` documentation
+
+### Files Added:
+- `app/api/scan-receipt/route.ts` - OpenAI API integration
+- `.env.local` - Environment variables (gitignored)
+- `OPENAI_INTEGRATION.md` - Integration documentation
+
+### Files Modified:
+- `package.json` - Added OpenAI SDK dependency
+- `app/page.tsx` - Receipt scanning integration
+- `app/scan/page.tsx` - API integration
+
+---
+
+## Update #6: API Error Handling & Model Optimization
+**Date**: API improvements  
+**Status**: ✅ Complete
+
+### Changes Made:
+- Fixed JSON parsing errors when OpenAI returns non-JSON responses
+- Added timeout handling (30 seconds)
+- Improved error handling with multiple fallback strategies
+- Created mock responses for testing when API fails
+- Fixed route handler errors ensuring all code paths return responses
+- Changed model from gpt-4o to gpt-4o-mini for cost savings (60-80% cheaper)
+
+### Files Modified:
+- `app/api/scan-receipt/route.ts` - Enhanced error handling and model change
+
+---
+
+## Update #7: Popup Removal & Data Storage Explanation
+**Date**: UX improvement  
+**Status**: ✅ Complete
+
+### Changes Made:
+- Removed "Expense added successfully!" popup from add-expense flow
+- Removed "Trip created successfully!" popup from create-trip flow
+- Silent redirects for smoother user experience
+- Explained data storage (localStorage, browser-based)
+
+### Files Modified:
+- `app/add-expense/page.tsx` - Removed success alert
+- `app/create-trip/page.tsx` - Removed success alert
+
+---
+
+## Update #8: Item-Based Expense Splitting
+**Date**: Major feature addition  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Split Mode Toggle**: Added "Split Evenly" vs "Split by Items" options
+- **Item Data Extraction**: Extract receipt items from scan API
+- **Item Assignment Flow**: Multi-step process to assign items to people
+- **Shared Item Logic**: Allow items to be split between multiple people
+- **Calculation Logic**: Updated expense calculation for individual assignments
+- **Automatic Flow**: Clicking "Split by Items" automatically starts assignment
+- **Smart Navigation**: Proper back button handling for all states
+
+### Features Added:
+- Toggle between splitting modes (evenly vs by items)
+- Item selection interface with checkboxes
+- Person assignment with clear visual hierarchy
+- Shared cost calculation for items assigned to multiple people
+- "Already Assigned" vs "Available" person sections
+- Automatic transition to item assignment when switching modes
+
+### Files Modified:
+- `app/add-expense/page.tsx` - Complete rewrite with item splitting logic
+- `app/scan/page.tsx` - Pass items data to add-expense
+- `app/page.tsx` - Pass items data to add-expense
+
+### Technical Details:
+- Items data passed via URL parameters as JSON
+- State management for item assignments and available items
+- Multi-step flow with proper navigation
+- Calculation logic handles both even splits and item-based splits
+- Shared items split cost proportionally between assigned people
+
+---
+
+## Update #9: Assignment Flow UX Improvements
+**Date**: UX refinement  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Clearer Person Assignment**: Separated "Available" vs "Already Assigned" people
+- **Better Visual Hierarchy**: Already assigned people shown with reduced opacity
+- **Improved Labels**: Removed confusing "Share with" language
+- **Automatic Flow Start**: "Split by Items" immediately opens assignment interface
+- **Smart Back Navigation**: Proper state management for back button
+
+### Files Modified:
+- `app/add-expense/page.tsx` - Assignment interface improvements
+
+---
+
+## Update #10: Fixed Assignment Logic Bug
+**Date**: Bug fix  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Fixed Assignment Display Logic**: People now correctly move to "Already Assigned" section after being assigned to ANY items
+- **Proper State Management**: Assignment status now tracks across all items, not just currently selected ones
+- **Improved UX**: Users no longer see assigned people in the main "Available" list
+
+### Bug Fixed:
+- Previously: Sarah would still appear in "Available" section even after being assigned items
+- Now: Sarah correctly moves to "Already Assigned" section after any item assignment
+
+### Files Modified:
+- `app/add-expense/page.tsx` - Fixed assignment logic to track all assignments, not just selected items
+
+---
+
+## Current Status
+- ✅ **Core App**: Fully functional expense tracking
+- ✅ **PWA**: Optimized for mobile/iPhone usage
+- ✅ **AI Scanning**: OpenAI-powered receipt processing
+- ✅ **Item Splitting**: Advanced expense splitting by individual items
+- ✅ **Data Storage**: Browser localStorage (offline-first)
+- ✅ **UX Flow**: Smooth, popup-free experience
+
+## Next Potential Features
+- [ ] Cloud sync for cross-device data
+- [ ] Export functionality (PDF, CSV)
+- [ ] Multiple currency support
+- [ ] Expense categories
+- [ ] Photo attachments for manual expenses
+- [ ] Recurring expenses
+- [ ] Budget tracking
+- [ ] Expense search and filtering
+
+---
+
+## Technical Stack
+- **Framework**: Next.js 15.2.4 with TypeScript
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **AI**: OpenAI GPT-4o-mini for receipt processing
+- **Storage**: Browser localStorage
+- **Package Manager**: pnpm
+- **Deployment**: Ready for Vercel/Netlify
+
+## File Structure
+```
+snaptab/
+├── app/
+│   ├── api/scan-receipt/route.ts     # OpenAI integration
+│   ├── add-expense/page.tsx          # Enhanced expense form
+│   ├── expenses/page.tsx             # Expenses list
+│   ├── scan/page.tsx                 # Receipt scanning
+│   ├── settlement/page.tsx           # Settlement calculations
+│   ├── trips/page.tsx                # Trips timeline
+│   ├── create-trip/page.tsx          # Trip creation
+│   ├── layout.tsx                    # PWA layout
+│   ├── page.tsx                      # Homepage
+│   └── globals.css                   # Dark theme styles
+├── components/ui/                    # shadcn/ui components
+├── lib/
+│   ├── data.ts                       # Data management
+│   └── utils.ts                      # Utilities
+├── .env.local                        # Environment variables
+├── OPENAI_INTEGRATION.md            # API documentation
+└── updatestracker.md                # This file
+``` 

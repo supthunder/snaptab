@@ -71,10 +71,7 @@ export default function CreateTripPage() {
       // Save all trips (existing + new)
       saveTrips([...updatedTrips, newTrip])
 
-      // Success feedback
-      alert("Trip created successfully!")
-      
-      // Navigate back to home
+      // Navigate back to home (no popup needed)
       window.location.href = "/"
       
     } catch (error) {

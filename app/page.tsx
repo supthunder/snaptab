@@ -96,6 +96,12 @@ export default function HomePage() {
         date: scannedData.transactionDate || '',
         currency: scannedData.currency || 'USD',
       })
+      
+      // Add items data if available
+      if (scannedData.items && scannedData.items.length > 0) {
+        params.set('items', JSON.stringify(scannedData.items))
+      }
+      
       window.location.href = `/add-expense?${params.toString()}`
     }
   }
