@@ -213,6 +213,41 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #11: Clickable Expense Details & Editing
+**Date**: Home page enhancement  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Clickable Expense Cards**: Made all expense cards on homepage clickable to show detailed information
+- **Expense Detail Modal**: Created comprehensive modal showing all expense details (description, amount, paid by, date, split with, your share, created date)
+- **Edit Functionality**: Added in-place editing for expense details with save/cancel options
+- **Delete Functionality**: Added delete option for expenses with proper confirmation
+- **Expenses Page Enhancement**: Extended clickable functionality to the "View All" expenses page
+- **Real-time Updates**: Changes immediately reflect in the UI and localStorage
+- **Consistent UX**: Same modal and editing interface used across both homepage and expenses page
+
+### Features Added:
+- Modal dialog with complete expense information
+- Edit mode toggle with form fields for all expense properties
+- Delete confirmation with proper cleanup
+- Hover effects and cursor pointer for better UX
+- Automatic balance and total recalculation after edits
+- Consistent styling with existing design system
+
+### Files Modified:
+- `app/page.tsx` - Added expense detail modal and editing functionality
+- `app/expenses/page.tsx` - Added clickable cards and same modal functionality
+
+### Technical Details:
+- Modal state management with React hooks
+- Form validation and error handling
+- Data persistence through localStorage
+- Proper cleanup of references after deletion
+- Consistent currency formatting and date handling
+- Responsive design for mobile devices
+
+---
+
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage
@@ -220,6 +255,7 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - ✅ **Item Splitting**: Advanced expense splitting by individual items
 - ✅ **Data Storage**: Browser localStorage (offline-first)
 - ✅ **UX Flow**: Smooth, popup-free experience
+- ✅ **Expense Management**: Full CRUD operations with detailed views and editing
 
 ## Next Potential Features
 - [ ] Cloud sync for cross-device data
@@ -230,6 +266,8 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - [ ] Recurring expenses
 - [ ] Budget tracking
 - [ ] Expense search and filtering
+- [ ] Bulk operations (delete multiple, edit multiple)
+- [ ] Expense approval workflow
 
 ---
 
@@ -247,13 +285,13 @@ snaptab/
 ├── app/
 │   ├── api/scan-receipt/route.ts     # OpenAI integration
 │   ├── add-expense/page.tsx          # Enhanced expense form
-│   ├── expenses/page.tsx             # Expenses list
+│   ├── expenses/page.tsx             # Clickable expenses list with detail modals
 │   ├── scan/page.tsx                 # Receipt scanning
 │   ├── settlement/page.tsx           # Settlement calculations
 │   ├── trips/page.tsx                # Trips timeline
 │   ├── create-trip/page.tsx          # Trip creation
 │   ├── layout.tsx                    # PWA layout
-│   ├── page.tsx                      # Homepage
+│   ├── page.tsx                      # Homepage with clickable expense cards
 │   └── globals.css                   # Dark theme styles
 ├── components/ui/                    # shadcn/ui components
 ├── lib/
