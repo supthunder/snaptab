@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { ArrowLeft, Camera, Loader2, Check, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -27,27 +27,6 @@ export default function ScanPage() {
   const [scannedData, setScannedData] = useState<ReceiptData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Check for pending file from homepage
-  useEffect(() => {
-    const pendingFile = sessionStorage.getItem('pendingReceiptFile')
-    if (pendingFile) {
-      try {
-        const fileData = JSON.parse(pendingFile)
-        sessionStorage.removeItem('pendingReceiptFile')
-        
-        // Convert data URL back to File
-        const response = fetch(fileData.data)
-        response.then(res => res.blob()).then(blob => {
-          const file = new File([blob], fileData.name, { type: fileData.type })
-          handleScan(file)
-        })
-      } catch (err) {
-        console.error('Error processing pending file:', err)
-        setError('Failed to process uploaded file')
-      }
-    }
-  }, [])
 
   const handleScan = async (file: File) => {
     setIsScanning(true)
@@ -96,7 +75,7 @@ export default function ScanPage() {
     }
   }
 
-  const triggerCameraOptions = () => {
+  const triggerImageUpload = () => {
     fileInputRef.current?.click()
   }
 
@@ -118,18 +97,18 @@ export default function ScanPage() {
         <h1 className="text-xl font-medium">Scan Receipt</h1>
       </header>
 
-      {/* Camera View */}
+      {/* Main Content */}
       <div className="flex-1 mx-6 mb-32 rounded-2xl bg-card flex items-center justify-center">
         {!scannedData && !isScanning && !error && (
           <div className="text-center space-y-6">
             <div className="w-48 h-48 border-2 border-dashed border-muted rounded-2xl flex items-center justify-center">
               <div className="text-center">
                 <Camera className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                <p className="text-muted-foreground">Position receipt here</p>
+                <p className="text-muted-foreground">Ready to scan receipt</p>
               </div>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs">
-              Make sure the receipt is well-lit and all text is visible
+              Tap "Add Image" to take a photo or choose from your gallery
             </p>
           </div>
         )}
@@ -138,7 +117,7 @@ export default function ScanPage() {
           <div className="text-center space-y-6">
             <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
             <div className="space-y-2">
-              <p className="text-lg font-medium">Analyzing...</p>
+              <p className="text-lg font-medium">Analyzing Receipt...</p>
               <p className="text-sm text-muted-foreground">AI is extracting receipt details</p>
             </div>
           </div>
@@ -219,26 +198,25 @@ export default function ScanPage() {
         )}
       </div>
 
-      {/* Bottom Controls */}
+      {/* Bottom Action Button */}
       {!scannedData && !isScanning && (
         <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
           <div className="p-6 bg-background/95 backdrop-blur-sm border-t border-border">
             <div className="max-w-md mx-auto">
               <Button
                 className="w-full h-14 bg-primary hover:bg-primary/90 text-lg font-medium rounded-2xl"
-                onClick={triggerCameraOptions}
+                onClick={triggerImageUpload}
                 disabled={isScanning}
               >
                 <Camera className="h-6 w-6 mr-3" />
-                Scan Receipt
+                Add Image
               </Button>
 
-              {/* Hidden file input that triggers native iPhone camera/photo options */}
+              {/* Hidden file input that triggers native camera/photo options */}
               <input 
                 ref={fileInputRef} 
                 type="file" 
                 accept="image/*" 
-                capture="environment"
                 className="hidden" 
                 onChange={handleFileUpload} 
               />
