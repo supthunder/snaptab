@@ -171,7 +171,7 @@ export default function HomePage() {
       <div className="flex flex-col h-screen bg-background">
         <header className="p-6 pt-16 safe-area-top">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-light text-foreground mb-2">SnapTab</h1>
+            <h1 className="text-2xl font-medium text-foreground">Welcome</h1>
             <p className="text-muted-foreground text-sm">No active trip</p>
           </div>
         </header>
@@ -302,8 +302,7 @@ export default function HomePage() {
             <Menu className="h-5 w-5" />
           </Button>
           <div className="text-center">
-            <h1 className="text-3xl font-light text-foreground mb-2">SnapTab</h1>
-            <p className="text-muted-foreground text-sm">{activeTrip.name}</p>
+            <h1 className="text-2xl font-medium text-foreground">{activeTrip.name}</h1>
           </div>
           <div className="w-10" /> {/* Spacer for centering */}
         </div>

@@ -300,6 +300,28 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - `app/create-trip/page.tsx` - Enhanced submit button design
 
 ---
+
+## Update #14: Contextual Header Improvement
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Removed redundant app name**: Eliminated "SnapTab" from header since users already know they're in the app
+- **Trip-focused header**: Main header now displays the current trip name prominently instead of app name
+- **Better UX hierarchy**: Trip name is now the primary heading, making navigation clearer
+- **Consistent sizing**: Standardized header text size across active and no-trip states
+- **Contextual messaging**: Changed no-trip state from "SnapTab" to "Welcome" for better user experience
+
+### Visual Improvements:
+- Cleaner, more focused header design
+- Trip name prominently displayed as main title
+- Reduced visual clutter by removing unnecessary app branding
+- Better information hierarchy for user context
+
+### Files Modified:
+- `app/page.tsx` - Updated header to show trip name instead of app name
+
+---
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
