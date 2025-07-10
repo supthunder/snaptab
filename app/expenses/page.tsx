@@ -1,17 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, Search, Edit2, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { 
   getActiveTrip, 
   getTripExpenses, 
-  saveTrips,
-  getTrips,
   type Trip, 
   type Expense 
 } from "@/lib/data"
@@ -21,16 +17,6 @@ export default function ExpensesPage() {
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  
-  // State for expense details modal
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editForm, setEditForm] = useState({
-    description: '',
-    amount: '',
-    paidBy: '',
-    date: ''
-  })
 
   useEffect(() => {
     // Load real data from localStorage
@@ -67,21 +53,6 @@ export default function ExpensesPage() {
     })
   }
 
-  const formatTimeAgo = (dateString: string) => {
-    const now = new Date()
-    const expenseDate = new Date(dateString)
-    const diffInHours = Math.floor((now.getTime() - expenseDate.getTime()) / (1000 * 60 * 60))
-    
-    if (diffInHours < 1) return "Just now"
-    if (diffInHours < 24) return `${diffInHours}h ago`
-    
-    const diffInDays = Math.floor(diffInHours / 24)
-    if (diffInDays === 1) return "1 day ago"
-    if (diffInDays < 7) return `${diffInDays} days ago`
-    
-    return expenseDate.toLocaleDateString()
-  }
-
   const getCurrencySymbol = (currency: string) => {
     const symbols: { [key: string]: string } = {
       USD: "$",
@@ -94,92 +65,7 @@ export default function ExpensesPage() {
 
   // Function to handle expense click
   const handleExpenseClick = (expense: Expense) => {
-    setSelectedExpense(expense)
-    setEditForm({
-      description: expense.description,
-      amount: expense.amount.toString(),
-      paidBy: expense.paidBy,
-      date: expense.date
-    })
-    setIsEditing(false)
-  }
-
-  // Function to close expense detail modal
-  const closeExpenseModal = () => {
-    setSelectedExpense(null)
-    setIsEditing(false)
-  }
-
-  // Function to start editing
-  const startEditing = () => {
-    setIsEditing(true)
-  }
-
-  // Function to save edited expense
-  const saveExpense = () => {
-    if (!selectedExpense || !activeTrip) return
-    
-    const trips = getTrips()
-    const tripIndex = trips.findIndex(trip => trip.id === activeTrip.id)
-    
-    if (tripIndex !== -1) {
-      const expenseIndex = trips[tripIndex].expenses.findIndex(exp => exp.id === selectedExpense.id)
-      
-      if (expenseIndex !== -1) {
-        // Update the expense
-        const updatedExpense = {
-          ...selectedExpense,
-          description: editForm.description,
-          amount: parseFloat(editForm.amount),
-          paidBy: editForm.paidBy,
-          date: editForm.date
-        }
-        
-        trips[tripIndex].expenses[expenseIndex] = updatedExpense
-        
-        // Recalculate trip total
-        trips[tripIndex].totalExpenses = trips[tripIndex].expenses.reduce((sum, exp) => sum + exp.amount, 0)
-        
-        // Save to localStorage
-        saveTrips(trips)
-        
-        // Update local state
-        setSelectedExpense(updatedExpense)
-        setActiveTrip(trips[tripIndex])
-        setIsEditing(false)
-        
-        // Refresh expenses
-        const tripExpenses = getTripExpenses(activeTrip.id)
-        setExpenses(tripExpenses)
-      }
-    }
-  }
-
-  // Function to delete expense
-  const deleteExpense = () => {
-    if (!selectedExpense || !activeTrip) return
-    
-    const trips = getTrips()
-    const tripIndex = trips.findIndex(trip => trip.id === activeTrip.id)
-    
-    if (tripIndex !== -1) {
-      // Remove the expense
-      trips[tripIndex].expenses = trips[tripIndex].expenses.filter(exp => exp.id !== selectedExpense.id)
-      
-      // Recalculate trip total
-      trips[tripIndex].totalExpenses = trips[tripIndex].expenses.reduce((sum, exp) => sum + exp.amount, 0)
-      
-      // Save to localStorage
-      saveTrips(trips)
-      
-      // Update local state
-      setActiveTrip(trips[tripIndex])
-      closeExpenseModal()
-      
-      // Refresh expenses
-      const tripExpenses = getTripExpenses(activeTrip.id)
-      setExpenses(tripExpenses)
-    }
+    window.location.href = `/expense-details/${expense.id}`
   }
 
   if (isLoading) {
@@ -223,124 +109,6 @@ export default function ExpensesPage() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Expense Detail Modal */}
-      {selectedExpense && (
-        <Dialog open={!!selectedExpense} onOpenChange={closeExpenseModal}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center justify-between">
-                <span>Expense Details</span>
-                <div className="flex items-center space-x-2">
-                  {!isEditing ? (
-                    <Button variant="ghost" size="sm" onClick={startEditing}>
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button variant="ghost" size="sm" onClick={saveExpense}>
-                      <Save className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <Button variant="ghost" size="sm" onClick={deleteExpense} className="text-red-500">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </DialogTitle>
-            </DialogHeader>
-            
-            <div className="space-y-4">
-              {isEditing ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Input
-                      id="description"
-                      value={editForm.description}
-                      onChange={(e) => setEditForm({...editForm, description: e.target.value})}
-                      placeholder="Expense description"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Amount</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      step="0.01"
-                      value={editForm.amount}
-                      onChange={(e) => setEditForm({...editForm, amount: e.target.value})}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="paidBy">Paid By</Label>
-                    <Input
-                      id="paidBy"
-                      value={editForm.paidBy}
-                      onChange={(e) => setEditForm({...editForm, paidBy: e.target.value})}
-                      placeholder="Who paid"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={editForm.date}
-                      onChange={(e) => setEditForm({...editForm, date: e.target.value})}
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Description</span>
-                      <span className="font-medium">{selectedExpense.description}</span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Amount</span>
-                      <span className="text-xl font-medium text-primary">
-                        {getCurrencySymbol(activeTrip.currency)}{selectedExpense.amount.toFixed(2)}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Paid By</span>
-                      <span className="font-medium">{selectedExpense.paidBy}</span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Date</span>
-                      <span className="font-medium">{new Date(selectedExpense.date).toLocaleDateString()}</span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Split With</span>
-                      <span className="font-medium">{selectedExpense.splitWith.join(", ")}</span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Your Share</span>
-                      <span className="font-medium text-primary">
-                        {getCurrencySymbol(activeTrip.currency)}{(selectedExpense.amount / selectedExpense.splitWith.length).toFixed(2)}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Created</span>
-                      <span className="font-medium">{formatTimeAgo(selectedExpense.createdAt)}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
       {/* Header */}
       <header className="p-6 pt-16">
         <div className="flex items-center mb-6">

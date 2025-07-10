@@ -219,32 +219,40 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ### Changes Made:
 - **Clickable Expense Cards**: Made all expense cards on homepage clickable to show detailed information
-- **Expense Detail Modal**: Created comprehensive modal showing all expense details (description, amount, paid by, date, split with, your share, created date)
+- **Full Page Expense Details**: Created dedicated expense details page that opens as a full page (similar to "View All" expenses)
 - **Edit Functionality**: Added in-place editing for expense details with save/cancel options
 - **Delete Functionality**: Added delete option for expenses with proper confirmation
 - **Expenses Page Enhancement**: Extended clickable functionality to the "View All" expenses page
 - **Real-time Updates**: Changes immediately reflect in the UI and localStorage
-- **Consistent UX**: Same modal and editing interface used across both homepage and expenses page
+- **Back Button Navigation**: Proper back button functionality to return to previous page
+- **Consistent UX**: Same page style and editing interface used across both homepage and expenses page
 
 ### Features Added:
-- Modal dialog with complete expense information
+- Full page expense details with comprehensive information display
 - Edit mode toggle with form fields for all expense properties
-- Delete confirmation with proper cleanup
+- Delete confirmation with proper cleanup and automatic navigation back
 - Hover effects and cursor pointer for better UX
 - Automatic balance and total recalculation after edits
 - Consistent styling with existing design system
+- Split details breakdown showing individual person shares
+
+### Files Added:
+- `app/expense-details/[id]/page.tsx` - New expense details page
 
 ### Files Modified:
-- `app/page.tsx` - Added expense detail modal and editing functionality
-- `app/expenses/page.tsx` - Added clickable cards and same modal functionality
+- `app/page.tsx` - Updated to navigate to expense details page instead of modal
+- `app/expenses/page.tsx` - Updated to navigate to expense details page instead of modal
 
 ### Technical Details:
-- Modal state management with React hooks
+- Dynamic routing with Next.js App Router using `[id]` parameter
+- Full page layout matching existing app design patterns
+- State management with React hooks
 - Form validation and error handling
 - Data persistence through localStorage
 - Proper cleanup of references after deletion
 - Consistent currency formatting and date handling
 - Responsive design for mobile devices
+- Back button navigation using `window.history.back()`
 
 ---
 
