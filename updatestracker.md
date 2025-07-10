@@ -284,7 +284,7 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - **Larger circular buttons**: Increased circular camera buttons from 64x64px to 80x80px (h-16 w-16 to h-20 w-20)
 - **Improved shadows**: Enhanced shadow effects with `shadow-2xl` and `hover:shadow-3xl` for circular buttons
 - **Better animations**: Extended transition durations from 200ms to 300ms for smoother interactions
-- **Centered layout**: Moved circular buttons from right-aligned to center-aligned for better accessibility
+- **Right-aligned layout**: Positioned circular buttons on the right side for optimal right-hand thumb accessibility
 - **Enhanced gradients**: Added subtle border highlights with `border-2 border-primary/20` for circular buttons
 
 ### Visual Improvements:

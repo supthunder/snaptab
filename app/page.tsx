@@ -365,7 +365,7 @@ export default function HomePage() {
       {/* Bottom Navigation - Large Circular Action Button */}
       <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
         <div className="p-8 bg-gradient-to-t from-background via-background/98 to-background/80 backdrop-blur-sm">
-          <div className="max-w-md mx-auto flex justify-center">
+          <div className="max-w-md mx-auto flex justify-end pr-4">
             <Button
               className="h-20 w-20 bg-gradient-to-br from-primary via-primary to-primary/80 hover:from-primary/95 hover:via-primary/90 hover:to-primary/70 text-primary-foreground rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center group border-2 border-primary/20"
               onClick={handleScanClick}
