@@ -325,9 +325,9 @@ export default function HomePage() {
      {/* Full-screen loading overlay */}
       {isScanning && (
         <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
-          {/* Terminal Background */}
-          <div className="absolute inset-0 p-6 font-mono text-sm overflow-hidden">
-            <div className="bg-black/80 rounded-lg p-4 h-full overflow-y-auto">
+          {/* Terminal Background - Full Screen */}
+          <div className="absolute inset-0 font-mono text-sm overflow-hidden blur-sm">
+            <div className="bg-black/90 h-full overflow-y-auto p-6">
               <div className="text-green-400 mb-2 flex items-center">
                 <span className="text-gray-500 mr-2">$</span>
                 <span>snaptab-receipt-scanner</span>

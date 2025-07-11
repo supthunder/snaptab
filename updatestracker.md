@@ -668,6 +668,12 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 ### Files Modified:
 - `app/page.tsx` - Added terminal logging system and progressive display logic
 
+### Enhancement Update:
+- **Full-Screen Terminal**: Updated terminal to cover entire screen without borders or padding
+- **Blurred Background**: Added `blur-sm` effect for immersive depth-of-field appearance
+- **Enhanced Opacity**: Increased background opacity to `bg-black/90` for better visibility through blur
+- **Improved UX**: Loading dialog now floats clearly above full-screen blurred terminal background
+
 ---
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
