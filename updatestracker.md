@@ -395,6 +395,40 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - `app/page.tsx` - Complete profile tab redesign with integrated trips management
 
 ---
+
+## Update #17: Profile Page Modern Layout Redesign
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Eliminated Redundant Header**: Removed entire "Profile" header section since it's already shown in bottom tab
+- **Modern Profile Layout**: Redesigned with clean, centered social media-style profile design
+- **Large Profile Image**: Increased to 160px (w-40 h-40) with embedded edit icon in bottom-right corner
+- **Embedded Edit Icon**: Edit functionality built into profile image with dark circular button
+- **Clean Typography**: "@test" username positioned below profile image with proper spacing
+- **Add Profile Picture Text**: Integrated "Add profile picture" text inside the profile circle
+- **Eliminated Card Wrapper**: Removed heavy card styling for cleaner, minimal appearance
+- **Optimized Screen Space**: Minimal top padding (pt-4) for better screen real estate utilization
+- **Stacked Icon Layout**: User icon and text vertically stacked inside profile circle
+
+### Visual Improvements:
+- **Better Space Utilization**: Profile content starts almost immediately from top
+- **Modern Design Language**: Clean, centered layout similar to contemporary social media profiles
+- **Improved Contrast**: Subtle muted colors for better visual hierarchy
+- **Functional Edit Integration**: Edit icon seamlessly integrated into profile image
+- **Larger Touch Targets**: Bigger profile area for better mobile interaction
+
+### Technical Implementation:
+- Conditional header rendering based on active tab
+- Flex column layout for stacked content within profile circle
+- Absolute positioning for edit icon with proper spacing
+- Responsive design maintaining mobile-first approach
+- Clean semantic HTML structure without unnecessary card wrappers
+
+### Files Modified:
+- `app/page.tsx` - Complete profile section redesign with modern layout
+
+---
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
