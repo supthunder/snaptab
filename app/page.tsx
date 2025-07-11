@@ -1,14 +1,16 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle } from "lucide-react"
+import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle, Home, User, Users, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
 import { 
   getActiveTrip, 
   getRecentExpenses, 
-  getUserBalance, 
+  getUserBalance,
+  getTrips,
+  saveTrips,
   type Trip, 
   type Expense 
 } from "@/lib/data"
@@ -37,6 +39,9 @@ export default function HomePage() {
   const [isScanning, setIsScanning] = useState(false)
   const [scannedData, setScannedData] = useState<ReceiptData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'home' | 'camera' | 'profile'>('home')
+  const [trips, setTrips] = useState<Trip[]>([])
+  const [isTripsLoading, setIsTripsLoading] = useState(false)
 
   useEffect(() => {
     // Load real data from localStorage
@@ -55,6 +60,16 @@ export default function HomePage() {
     
     setIsLoading(false)
   }, [])
+
+  // Load trips when profile tab is active
+  useEffect(() => {
+    if (activeTab === 'profile') {
+      setIsTripsLoading(true)
+      const loadedTrips = getTrips()
+      setTrips(loadedTrips)
+      setIsTripsLoading(false)
+    }
+  }, [activeTab])
 
   const handleScanClick = () => {
     fileInputRef.current?.click()
@@ -149,6 +164,56 @@ export default function HomePage() {
   // Updated function to navigate to expense details page
   const handleExpenseClick = (expense: Expense) => {
     window.location.href = `/expense-details/${expense.id}`
+  }
+
+  // Trip helper functions
+  const formatDateRange = (startDate?: string, endDate?: string) => {
+    if (!startDate && !endDate) return "No dates set"
+    
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      const startMonth = start.toLocaleDateString("en-US", { month: "short" })
+      const endMonth = end.toLocaleDateString("en-US", { month: "short" })
+
+      if (startMonth === endMonth) {
+        return `${startMonth} ${start.getDate()}-${end.getDate()}, ${start.getFullYear()}`
+      }
+      return `${startMonth} ${start.getDate()} - ${endMonth} ${end.getDate()}, ${start.getFullYear()}`
+    }
+    
+    if (startDate) {
+      const start = new Date(startDate)
+      return `From ${start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate)
+      return `Until ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+    }
+    
+    return "No dates set"
+  }
+
+  const handleTripSelect = (tripId: string) => {
+    // Set selected trip as active and others as inactive
+    const updatedTrips = trips.map(trip => ({
+      ...trip,
+      isActive: trip.id === tripId
+    }))
+    
+    setTrips(updatedTrips)
+    saveTrips(updatedTrips)
+    
+    // Switch to home tab and refresh data
+    setActiveTab('home')
+    window.location.reload()
+  }
+
+  const getTripStatus = (trip: Trip) => {
+    if (trip.isActive) return "active"
+    if (trip.endDate && new Date(trip.endDate) < new Date()) return "completed"
+    return "upcoming"
   }
 
 
@@ -290,105 +355,276 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Minimal Header */}
-      <header className="p-6 pt-16 safe-area-top">
-        <div className="flex items-center justify-between mb-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => (window.location.href = "/trips")}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <div className="text-center">
+      {/* Clean Header - Only show on home tab */}
+      {activeTab === 'home' && (
+        <header className="p-6 pt-16 safe-area-top">
+          <div className="text-center mb-8">
             <h1 className="text-2xl font-medium text-foreground">{activeTrip.name}</h1>
           </div>
-          <div className="w-10" /> {/* Spacer for centering */}
-        </div>
 
-        {/* Balance Card */}
-        <Card className="minimal-card mb-6">
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground text-sm mb-2">Your balance</p>
-            <p className={`text-4xl font-light mb-4 ${userBalance < 0 ? "text-red-400" : "text-green-400"}`}>
-              {userBalance < 0 ? "-" : "+"}
-              {getCurrencySymbol(activeTrip.currency)}
-              {Math.abs(userBalance).toFixed(2)}
-            </p>
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Total: {getCurrencySymbol(activeTrip.currency)}{activeTrip.totalExpenses.toFixed(2)}</span>
-              <span>{activeTrip.members.length} members</span>
-            </div>
-          </CardContent>
-        </Card>
-      </header>
-
-      {/* Recent Expenses */}
-      <main className="flex-1 px-6 pb-32 overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium">Recent</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => (window.location.href = "/expenses")}
-          >
-            View all <ArrowRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-
-        {recentExpenses.length === 0 ? (
-          <Card className="minimal-card">
+          {/* Balance Card */}
+          <Card className="minimal-card mb-6">
             <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground mb-4">No expenses yet</p>
-              <p className="text-sm text-muted-foreground">
-                Add your first expense by scanning a receipt or entering manually
+              <p className="text-muted-foreground text-sm mb-2">Your balance</p>
+              <p className={`text-4xl font-light mb-4 ${userBalance < 0 ? "text-red-400" : "text-green-400"}`}>
+                {userBalance < 0 ? "-" : "+"}
+                {getCurrencySymbol(activeTrip.currency)}
+                {Math.abs(userBalance).toFixed(2)}
               </p>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Total: {getCurrencySymbol(activeTrip.currency)}{activeTrip.totalExpenses.toFixed(2)}</span>
+                <span>{activeTrip.members.length} members</span>
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="space-y-3">
-            {recentExpenses.map((expense) => (
-              <Card 
-                key={expense.id} 
-                className="minimal-card cursor-pointer hover:bg-card/80 transition-colors"
-                onClick={() => handleExpenseClick(expense)}
+        </header>
+      )}
+
+
+
+      {/* Main Content */}
+      <main className={`flex-1 px-6 pb-24 overflow-y-auto ${activeTab === 'profile' ? 'pt-4 safe-area-top' : ''}`}>
+        {activeTab === 'home' && (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium">Recent</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => (window.location.href = "/expenses")}
               >
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">{expense.description}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {expense.paidBy} • {formatTimeAgo(expense.createdAt)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-medium">
-                        {getCurrencySymbol(activeTrip.currency)}{expense.amount.toFixed(2)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Split {expense.splitWith.length} ways
-                      </p>
-                    </div>
-                  </div>
+                View all <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+
+            {recentExpenses.length === 0 ? (
+              <Card className="minimal-card">
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground mb-4">No expenses yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Add your first expense by scanning a receipt or entering manually
+                  </p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              <div className="space-y-3">
+                {recentExpenses.map((expense) => (
+                  <Card 
+                    key={expense.id} 
+                    className="minimal-card cursor-pointer hover:bg-card/80 transition-colors"
+                    onClick={() => handleExpenseClick(expense)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{expense.description}</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {expense.paidBy} • {formatTimeAgo(expense.createdAt)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-medium">
+                            {getCurrencySymbol(activeTrip.currency)}{expense.amount.toFixed(2)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Split {expense.splitWith.length} ways
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="space-y-6">
+            {/* User Profile Section */}
+            <div className="text-center mb-8">
+              <div className="relative inline-block mb-6">
+                <div className="w-40 h-40 bg-muted/50 rounded-full flex flex-col items-center justify-center mx-auto">
+                  <User className="h-16 w-16 text-muted-foreground/60 mb-2" />
+                  <p className="text-muted-foreground text-xs">Add profile<br/>picture</p>
+                </div>
+                <div className="absolute bottom-3 right-3 w-8 h-8 bg-foreground rounded-full flex items-center justify-center">
+                  <svg className="h-4 w-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-xl font-medium text-foreground">@test</h3>
+            </div>
+
+            {/* Your Trips Section */}
+            <div>
+              <h2 className="text-lg font-medium mb-4">Your Trips</h2>
+              
+              {isTripsLoading ? (
+                <Card className="minimal-card">
+                  <CardContent className="p-6 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading trips...</p>
+                  </CardContent>
+                </Card>
+              ) : trips.length === 0 ? (
+                <Card className="minimal-card">
+                  <CardContent className="p-6 text-center">
+                    <div className="py-8">
+                      <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No trips yet</h3>
+                      <p className="text-muted-foreground mb-6">
+                        Create your first trip to start tracking expenses with friends
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {trips.map((trip) => {
+                    const userBalance = getUserBalance(trip.id, "You")
+                    const status = getTripStatus(trip)
+                    
+                    return (
+                      <Card
+                        key={trip.id}
+                        className={`minimal-card cursor-pointer transition-all duration-200 ${
+                          trip.isActive ? "ring-2 ring-primary/30 bg-primary/5" : "hover:bg-card/80"
+                        }`}
+                        onClick={() => handleTripSelect(trip.id)}
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <h3 className="text-lg font-medium">{trip.name}</h3>
+                                {trip.isActive && (
+                                  <div className="flex items-center space-x-1">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                    <span className="text-xs text-green-400 font-medium">ACTIVE</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                <div className="flex items-center space-x-1">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>{formatDateRange(trip.startDate, trip.endDate)}</span>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Users className="h-4 w-4" />
+                                  <span>{trip.members.length} members</span>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <p className="text-muted-foreground">Total Spent</p>
+                                  <p className="font-medium">
+                                    {getCurrencySymbol(trip.currency)}{trip.totalExpenses.toFixed(2)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Your Balance</p>
+                                  <p className={`font-medium ${userBalance < 0 ? "text-red-400" : "text-green-400"}`}>
+                                    {userBalance < 0 ? "-" : "+"}
+                                    {getCurrencySymbol(trip.currency)}{Math.abs(userBalance).toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className={`w-2 h-2 rounded-full ${
+                                status === "active" ? "bg-green-400" : 
+                                status === "completed" ? "bg-gray-400" : "bg-blue-400"
+                              }`}></div>
+                              <span className="text-sm text-muted-foreground capitalize">{status}</span>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              {trip.expenses.length > 0 && (
+                                <span className="text-sm text-muted-foreground">
+                                  {trip.expenses.length} expense{trip.expenses.length > 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {!trip.isActive && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 rounded-lg"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleTripSelect(trip.id)
+                                  }}
+                                >
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Select
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              )}
+              
+              {/* Add New Trip Button */}
+              <div className="mt-6">
+                <Button
+                  onClick={() => (window.location.href = "/create-trip")}
+                  className="w-full h-12 bg-gradient-to-r from-primary via-primary to-primary/80 hover:from-primary/95 hover:via-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Create New Trip
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </main>
 
-      {/* Bottom Navigation - Large Circular Action Button */}
+      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
-        <div className="p-8 bg-gradient-to-t from-background via-background/98 to-background/80 backdrop-blur-sm">
-          <div className="max-w-md mx-auto flex justify-end pr-4">
+        <div className="bg-background/95 backdrop-blur-sm border-t border-border">
+          <div className="flex items-center justify-around py-2 px-4">
+            {/* Home Tab */}
             <Button
-              className="h-20 w-20 bg-gradient-to-br from-primary via-primary to-primary/80 hover:from-primary/95 hover:via-primary/90 hover:to-primary/70 text-primary-foreground rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center justify-center group border-2 border-primary/20"
+              variant="ghost"
+              className={`flex flex-col items-center gap-1 p-3 h-auto ${
+                activeTab === 'home' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setActiveTab('home')}
+            >
+              <Home className="h-6 w-6" />
+              <span className="text-xs">Home</span>
+            </Button>
+
+            {/* Camera/Plus Tab - Larger circular button */}
+            <Button
+              className="h-16 w-16 bg-gradient-to-br from-primary via-primary to-primary/80 hover:from-primary/95 hover:via-primary/90 hover:to-primary/70 text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group"
               onClick={handleScanClick}
               disabled={isScanning}
             >
-              <Camera className="h-9 w-9 group-hover:scale-125 transition-transform duration-300" />
+              <Plus className="h-8 w-8 group-hover:scale-110 transition-transform duration-300" />
+            </Button>
+
+            {/* Profile Tab */}
+            <Button
+              variant="ghost"
+              className={`flex flex-col items-center gap-1 p-3 h-auto ${
+                activeTab === 'profile' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setActiveTab('profile')}
+            >
+              <User className="h-6 w-6" />
+              <span className="text-xs">Profile</span>
             </Button>
           </div>
         </div>

@@ -322,6 +322,79 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - `app/page.tsx` - Updated header to show trip name instead of app name
 
 ---
+
+## Update #15: Bottom Navigation Redesign - 3-Tab Layout
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Complete navigation redesign**: Replaced single circular button with modern 3-tab bottom navigation
+- **Home tab**: Shows current trip, balance card, and recent expenses
+- **Camera/Plus tab**: Centered circular button for adding expenses via photo/receipt scanning
+- **Profile tab**: User profile management, trip navigation, and app settings
+- **Removed hamburger menu**: Eliminated top-left menu for cleaner header design
+- **Tab-based content**: Dynamic content switching based on selected tab
+- **Enhanced UX**: Better thumb accessibility with proper tab targets and visual feedback
+
+### Navigation Structure:
+- **Home**: Trip overview, balance display, recent expenses list
+- **Camera**: Receipt scanning and expense creation (prominent circular button)
+- **Profile**: User settings, trip management, navigation to all app sections
+
+### Visual Improvements:
+- Clean bottom navigation bar with proper spacing and visual hierarchy
+- Active tab highlighting with primary color
+- Centered circular camera button maintains prominence
+- Consistent icon sizing and labeling
+- Responsive design for mobile-first PWA usage
+
+### Technical Implementation:
+- State management for active tab switching (`activeTab` state)
+- Conditional rendering based on selected tab
+- Maintained all existing functionality while improving navigation
+- Proper safe area handling for PWA compatibility
+- Preserved gradient effects and animations on camera button
+
+### Files Modified:
+- `app/page.tsx` - Complete navigation redesign with 3-tab bottom layout
+
+---
+
+## Update #16: Profile Page Redesign
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Clean Profile Layout**: Removed trip name and balance from header when on profile tab
+- **Eliminated Redundant Header**: Removed entire "Profile" header section since it's already shown in bottom tab
+- **User Profile Section**: Profile card with edit profile button at the top
+- **Your Trips Integration**: Embedded trips list directly in profile tab (no separate navigation)
+- **Trip Management**: Full trip selection and management capabilities within profile
+- **Create New Trip Button**: Prominent plus button below trips for easy trip creation
+- **Improved Navigation**: Seamless switching between trips directly from profile tab
+- **Consistent Design**: Maintained same visual design language as existing trips page
+- **Optimized Screen Space**: Profile content starts immediately from top with safe area padding
+
+### Features Added:
+- Profile-only header when on profile tab
+- Direct trip selection from profile tab
+- Real-time trip loading when switching to profile
+- Trip status indicators (active, completed, upcoming)
+- Balance display for each trip
+- Enhanced trip cards with member count and expense count
+- Gradient "Create New Trip" button for better visual hierarchy
+
+### Technical Implementation:
+- Added trips state management to main page component
+- Created trip helper functions (formatDateRange, handleTripSelect, getTripStatus)
+- Conditional header rendering based on active tab
+- Dynamic trip loading when profile tab is activated
+- Proper state management for trip selection and navigation
+
+### Files Modified:
+- `app/page.tsx` - Complete profile tab redesign with integrated trips management
+
+---
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
@@ -330,6 +403,7 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - ✅ **Data Storage**: Browser localStorage (offline-first)
 - ✅ **UX Flow**: Smooth, popup-free experience
 - ✅ **Expense Management**: Full CRUD operations with detailed views and editing
+- ✅ **Profile Management**: Integrated trip management and profile settings
 
 ## Next Potential Features
 - [ ] Cloud sync for cross-device data
