@@ -8,6 +8,7 @@ const mockReceiptResponse = {
   currency: "USD",
   transactionDate: "2024-01-15",
   category: "food",
+  summary: "Ramen",
   emoji: "🍜",
   items: [
     {
@@ -117,6 +118,7 @@ export async function POST(request: NextRequest) {
         "currency": "Currency code (USD, EUR, etc.)",
         "transactionDate": "Date in YYYY-MM-DD format",
         "category": "Category from the travel expense options below",
+        "summary": "1-2 word summary of the expense (e.g. 'Tacos', 'Hotel', 'Flight', 'Coffee')",
         "emoji": "Single emoji that best represents this expense",
         "items": [
           {
@@ -132,7 +134,7 @@ export async function POST(request: NextRequest) {
       
       TRAVEL EXPENSE CATEGORIES (choose the most appropriate one):
       - "food" - Restaurants, cafes, food delivery, groceries, snacks
-      - "lodging" - Hotels, Airbnb, hostels, vacation rentals
+      - "lodging" - Hotels, Airbnb, hostels, vacation rentals  
       - "transportation" - Flights, trains, buses, taxis, rideshare, car rentals, gas
       - "entertainment" - Movies, concerts, shows, attractions, tours, nightlife
       - "shopping" - Clothing, souvenirs, gifts, retail purchases
@@ -141,7 +143,13 @@ export async function POST(request: NextRequest) {
       - "business" - Office supplies, coworking, business services
       - "miscellaneous" - Other expenses that don't fit above categories
       
-      EMOJI SELECTION GUIDELINES:
+      SUMMARY GUIDELINES:
+      - Keep to 1-2 words maximum
+      - Be specific and descriptive (e.g. "Burrito" not "Food", "Uber" not "Transport")
+      - Use the most recognizable part of the merchant or main item
+      - Examples: "Starbucks" → "Coffee", "McDonald's" → "Burgers", "Marriott" → "Hotel"
+      
+      EMOJI SELECTION (for database storage):
       - For specific food types: 🍜 (ramen), 🍕 (pizza), 🍣 (sushi), 🍔 (burger), ☕ (coffee), 🍺 (bar/alcohol)
       - For generic food: 🍽️ or 🥘
       - For lodging: 🏨 (hotel), 🏠 (Airbnb/house), 🏕️ (camping)
@@ -153,8 +161,8 @@ export async function POST(request: NextRequest) {
       - For business: 💼 (business), 🖥️ (coworking), 📋 (services)
       - For miscellaneous: 💰 (general expense)
       
-      Analyze the merchant name, items, and context to determine the most accurate category and emoji.
-      If you can't determine a specific emoji, use a generic one for the category.
+      Analyze the merchant name, items, and context to determine the most accurate category, summary, and emoji.
+      Focus on creating a concise, recognizable summary that fits in limited UI space.
       
       Please be as accurate as possible. If any information is unclear or missing, use null for that field.
       Return ONLY the JSON object, no additional text, no markdown formatting, no code blocks.

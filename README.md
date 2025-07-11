@@ -175,6 +175,25 @@ If you cannot determine a value, use `null`.
 - 🔮 Trip budgeting features
 - 🔮 Freemium model with Pro subscription
 
+## 🎨 Travel Category Colors
+
+The app uses color-coded expense cards to visually categorize travel expenses:
+
+- **Food** 🟠 - Orange (`bg-orange-500/20 border-orange-500/30`)
+- **Lodging** 🔵 - Blue (`bg-blue-500/20 border-blue-500/30`)
+- **Transportation** 🟢 - Green (`bg-green-500/20 border-green-500/30`)
+- **Entertainment** 🟣 - Purple (`bg-purple-500/20 border-purple-500/30`)
+- **Shopping** 🩷 - Pink (`bg-pink-500/20 border-pink-500/30`)
+- **Health** 🔴 - Red (`bg-red-500/20 border-red-500/30`)
+- **Communication** 🟦 - Indigo (`bg-indigo-500/20 border-indigo-500/30`)
+- **Business** ⚫ - Gray (`bg-gray-500/20 border-gray-500/30`)
+- **Miscellaneous** 🟡 - Yellow (`bg-yellow-500/20 border-yellow-500/30`)
+
+### Todo Items
+- [ ] **Emoji Display**: Add emoji icons back to expense cards when database is implemented (currently stored but not displayed to save space)
+- [ ] **Category Filtering**: Add ability to filter expenses by category
+- [ ] **Category Analytics**: Show spending breakdown by category
+
 ## 🚀 Getting Started
 
 ### Prerequisites

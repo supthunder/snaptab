@@ -20,6 +20,7 @@ export interface Expense {
   createdAt: string
   // Category and visual
   category?: string
+  summary?: string
   emoji?: string
   // Item-level details
   items?: ReceiptItem[]
@@ -175,6 +176,23 @@ export function getUserBalance(tripId: string, userName: string = "You"): number
 export function recalculateTripTotal(tripId: string): number {
   const expenses = getTripExpenses(tripId)
   return expenses.reduce((total, expense) => total + expense.amount, 0)
+}
+
+// Get category color for expense cards
+export function getCategoryColor(category?: string): string {
+  const categoryColors: { [key: string]: string } = {
+    food: 'bg-orange-500/20 border-orange-500/30',
+    lodging: 'bg-blue-500/20 border-blue-500/30',
+    transportation: 'bg-green-500/20 border-green-500/30',
+    entertainment: 'bg-purple-500/20 border-purple-500/30',
+    shopping: 'bg-pink-500/20 border-pink-500/30',
+    health: 'bg-red-500/20 border-red-500/30',
+    communication: 'bg-indigo-500/20 border-indigo-500/30',
+    business: 'bg-gray-500/20 border-gray-500/30',
+    miscellaneous: 'bg-yellow-500/20 border-yellow-500/30',
+  }
+  
+  return categoryColors[category || 'miscellaneous'] || categoryColors.miscellaneous
 }
 
 // Update trip total expenses

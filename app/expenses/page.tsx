@@ -7,7 +7,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { 
   getActiveTrip, 
-  getTripExpenses, 
+  getTripExpenses,
+  getCategoryColor, 
   type Trip, 
   type Expense 
 } from "@/lib/data"
@@ -192,28 +193,15 @@ export default function ExpensesPage() {
             {filteredExpenses.map((expense) => (
               <Card 
                 key={expense.id} 
-                className="minimal-card cursor-pointer hover:bg-card/80 transition-colors"
+                className={`cursor-pointer hover:opacity-80 transition-all duration-200 border ${getCategoryColor(expense.category)}`}
                 onClick={() => handleExpenseClick(expense)}
               >
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    {/* Category Icon */}
-                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">
-                        {expense.emoji || '💰'}
-                      </span>
-                    </div>
-                    
-                    {/* Expense Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium truncate">{expense.description}</h3>
-                        {expense.category && (
-                          <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground capitalize">
-                            {expense.category}
-                          </span>
-                        )}
-                      </div>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-lg mb-1">
+                        {expense.summary || expense.description}
+                      </h3>
                       <p className="text-sm text-muted-foreground">
                         {expense.paidBy} • {formatDate(expense.date)}
                       </p>
@@ -222,9 +210,8 @@ export default function ExpensesPage() {
                       </p>
                     </div>
                     
-                    {/* Amount */}
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-medium text-lg">
+                    <div className="text-right">
+                      <p className="font-medium text-xl">
                         {getCurrencySymbol(activeTrip.currency)}{expense.amount.toFixed(2)}
                       </p>
                       {expense.splitWith.includes("You") && (

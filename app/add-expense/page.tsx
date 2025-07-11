@@ -18,6 +18,7 @@ export default function AddExpensePage() {
     date: new Date().toISOString().split("T")[0],
     paidBy: "You",
     category: "",
+    summary: "",
     emoji: "",
   })
 
@@ -47,6 +48,7 @@ export default function AddExpensePage() {
     const merchant = urlParams.get("merchant")
     const date = urlParams.get("date")
     const category = urlParams.get("category")
+    const summary = urlParams.get("summary")
     const emoji = urlParams.get("emoji")
     const itemsParam = urlParams.get("items")
 
@@ -57,6 +59,7 @@ export default function AddExpensePage() {
         description: merchant || prev.description,
         date: date || prev.date,
         category: category || prev.category,
+        summary: summary || prev.summary,
         emoji: emoji || prev.emoji,
       }))
     }
@@ -211,6 +214,7 @@ export default function AddExpensePage() {
         splitWith: selectedMembers,
         // Category and visual
         category: formData.category || undefined,
+        summary: formData.summary || undefined,
         emoji: formData.emoji || undefined,
         // Item-level details
         items: receiptItems.length > 0 ? receiptItems : undefined,

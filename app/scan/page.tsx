@@ -13,6 +13,7 @@ interface ReceiptData {
   currency: string
   transactionDate: string
   category?: string
+  summary?: string
   emoji?: string
   items?: Array<{
     name: string

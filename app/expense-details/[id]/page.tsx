@@ -298,21 +298,9 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
           <Card className="minimal-card">
             <CardContent className="p-6">
               <div className="text-center mb-6">
-                {/* Category Icon */}
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">
-                    {expense.emoji || '💰'}
-                  </span>
-                </div>
-                
-                {/* Category Badge */}
-                {expense.category && (
-                  <div className="mb-4">
-                    <span className="inline-flex items-center gap-2 px-3 py-1 bg-muted/50 rounded-full text-sm text-muted-foreground capitalize">
-                      {expense.category}
-                    </span>
-                  </div>
-                )}
+                <h2 className="text-2xl font-medium text-foreground mb-4">
+                  {expense.summary || expense.description}
+                </h2>
                 
                 <p className="text-muted-foreground text-sm mb-2">Total Amount</p>
                 <p className="text-4xl font-light text-primary mb-2">

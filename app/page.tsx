@@ -11,6 +11,7 @@ import {
   getUserBalance,
   getTrips,
   saveTrips,
+  getCategoryColor,
   type Trip, 
   type Expense 
 } from "@/lib/data"
@@ -21,6 +22,7 @@ interface ReceiptData {
   currency: string
   transactionDate: string
   category?: string
+  summary?: string
   emoji?: string
   items?: Array<{
     name: string
@@ -121,9 +123,12 @@ export default function HomePage() {
         currency: scannedData.currency || 'USD',
       })
       
-      // Add category and emoji if available
+      // Add category, summary and emoji if available
       if (scannedData.category) {
         params.set('category', scannedData.category)
+      }
+      if (scannedData.summary) {
+        params.set('summary', scannedData.summary)
       }
       if (scannedData.emoji) {
         params.set('emoji', scannedData.emoji)
@@ -317,13 +322,10 @@ export default function HomePage() {
                   <span className="text-muted-foreground">Date</span>
                   <span className="font-medium">{scannedData.transactionDate}</span>
                 </div>
-                {scannedData.category && (
+                {scannedData.summary && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Category</span>
-                    <span className="font-medium flex items-center gap-2">
-                      <span>{scannedData.emoji || '💰'}</span>
-                      <span className="capitalize">{scannedData.category}</span>
-                    </span>
+                    <span className="text-muted-foreground">Summary</span>
+                    <span className="font-medium capitalize">{scannedData.summary}</span>
                   </div>
                 )}
                 {scannedData.tax && (
@@ -431,36 +433,22 @@ export default function HomePage() {
                 {recentExpenses.map((expense) => (
                   <Card 
                     key={expense.id} 
-                    className="minimal-card cursor-pointer hover:bg-card/80 transition-colors"
+                    className={`cursor-pointer hover:opacity-80 transition-all duration-200 border ${getCategoryColor(expense.category)}`}
                     onClick={() => handleExpenseClick(expense)}
                   >
                     <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        {/* Category Icon */}
-                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-xl">
-                            {expense.emoji || '💰'}
-                          </span>
-                        </div>
-                        
-                        {/* Expense Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium text-foreground truncate">{expense.description}</p>
-                            {expense.category && (
-                              <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground capitalize">
-                                {expense.category}
-                              </span>
-                            )}
-                          </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-foreground text-lg mb-1">
+                            {expense.summary || expense.description}
+                          </h3>
                           <p className="text-sm text-muted-foreground">
                             {expense.paidBy} • {formatTimeAgo(expense.createdAt)}
                           </p>
                         </div>
                         
-                        {/* Amount */}
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-lg font-medium">
+                        <div className="text-right">
+                          <p className="text-xl font-medium">
                             {getCurrencySymbol(activeTrip.currency)}{expense.amount.toFixed(2)}
                           </p>
                           <p className="text-sm text-muted-foreground">

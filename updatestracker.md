@@ -525,6 +525,60 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - `app/expense-details/[id]/page.tsx` - Enhanced expense details with prominent category display
 
 ---
+
+## Update #20: Category-Colored Cards & Concise Summaries
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Enhanced OpenAI Prompt**: Added "summary" field to generate 1-2 word concise titles (e.g. "Tacos", "Hotel", "Coffee")
+- **Category-Colored Cards**: Entire expense cards now use category-specific colors instead of emojis/tags
+- **Space Optimization**: Removed emoji icons and category tags from UI to save space (still stored in DB for future use)
+- **Improved Readability**: Larger, cleaner expense titles using AI-generated summaries
+- **Color-Coded System**: 9 distinct colors for travel expense categories for instant visual recognition
+- **Updated Documentation**: Added category colors reference and todo items to README
+
+### Category Color System:
+- **Food** 🟠 - Orange background with orange border
+- **Lodging** 🔵 - Blue background with blue border  
+- **Transportation** 🟢 - Green background with green border
+- **Entertainment** 🟣 - Purple background with purple border
+- **Shopping** 🩷 - Pink background with pink border
+- **Health** 🔴 - Red background with red border
+- **Communication** 🟦 - Indigo background with indigo border
+- **Business** ⚫ - Gray background with gray border
+- **Miscellaneous** 🟡 - Yellow background with yellow border
+
+### AI Summary Enhancement:
+- **Concise Titles**: AI generates 1-2 word summaries that fit in limited UI space
+- **Context-Aware**: Analyzes merchant names and items to create recognizable summaries
+- **Space Efficient**: Replaces long merchant names with short, memorable titles
+- **Examples**: "Burrito Bar" → "Tacos", "Starbucks" → "Coffee", "Marriott" → "Hotel"
+
+### UI Improvements:
+- **Cleaner Design**: Removed visual clutter from expense cards
+- **Better Typography**: Larger, more prominent expense titles
+- **Consistent Layout**: Simplified card design across all pages
+- **Improved Hierarchy**: Better visual organization with color-coding
+- **Space Utilization**: More efficient use of limited mobile screen space
+
+### Technical Implementation:
+- Added `getCategoryColor()` function for consistent color mapping
+- Updated expense data structure to include summary field
+- Enhanced OpenAI prompt with summary generation guidelines
+- Updated all expense display components to use new design
+- Maintained emoji storage in database for future features
+
+### Files Modified:
+- `app/api/scan-receipt/route.ts` - Added summary field to OpenAI prompt
+- `lib/data.ts` - Added summary field and getCategoryColor function
+- `app/add-expense/page.tsx` - Updated to handle summary data
+- `app/page.tsx` - Redesigned expense cards with category colors and summaries
+- `app/expenses/page.tsx` - Updated expense list with new card design
+- `app/expense-details/[id]/page.tsx` - Simplified details page with summary titles
+- `README.md` - Added category colors documentation and todo items
+
+---
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
