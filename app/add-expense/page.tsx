@@ -8,18 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { getActiveTrip, addExpenseToTrip, type Trip } from "@/lib/data"
-
-interface ReceiptItem {
-  name: string
-  price: number
-  quantity?: number
-}
-
-interface ItemAssignment {
-  itemIndex: number
-  assignedTo: string[]
-}
+import { getActiveTrip, addExpenseToTrip, type Trip, type ReceiptItem, type ItemAssignment } from "@/lib/data"
 
 export default function AddExpensePage() {
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null)
@@ -28,6 +17,8 @@ export default function AddExpensePage() {
     amount: "",
     date: new Date().toISOString().split("T")[0],
     paidBy: "You",
+    category: "",
+    emoji: "",
   })
 
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([])
@@ -55,6 +46,8 @@ export default function AddExpensePage() {
     const amount = urlParams.get("amount")
     const merchant = urlParams.get("merchant")
     const date = urlParams.get("date")
+    const category = urlParams.get("category")
+    const emoji = urlParams.get("emoji")
     const itemsParam = urlParams.get("items")
 
     if (amount || merchant || date) {
@@ -63,6 +56,8 @@ export default function AddExpensePage() {
         amount: amount || prev.amount,
         description: merchant || prev.description,
         date: date || prev.date,
+        category: category || prev.category,
+        emoji: emoji || prev.emoji,
       }))
     }
 
@@ -214,7 +209,13 @@ export default function AddExpensePage() {
         date: formData.date,
         paidBy: formData.paidBy,
         splitWith: selectedMembers,
-        // TODO: Add item assignments to expense data structure
+        // Category and visual
+        category: formData.category || undefined,
+        emoji: formData.emoji || undefined,
+        // Item-level details
+        items: receiptItems.length > 0 ? receiptItems : undefined,
+        itemAssignments: itemAssignments.length > 0 ? itemAssignments : undefined,
+        splitMode: splitMode,
       }
 
       await addExpenseToTrip(activeTrip.id, expenseData)

@@ -1,3 +1,14 @@
+export interface ReceiptItem {
+  name: string
+  price: number
+  quantity?: number
+}
+
+export interface ItemAssignment {
+  itemIndex: number
+  assignedTo: string[]
+}
+
 export interface Expense {
   id: string
   description: string
@@ -7,6 +18,13 @@ export interface Expense {
   splitWith: string[]
   tripId: string
   createdAt: string
+  // Category and visual
+  category?: string
+  emoji?: string
+  // Item-level details
+  items?: ReceiptItem[]
+  itemAssignments?: ItemAssignment[]
+  splitMode?: 'even' | 'items'
 }
 
 export interface Trip {

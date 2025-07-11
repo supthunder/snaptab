@@ -20,6 +20,8 @@ interface ReceiptData {
   total: number
   currency: string
   transactionDate: string
+  category?: string
+  emoji?: string
   items?: Array<{
     name: string
     price: number
@@ -118,6 +120,14 @@ export default function HomePage() {
         date: scannedData.transactionDate || '',
         currency: scannedData.currency || 'USD',
       })
+      
+      // Add category and emoji if available
+      if (scannedData.category) {
+        params.set('category', scannedData.category)
+      }
+      if (scannedData.emoji) {
+        params.set('emoji', scannedData.emoji)
+      }
       
       // Add items data if available
       if (scannedData.items && scannedData.items.length > 0) {
@@ -307,6 +317,15 @@ export default function HomePage() {
                   <span className="text-muted-foreground">Date</span>
                   <span className="font-medium">{scannedData.transactionDate}</span>
                 </div>
+                {scannedData.category && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Category</span>
+                    <span className="font-medium flex items-center gap-2">
+                      <span>{scannedData.emoji || '💰'}</span>
+                      <span className="capitalize">{scannedData.category}</span>
+                    </span>
+                  </div>
+                )}
                 {scannedData.tax && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tax</span>
@@ -416,14 +435,31 @@ export default function HomePage() {
                     onClick={() => handleExpenseClick(expense)}
                   >
                     <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{expense.description}</p>
-                          <p className="text-sm text-muted-foreground mt-1">
+                      <div className="flex items-center gap-3">
+                        {/* Category Icon */}
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-xl">
+                            {expense.emoji || '💰'}
+                          </span>
+                        </div>
+                        
+                        {/* Expense Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-foreground truncate">{expense.description}</p>
+                            {expense.category && (
+                              <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground capitalize">
+                                {expense.category}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
                             {expense.paidBy} • {formatTimeAgo(expense.createdAt)}
                           </p>
                         </div>
-                        <div className="text-right">
+                        
+                        {/* Amount */}
+                        <div className="text-right flex-shrink-0">
                           <p className="text-lg font-medium">
                             {getCurrencySymbol(activeTrip.currency)}{expense.amount.toFixed(2)}
                           </p>

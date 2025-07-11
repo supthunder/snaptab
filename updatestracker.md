@@ -429,6 +429,102 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - `app/page.tsx` - Complete profile section redesign with modern layout
 
 ---
+
+## Update #18: Enhanced Expense Details - Item Breakdown & Better UX
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Enhanced Data Structure**: Added item-level details to expense data (items, itemAssignments, splitMode)
+- **Comprehensive Expense Breakdown**: Shows detailed breakdown of who paid for what items
+- **Item Assignment Display**: Shows which items were assigned to which people, including shared items
+- **Better Space Utilization**: Handles many people elegantly with chip-based participant display
+- **Detailed Item Information**: Shows individual item costs, quantities, and per-person splits
+- **Visual Improvements**: Clean card-based layout with clear information hierarchy
+- **Smart Calculations**: Automatically calculates item-based splits vs even splits
+- **Your Share Highlight**: Prominently displays user's portion with visual emphasis
+
+### Features Added:
+- **Item-Level Breakdown**: Shows exactly what each person owes based on item assignments
+- **Shared Item Indicators**: Clearly marks items that were shared between multiple people
+- **Per-Item Cost Display**: Shows individual item prices and split amounts
+- **Participant Chips**: Elegant display of all participants using rounded chips
+- **Split Mode Indication**: Clear indication whether expense was split evenly or by items
+- **Enhanced Summary**: Better total display with payment and date information
+
+### Technical Implementation:
+- Updated expense data structure to include item details and assignments
+- Added calculation functions for item-based split details
+- Enhanced expense details page with comprehensive breakdown display
+- Improved data persistence to save item assignments when creating expenses
+- Added proper type definitions for receipt items and item assignments
+
+### Visual Improvements:
+- **Clean Information Hierarchy**: Important information (your share) prominently displayed
+- **Better Use of Space**: Handles 9+ people elegantly without breaking layout
+- **Minimal but Informative**: Shows only useful data in an aesthetic way
+- **Responsive Design**: Works well on mobile devices with proper spacing
+
+### Files Modified:
+- `lib/data.ts` - Enhanced expense data structure with item-level details
+- `app/add-expense/page.tsx` - Updated to save item assignments with expenses
+- `app/expense-details/[id]/page.tsx` - Complete redesign with detailed item breakdown
+
+---
+
+## Update #19: Travel Categories & AI-Powered Expense Classification
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Enhanced OpenAI Integration**: Updated receipt scanning to analyze travel categories and select appropriate emojis
+- **Travel-Specific Categories**: Added 9 comprehensive travel expense categories (food, lodging, transportation, entertainment, shopping, health, communication, business, miscellaneous)
+- **Smart Emoji Selection**: AI automatically selects contextual emojis based on merchant type and expense category
+- **Category Data Structure**: Enhanced expense data model to include category and emoji fields
+- **Visual Category Display**: Added category icons and badges throughout the app interface
+- **Comprehensive UI Updates**: Updated all expense displays to show category emojis and labels
+
+### Categories Added:
+- **Food** 🍽️ - Restaurants, cafes, food delivery, groceries, snacks
+- **Lodging** 🏨 - Hotels, Airbnb, hostels, vacation rentals
+- **Transportation** ✈️ - Flights, trains, buses, taxis, rideshare, car rentals, gas
+- **Entertainment** 🎬 - Movies, concerts, shows, attractions, tours, nightlife
+- **Shopping** 🛒 - Clothing, souvenirs, gifts, retail purchases
+- **Health** 💊 - Pharmacy, medical expenses, wellness, spa
+- **Communication** 📱 - Phone bills, internet, SIM cards
+- **Business** 💼 - Office supplies, coworking, business services
+- **Miscellaneous** 💰 - Other expenses that don't fit above categories
+
+### AI Enhancement Features:
+- **Context-Aware Analysis**: AI analyzes merchant names and receipt contents to determine appropriate categories
+- **Specific Emoji Selection**: Smart emoji selection based on merchant type (🍜 for ramen, 🏠 for Airbnb, ✈️ for flights)
+- **Fallback Logic**: Generic category emojis when specific ones can't be determined
+- **Travel-Optimized Prompts**: Enhanced prompts specifically designed for travel expense analysis
+
+### Visual Improvements:
+- **Category Icons**: Circular emoji icons displayed on all expense cards
+- **Category Badges**: Small category labels with proper capitalization
+- **Expense Details Enhancement**: Large category icon and badge in expense details view
+- **Scan Confirmation**: Category information displayed in receipt confirmation overlay
+- **Consistent Design**: Category display integrated seamlessly across all pages
+
+### Technical Implementation:
+- Updated OpenAI API route with comprehensive travel category analysis
+- Enhanced expense data structure with category and emoji fields
+- Updated receipt data interfaces across all pages
+- Improved expense creation flow to handle category data
+- Enhanced UI components with category-aware designs
+
+### Files Modified:
+- `app/api/scan-receipt/route.ts` - Enhanced OpenAI prompt with travel categories and emoji selection
+- `lib/data.ts` - Added category and emoji fields to expense data structure
+- `app/add-expense/page.tsx` - Updated to handle category data from scanned receipts
+- `app/page.tsx` - Enhanced expense display with category icons and scan confirmation
+- `app/scan/page.tsx` - Updated receipt data interface for category support
+- `app/expenses/page.tsx` - Added category display to expense list
+- `app/expense-details/[id]/page.tsx` - Enhanced expense details with prominent category display
+
+---
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility

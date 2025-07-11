@@ -7,6 +7,8 @@ const mockReceiptResponse = {
   total: 89.50,
   currency: "USD",
   transactionDate: "2024-01-15",
+  category: "food",
+  emoji: "🍜",
   items: [
     {
       name: "Tonkotsu Ramen",
@@ -105,15 +107,17 @@ export async function POST(request: NextRequest) {
 
     console.log('File converted, calling OpenAI API...')
 
-    // Create the prompt for receipt analysis
+    // Create the prompt for receipt analysis with travel categories
     const prompt = `
-      Analyze this receipt image and extract the following information in JSON format:
+      You are analyzing a receipt image for a travel expense tracking app. Extract the following information in JSON format:
       
       {
         "merchantName": "Name of the business/restaurant",
         "total": "Total amount as a number (no currency symbol)",
         "currency": "Currency code (USD, EUR, etc.)",
         "transactionDate": "Date in YYYY-MM-DD format",
+        "category": "Category from the travel expense options below",
+        "emoji": "Single emoji that best represents this expense",
         "items": [
           {
             "name": "Item name",
@@ -125,6 +129,32 @@ export async function POST(request: NextRequest) {
         "tip": "Tip amount as number if available",
         "confidence": "Confidence level from 0.0 to 1.0"
       }
+      
+      TRAVEL EXPENSE CATEGORIES (choose the most appropriate one):
+      - "food" - Restaurants, cafes, food delivery, groceries, snacks
+      - "lodging" - Hotels, Airbnb, hostels, vacation rentals
+      - "transportation" - Flights, trains, buses, taxis, rideshare, car rentals, gas
+      - "entertainment" - Movies, concerts, shows, attractions, tours, nightlife
+      - "shopping" - Clothing, souvenirs, gifts, retail purchases
+      - "health" - Pharmacy, medical expenses, wellness, spa
+      - "communication" - Phone bills, internet, SIM cards
+      - "business" - Office supplies, coworking, business services
+      - "miscellaneous" - Other expenses that don't fit above categories
+      
+      EMOJI SELECTION GUIDELINES:
+      - For specific food types: 🍜 (ramen), 🍕 (pizza), 🍣 (sushi), 🍔 (burger), ☕ (coffee), 🍺 (bar/alcohol)
+      - For generic food: 🍽️ or 🥘
+      - For lodging: 🏨 (hotel), 🏠 (Airbnb/house), 🏕️ (camping)
+      - For transportation: ✈️ (flight), 🚗 (car/taxi), 🚌 (bus), 🚂 (train), ⛽ (gas)
+      - For entertainment: 🎬 (movies), 🎫 (shows/attractions), 🎵 (music), 🎪 (tours)
+      - For shopping: 🛒 (general shopping), 👕 (clothing), 🎁 (gifts), 💄 (beauty)
+      - For health: 💊 (pharmacy), 🏥 (medical), 💆 (spa/wellness)
+      - For communication: 📱 (phone), 📶 (internet/data)
+      - For business: 💼 (business), 🖥️ (coworking), 📋 (services)
+      - For miscellaneous: 💰 (general expense)
+      
+      Analyze the merchant name, items, and context to determine the most accurate category and emoji.
+      If you can't determine a specific emoji, use a generic one for the category.
       
       Please be as accurate as possible. If any information is unclear or missing, use null for that field.
       Return ONLY the JSON object, no additional text, no markdown formatting, no code blocks.

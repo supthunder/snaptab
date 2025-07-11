@@ -12,6 +12,8 @@ interface ReceiptData {
   total: number
   currency: string
   transactionDate: string
+  category?: string
+  emoji?: string
   items?: Array<{
     name: string
     price: number

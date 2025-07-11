@@ -12,7 +12,9 @@ import {
   saveTrips,
   getTrips,
   type Trip, 
-  type Expense 
+  type Expense,
+  type ReceiptItem,
+  type ItemAssignment
 } from "@/lib/data"
 
 interface ExpenseDetailsPageProps {
@@ -84,6 +86,58 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
       JPY: "¥"
     }
     return symbols[currency] || currency
+  }
+
+  // Calculate item-based split details
+  const getItemBasedSplitDetails = () => {
+    if (!expense?.items || !expense?.itemAssignments) return null
+    
+    const memberTotals: { [key: string]: number } = {}
+    const memberItems: { [key: string]: Array<{ name: string; price: number; shared: boolean; sharedWith: string[] }> } = {}
+    
+    // Initialize all members
+    expense.splitWith.forEach(member => {
+      memberTotals[member] = 0
+      memberItems[member] = []
+    })
+
+    // Calculate totals and items for each member
+    expense.itemAssignments.forEach(assignment => {
+      const item = expense.items![assignment.itemIndex]
+      const splitAmount = item.price / assignment.assignedTo.length
+      const isShared = assignment.assignedTo.length > 1
+      
+      assignment.assignedTo.forEach(person => {
+        if (memberTotals[person] !== undefined) {
+          memberTotals[person] += splitAmount
+          memberItems[person].push({
+            name: item.name,
+            price: splitAmount,
+            shared: isShared,
+            sharedWith: assignment.assignedTo
+          })
+        }
+      })
+    })
+
+    return { memberTotals, memberItems }
+  }
+
+  // Get expense breakdown
+  const getExpenseBreakdown = () => {
+    if (expense?.splitMode === 'items') {
+      return getItemBasedSplitDetails()
+    }
+    
+    // Even split
+    const splitAmount = expense!.amount / expense!.splitWith.length
+    const memberTotals: { [key: string]: number } = {}
+    
+    expense!.splitWith.forEach(member => {
+      memberTotals[member] = splitAmount
+    })
+    
+    return { memberTotals, memberItems: {} }
   }
 
   const startEditing = () => {
@@ -240,119 +294,177 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
       {/* Main Content */}
       <main className="flex-1 px-6 pb-6 overflow-y-auto">
         <div className="space-y-6">
-          {/* Amount Card */}
-          <Card className="minimal-card">
-            <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground text-sm mb-2">Total Amount</p>
-              <p className="text-4xl font-light text-primary mb-2">
-                {getCurrencySymbol(activeTrip.currency)}{expense.amount.toFixed(2)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Your share: {getCurrencySymbol(activeTrip.currency)}{(expense.amount / expense.splitWith.length).toFixed(2)}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Details Card */}
-          <Card className="minimal-card">
-            <CardContent className="p-6 space-y-4">
-              {isEditing ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Input
-                      id="description"
-                      value={editForm.description}
-                      onChange={(e) => setEditForm({...editForm, description: e.target.value})}
-                      placeholder="Expense description"
-                      className="h-12"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Amount</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      step="0.01"
-                      value={editForm.amount}
-                      onChange={(e) => setEditForm({...editForm, amount: e.target.value})}
-                      placeholder="0.00"
-                      className="h-12"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="paidBy">Paid By</Label>
-                    <Input
-                      id="paidBy"
-                      value={editForm.paidBy}
-                      onChange={(e) => setEditForm({...editForm, paidBy: e.target.value})}
-                      placeholder="Who paid"
-                      className="h-12"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={editForm.date}
-                      onChange={(e) => setEditForm({...editForm, date: e.target.value})}
-                      className="h-12"
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-muted-foreground">Description</span>
-                    <span className="font-medium text-right">{expense.description}</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-muted-foreground">Paid By</span>
-                    <span className="font-medium">{expense.paidBy}</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-muted-foreground">Date</span>
-                    <span className="font-medium">{new Date(expense.date).toLocaleDateString()}</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-muted-foreground">Split With</span>
-                    <div className="text-right">
-                      <div className="font-medium">{expense.splitWith.join(", ")}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {expense.splitWith.length} {expense.splitWith.length === 1 ? 'person' : 'people'}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-muted-foreground">Created</span>
-                    <span className="font-medium">{formatTimeAgo(expense.createdAt)}</span>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Split Details Card */}
+          {/* Amount Summary Card */}
           <Card className="minimal-card">
             <CardContent className="p-6">
-              <h3 className="font-medium mb-4">Split Details</h3>
-              <div className="space-y-3">
-                {expense.splitWith.map((person, index) => (
-                  <div key={index} className="flex justify-between items-center">
-                    <span className="text-foreground">{person}</span>
-                    <span className="font-medium">
-                      {getCurrencySymbol(activeTrip.currency)}{(expense.amount / expense.splitWith.length).toFixed(2)}
+              <div className="text-center mb-6">
+                {/* Category Icon */}
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">
+                    {expense.emoji || '💰'}
+                  </span>
+                </div>
+                
+                {/* Category Badge */}
+                {expense.category && (
+                  <div className="mb-4">
+                    <span className="inline-flex items-center gap-2 px-3 py-1 bg-muted/50 rounded-full text-sm text-muted-foreground capitalize">
+                      {expense.category}
                     </span>
                   </div>
-                ))}
+                )}
+                
+                <p className="text-muted-foreground text-sm mb-2">Total Amount</p>
+                <p className="text-4xl font-light text-primary mb-2">
+                  {getCurrencySymbol(activeTrip.currency)}{expense.amount.toFixed(2)}
+                </p>
+                <div className="flex justify-center items-center gap-4 text-sm text-muted-foreground">
+                  <span>Paid by {expense.paidBy}</span>
+                  <span>•</span>
+                  <span>{new Date(expense.date).toLocaleDateString()}</span>
+                </div>
+              </div>
+              
+              {/* Split Mode Display */}
+              <div className="text-center p-3 bg-muted/50 rounded-lg mb-4">
+                <p className="text-sm text-muted-foreground">
+                  {expense.splitMode === 'items' && expense.items ? 
+                    `Split by ${expense.items.length} item${expense.items.length > 1 ? 's' : ''}` : 
+                    'Split evenly'
+                  }
+                </p>
+              </div>
+              
+              {/* Your Share Highlight */}
+              {(() => {
+                const breakdown = getExpenseBreakdown()
+                const yourShare = breakdown?.memberTotals['You'] || 0
+                return (
+                  <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
+                    <p className="text-sm text-muted-foreground mb-1">Your Share</p>
+                    <p className="text-2xl font-medium text-primary">
+                      {getCurrencySymbol(activeTrip.currency)}{yourShare.toFixed(2)}
+                    </p>
+                  </div>
+                )
+              })()}
+            </CardContent>
+          </Card>
+
+          {/* Expense Breakdown */}
+          {(() => {
+            const breakdown = getExpenseBreakdown()
+            if (!breakdown) return null
+            
+            const { memberTotals, memberItems } = breakdown
+            
+            return (
+              <Card className="minimal-card">
+                <CardContent className="p-6">
+                  <h3 className="font-medium mb-4">Expense Breakdown</h3>
+                  
+                  <div className="space-y-4">
+                    {Object.entries(memberTotals).map(([member, total]) => (
+                      <div key={member} className="p-4 rounded-lg border border-border bg-card/50">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-medium text-lg">{member}</span>
+                          <span className="text-lg font-medium text-primary">
+                            {getCurrencySymbol(activeTrip.currency)}{total.toFixed(2)}
+                          </span>
+                        </div>
+                        
+                        {/* Item details for this member */}
+                        {memberItems[member] && memberItems[member].length > 0 && (
+                          <div className="space-y-2 mt-3">
+                            {memberItems[member].map((item, index) => (
+                              <div key={index} className="flex justify-between items-center text-sm">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground">{item.name}</span>
+                                  {item.shared && (
+                                    <span className="text-xs bg-muted px-2 py-1 rounded">
+                                      shared with {item.sharedWith.filter(p => p !== member).join(', ')}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-muted-foreground">
+                                  {getCurrencySymbol(activeTrip.currency)}{item.price.toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })()}
+
+          {/* Item Details (if available) */}
+          {expense.items && expense.items.length > 0 && (
+            <Card className="minimal-card">
+              <CardContent className="p-6">
+                <h3 className="font-medium mb-4">Items ({expense.items.length})</h3>
+                <div className="space-y-3">
+                  {expense.items.map((item, index) => {
+                    const assignment = expense.itemAssignments?.find(a => a.itemIndex === index)
+                    return (
+                      <div key={index} className="flex justify-between items-center py-3 border-b border-border last:border-0">
+                        <div className="flex-1">
+                          <div className="font-medium">{item.name}</div>
+                          {item.quantity && (
+                            <div className="text-sm text-muted-foreground">Quantity: {item.quantity}</div>
+                          )}
+                          {assignment && (
+                            <div className="text-sm text-muted-foreground mt-1">
+                              Assigned to: {assignment.assignedTo.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">
+                            {getCurrencySymbol(activeTrip.currency)}{item.price.toFixed(2)}
+                          </div>
+                          {assignment && assignment.assignedTo.length > 1 && (
+                            <div className="text-xs text-muted-foreground">
+                              {getCurrencySymbol(activeTrip.currency)}{(item.price / assignment.assignedTo.length).toFixed(2)} each
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Additional Details */}
+          <Card className="minimal-card">
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Total People</span>
+                  <span className="font-medium">{expense.splitWith.length}</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Created</span>
+                  <span className="font-medium">{formatTimeAgo(expense.createdAt)}</span>
+                </div>
+                
+                {/* All participants */}
+                <div>
+                  <div className="text-muted-foreground mb-2">Participants</div>
+                  <div className="flex flex-wrap gap-2">
+                    {expense.splitWith.map((person, index) => (
+                      <span key={index} className="px-3 py-1 bg-muted rounded-full text-sm">
+                        {person}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
