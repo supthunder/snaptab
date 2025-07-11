@@ -191,12 +191,13 @@ export default function ExpensesPage() {
         ) : (
           <div className="space-y-3">
             {filteredExpenses.map((expense) => (
-              <Card 
+              <div 
                 key={expense.id} 
-                className={`cursor-pointer hover:opacity-80 transition-all duration-200 border ${getCategoryColor(expense.category)}`}
+                className="cursor-pointer hover:opacity-80 transition-all duration-200 shadow-sm text-card-foreground rounded-lg border-2"
+                style={getCategoryColor(expense.category || 'food')}
                 onClick={() => handleExpenseClick(expense)}
               >
-                <CardContent className="p-4">
+                <div className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className="font-medium text-lg mb-1">
@@ -221,8 +222,8 @@ export default function ExpensesPage() {
                       )}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}

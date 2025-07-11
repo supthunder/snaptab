@@ -179,17 +179,17 @@ export function recalculateTripTotal(tripId: string): number {
 }
 
 // Get category color for expense cards
-export function getCategoryColor(category?: string): string {
-  const categoryColors: { [key: string]: string } = {
-    food: 'bg-orange-500/20 border-orange-500/30',
-    lodging: 'bg-blue-500/20 border-blue-500/30',
-    transportation: 'bg-green-500/20 border-green-500/30',
-    entertainment: 'bg-purple-500/20 border-purple-500/30',
-    shopping: 'bg-pink-500/20 border-pink-500/30',
-    health: 'bg-red-500/20 border-red-500/30',
-    communication: 'bg-indigo-500/20 border-indigo-500/30',
-    business: 'bg-gray-500/20 border-gray-500/30',
-    miscellaneous: 'bg-yellow-500/20 border-yellow-500/30',
+export function getCategoryColor(category?: string): { backgroundColor: string; borderColor: string } {
+  const categoryColors: { [key: string]: { backgroundColor: string; borderColor: string } } = {
+    food: { backgroundColor: 'rgba(255, 165, 0, 0.2)', borderColor: 'rgba(255, 165, 0, 0.5)' },
+    lodging: { backgroundColor: 'rgba(0, 123, 255, 0.2)', borderColor: 'rgba(0, 123, 255, 0.5)' },
+    transportation: { backgroundColor: 'rgba(40, 167, 69, 0.2)', borderColor: 'rgba(40, 167, 69, 0.5)' },
+    entertainment: { backgroundColor: 'rgba(138, 43, 226, 0.2)', borderColor: 'rgba(138, 43, 226, 0.5)' },
+    shopping: { backgroundColor: 'rgba(255, 192, 203, 0.2)', borderColor: 'rgba(255, 192, 203, 0.5)' },
+    health: { backgroundColor: 'rgba(220, 53, 69, 0.2)', borderColor: 'rgba(220, 53, 69, 0.5)' },
+    communication: { backgroundColor: 'rgba(102, 16, 242, 0.2)', borderColor: 'rgba(102, 16, 242, 0.5)' },
+    business: { backgroundColor: 'rgba(108, 117, 125, 0.2)', borderColor: 'rgba(108, 117, 125, 0.5)' },
+    miscellaneous: { backgroundColor: 'rgba(255, 193, 7, 0.2)', borderColor: 'rgba(255, 193, 7, 0.5)' },
   }
   
   return categoryColors[category || 'miscellaneous'] || categoryColors.miscellaneous

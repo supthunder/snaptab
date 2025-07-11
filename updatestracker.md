@@ -579,6 +579,48 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - `README.md` - Added category colors documentation and todo items
 
 ---
+
+## Update #21: Category Color Display Fix - Inline Styles Implementation
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Fixed Category Color Display**: Replaced Tailwind CSS classes with inline styles to resolve color display issues
+- **Tailwind Purging Issue**: Solved problem where dynamically generated category colors weren't showing up
+- **Restored Visual Separation**: Added borders back to expense cards for better distinction between different expenses
+- **Enhanced Color System**: Implemented robust color system using direct CSS rgba values
+- **Category Color Mapping**: Updated getCategoryColor function to return CSS style objects instead of class strings
+- **Consistent Styling**: Applied inline style approach to both homepage and expenses page
+
+### Color System Implementation:
+- **Food**: Orange background with orange borders
+- **Lodging**: Blue background with blue borders
+- **Transportation**: Green background with green borders
+- **Entertainment**: Purple background with purple borders
+- **Shopping**: Pink background with pink borders
+- **Health**: Red background with red borders
+- **Communication**: Indigo background with indigo borders
+- **Business**: Gray background with gray borders
+- **Miscellaneous**: Yellow background with yellow borders
+
+### Technical Changes:
+- Modified `getCategoryColor()` function to return `{ backgroundColor: string; borderColor: string }`
+- Updated expense cards to use `style` prop instead of `className` for category colors
+- Ensured colors work regardless of Tailwind CSS purging
+- Added fallback category assignment for existing expenses without categories
+
+### Visual Improvements:
+- Restored clear visual separation between expense cards
+- Category colors now properly display in both light and dark themes
+- Consistent styling across homepage and expenses list page
+- Better user experience with distinct visual categorization
+
+### Files Modified:
+- `lib/data.ts` - Updated getCategoryColor function to return CSS style objects
+- `app/page.tsx` - Applied inline styles for category colors on homepage expense cards
+- `app/expenses/page.tsx` - Applied inline styles for category colors on expenses list page
+
+---
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
@@ -588,6 +630,7 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - ✅ **UX Flow**: Smooth, popup-free experience
 - ✅ **Expense Management**: Full CRUD operations with detailed views and editing
 - ✅ **Profile Management**: Integrated trip management and profile settings
+- ✅ **Category Colors**: Visual color-coding system with reliable inline styles
 
 ## Next Potential Features
 - [ ] Cloud sync for cross-device data
