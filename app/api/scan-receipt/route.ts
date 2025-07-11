@@ -148,11 +148,12 @@ export async function POST(request: NextRequest) {
       - Be specific and descriptive (e.g. "Burrito" not "Food", "Uber" not "Transport")
       - Use the most recognizable part of the merchant or main item
       - Examples: "Starbucks" → "Coffee", "McDonald's" → "Burgers", "Marriott" → "Hotel"
+      - SPECIAL RULE: If merchant is "Airbnb" or "airbnb", always use "Airbnb" as the summary (not "Hotel")
       
       EMOJI SELECTION (for database storage):
       - For specific food types: 🍜 (ramen), 🍕 (pizza), 🍣 (sushi), 🍔 (burger), ☕ (coffee), 🍺 (bar/alcohol)
       - For generic food: 🍽️ or 🥘
-      - For lodging: 🏨 (hotel), 🏠 (Airbnb/house), 🏕️ (camping)
+      - For lodging: 🏨 (hotel), 🏠 (Airbnb - always use house emoji), 🏕️ (camping)
       - For transportation: ✈️ (flight), 🚗 (car/taxi), 🚌 (bus), 🚂 (train), ⛽ (gas)
       - For entertainment: 🎬 (movies), 🎫 (shows/attractions), 🎵 (music), 🎪 (tours)
       - For shopping: 🛒 (general shopping), 👕 (clothing), 🎁 (gifts), 💄 (beauty)

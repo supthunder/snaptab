@@ -675,6 +675,26 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - **Improved UX**: Loading dialog now floats clearly above full-screen blurred terminal background
 
 ---
+
+## Update #23: Airbnb Summary Override
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Enhanced OpenAI Prompt**: Added specific rule to override summary for Airbnb receipts
+- **Airbnb Summary Rule**: When merchant is "Airbnb" or "airbnb", summary is always set to "Airbnb" (not "Hotel")
+- **Emoji Clarification**: Specified that Airbnb should always use house emoji (🏠) to distinguish from hotels
+- **Prevents Confusion**: Ensures clear differentiation between actual hotels and Airbnb accommodations
+
+### Prompt Enhancement:
+- Added special rule: "If merchant is 'Airbnb' or 'airbnb', always use 'Airbnb' as the summary (not 'Hotel')"
+- Updated emoji selection to specify "🏠 (Airbnb - always use house emoji)"
+- Maintains accurate expense categorization and visual distinction
+
+### Files Modified:
+- `app/api/scan-receipt/route.ts` - Enhanced OpenAI prompt with Airbnb-specific rules
+
+---
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
