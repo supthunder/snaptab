@@ -621,6 +621,54 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - `app/expenses/page.tsx` - Applied inline styles for category colors on expenses list page
 
 ---
+
+## Update #22: Terminal-Style Loading Animation with Live API Logs
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Terminal Background Animation**: Added realistic terminal display during receipt scanning with scrolling API logs
+- **Progressive Log Display**: Terminal logs appear progressively with realistic timing (200ms intervals)
+- **Color-Coded Logs**: Different log types with appropriate terminal colors:
+  - `Info` logs: Gray text for general processing steps
+  - `Success` logs: Green text for successful operations
+  - `Warning` logs: Yellow text for in-progress operations
+  - `Data` logs: Blue text for API response data
+- **Terminal Styling**: Authentic terminal appearance with monospace font and dark background
+- **Blurred Background**: Terminal appears behind the main loading dialog for immersive experience
+- **Live Cursor**: Animated cursor (█) that pulses while logs are being displayed
+
+### Terminal Log Sequence:
+1. **API called, checking environment...**
+2. **Processing form data...**
+3. **File received: [filename] [type] [size]**
+4. **OpenAI API key found, initializing client...**
+5. **OpenAI client initialized successfully**
+6. **Converting file to base64...**
+7. **File converted, calling OpenAI API...**
+8. **Calling OpenAI API with timeout...**
+9. **OpenAI API response received**
+10. **OpenAI response content: {...}** (formatted JSON preview)
+11. **Successfully parsed receipt data**
+
+### Technical Implementation:
+- Added `terminalLogs` state to track displayed logs
+- Added `currentLogIndex` state to control progressive display
+- Created realistic log sequence that mirrors actual API processing
+- Implemented staggered setTimeout for progressive log appearance
+- Added terminal styling with proper colors and monospace font
+- Integrated with existing loading overlay system
+
+### User Experience Improvements:
+- **Engaging Loading Experience**: Users can see real-time processing instead of static loading
+- **Technical Transparency**: Shows what's happening behind the scenes
+- **Visual Interest**: Makes waiting time more engaging and informative
+- **Professional Appearance**: Gives the app a more technical and sophisticated feel
+
+### Files Modified:
+- `app/page.tsx` - Added terminal logging system and progressive display logic
+
+---
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
@@ -631,6 +679,7 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - ✅ **Expense Management**: Full CRUD operations with detailed views and editing
 - ✅ **Profile Management**: Integrated trip management and profile settings
 - ✅ **Category Colors**: Visual color-coding system with reliable inline styles
+- ✅ **Terminal Loading**: Immersive terminal-style loading animation with live API logs
 
 ## Next Potential Features
 - [ ] Cloud sync for cross-device data

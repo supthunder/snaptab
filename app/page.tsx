@@ -43,6 +43,8 @@ export default function HomePage() {
   const [isScanning, setIsScanning] = useState(false)
   const [scannedData, setScannedData] = useState<ReceiptData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [terminalLogs, setTerminalLogs] = useState<Array<{text: string, type: 'info' | 'success' | 'warning' | 'data'}>>([])
+  const [currentLogIndex, setCurrentLogIndex] = useState(0)
   const [activeTab, setActiveTab] = useState<'home' | 'camera' | 'profile'>('home')
   const [trips, setTrips] = useState<Trip[]>([])
   const [isTripsLoading, setIsTripsLoading] = useState(false)
@@ -85,6 +87,43 @@ export default function HomePage() {
 
     setIsScanning(true)
     setError(null)
+    setTerminalLogs([])
+    setCurrentLogIndex(0)
+
+    // Create realistic terminal logs
+    const logs = [
+      { text: 'API called, checking environment...', type: 'info' as const },
+      { text: 'Processing form data...', type: 'info' as const },
+      { text: `File received: ${file.name} ${file.type} ${file.size}`, type: 'success' as const },
+      { text: 'OpenAI API key found, initializing client...', type: 'info' as const },
+      { text: 'OpenAI client initialized successfully', type: 'success' as const },
+      { text: 'Converting file to base64...', type: 'warning' as const },
+      { text: 'File converted, calling OpenAI API...', type: 'info' as const },
+      { text: 'Calling OpenAI API with timeout...', type: 'warning' as const },
+      { text: 'OpenAI API response received', type: 'success' as const },
+      { text: 'OpenAI response content: {', type: 'data' as const },
+      { text: '  "merchantName": "...",', type: 'data' as const },
+      { text: '  "total": 0.00,', type: 'data' as const },
+      { text: '  "currency": "USD",', type: 'data' as const },
+      { text: '  "category": "...",', type: 'data' as const },
+      { text: '  "summary": "...",', type: 'data' as const },
+      { text: '  "emoji": "...",', type: 'data' as const },
+      { text: '  "items": [...],', type: 'data' as const },
+      { text: '}', type: 'data' as const },
+      { text: 'Successfully parsed receipt data', type: 'success' as const },
+    ]
+
+    // Simulate progressive log display
+    const displayLogs = () => {
+      for (let i = 0; i < logs.length; i++) {
+        setTimeout(() => {
+          setTerminalLogs(prev => [...prev, logs[i]])
+          setCurrentLogIndex(i + 1)
+        }, i * 200) // 200ms delay between each log
+      }
+    }
+
+    displayLogs()
 
     try {
       const formData = new FormData()
@@ -106,7 +145,11 @@ export default function HomePage() {
       console.error('Scanning error:', err)
       setError(err instanceof Error ? err.message : 'Failed to scan receipt')
     } finally {
-      setIsScanning(false)
+      // Add a small delay to show the final logs
+      setTimeout(() => {
+        setIsScanning(false)
+      }, logs.length * 200 + 500)
+      
       // Reset the input so the same file can be selected again
       if (event.target) {
         event.target.value = ''
@@ -146,6 +189,8 @@ export default function HomePage() {
   const resetScan = () => {
     setScannedData(null)
     setError(null)
+    setTerminalLogs([])
+    setCurrentLogIndex(0)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -280,11 +325,40 @@ export default function HomePage() {
      {/* Full-screen loading overlay */}
       {isScanning && (
         <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="text-center space-y-6">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
-            <div className="space-y-2">
-              <p className="text-lg font-medium">Analyzing Receipt...</p>
-              <p className="text-sm text-muted-foreground">AI is extracting receipt details</p>
+          {/* Terminal Background */}
+          <div className="absolute inset-0 p-6 font-mono text-sm overflow-hidden">
+            <div className="bg-black/80 rounded-lg p-4 h-full overflow-y-auto">
+              <div className="text-green-400 mb-2 flex items-center">
+                <span className="text-gray-500 mr-2">$</span>
+                <span>snaptab-receipt-scanner</span>
+              </div>
+              {terminalLogs.map((log, index) => (
+                <div 
+                  key={index} 
+                  className={`mb-1 opacity-80 ${
+                    log.type === 'success' ? 'text-green-400' :
+                    log.type === 'warning' ? 'text-yellow-400' :
+                    log.type === 'data' ? 'text-blue-300' :
+                    'text-gray-300'
+                  }`}
+                >
+                  {log.text}
+                </div>
+              ))}
+              {currentLogIndex < terminalLogs.length && (
+                <div className="text-green-400 animate-pulse inline-block">█</div>
+              )}
+            </div>
+          </div>
+          
+          {/* Loading indicator overlay */}
+          <div className="relative z-10 text-center bg-background/90 backdrop-blur-sm rounded-lg p-8 border border-border shadow-2xl">
+            <div className="text-center space-y-6">
+              <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+              <div className="space-y-2">
+                <p className="text-lg font-medium">Analyzing Receipt...</p>
+                <p className="text-sm text-muted-foreground">AI is extracting receipt details</p>
+              </div>
             </div>
           </div>
         </div>
