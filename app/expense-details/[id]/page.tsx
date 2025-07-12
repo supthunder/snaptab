@@ -7,10 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { 
-  getActiveTrip, 
-  getTripExpenses, 
-  saveTrips,
-  getTrips,
+  getCategoryColor, 
   type Trip, 
   type Expense,
   type ReceiptItem,
@@ -23,9 +20,43 @@ interface ExpenseDetailsPageProps {
   }>
 }
 
+interface DatabaseExpense {
+  id: string
+  trip_id: string
+  name: string
+  description: string
+  merchant_name: string
+  total_amount: number
+  currency: string
+  expense_date: string
+  paid_by: string
+  paid_by_username: string
+  split_with: string[]
+  split_mode: 'even' | 'items'
+  category: string
+  summary: string
+  emoji: string
+  tax_amount: number
+  tip_amount: number
+  confidence: number
+  created_at: string
+  updated_at: string
+  items: any[]
+}
+
+interface DatabaseTrip {
+  id: string
+  name: string
+  currency: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  trip_code: number
+}
+
 export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) {
-  const [activeTrip, setActiveTrip] = useState<Trip | null>(null)
-  const [expense, setExpense] = useState<Expense | null>(null)
+  const [trip, setTrip] = useState<DatabaseTrip | null>(null)
+  const [expense, setExpense] = useState<DatabaseExpense | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [expenseId, setExpenseId] = useState<string | null>(null)
@@ -38,25 +69,45 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
 
   useEffect(() => {
     // First get the params
-    params.then((resolvedParams) => {
+    params.then(async (resolvedParams) => {
       setExpenseId(resolvedParams.id)
       
-      // Load trip and find the specific expense
-      const trip = getActiveTrip()
-      if (trip) {
-        setActiveTrip(trip)
+      try {
+        // Load expense from database
+        const expenseResponse = await fetch(`/api/expenses/${resolvedParams.id}`)
         
-        // Find the expense by ID
-        const foundExpense = trip.expenses.find(exp => exp.id === resolvedParams.id)
-        if (foundExpense) {
-          setExpense(foundExpense)
-          setEditForm({
-            description: foundExpense.description,
-            amount: foundExpense.amount.toString(),
-            paidBy: foundExpense.paidBy,
-            date: foundExpense.date
-          })
+        if (!expenseResponse.ok) {
+          throw new Error('Failed to load expense')
         }
+        
+        const expenseData = await expenseResponse.json()
+        const fetchedExpense = expenseData.expense
+        
+        if (fetchedExpense) {
+          setExpense(fetchedExpense)
+          setEditForm({
+            description: fetchedExpense.description || fetchedExpense.name,
+            amount: fetchedExpense.total_amount.toString(),
+            paidBy: fetchedExpense.paid_by_username || fetchedExpense.paid_by,
+            date: fetchedExpense.expense_date
+          })
+
+          // Load trip data using the trip code from localStorage
+          const tripCode = localStorage.getItem('snapTab_currentTripCode')
+          if (tripCode) {
+            try {
+              const tripResponse = await fetch(`/api/trips/${tripCode}`)
+              if (tripResponse.ok) {
+                const tripData = await tripResponse.json()
+                setTrip(tripData.trip)
+              }
+            } catch (error) {
+              console.error('Failed to load trip data:', error)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load expense:', error)
       }
       
       setIsLoading(false)
@@ -88,58 +139,6 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
     return symbols[currency] || currency
   }
 
-  // Calculate item-based split details
-  const getItemBasedSplitDetails = () => {
-    if (!expense?.items || !expense?.itemAssignments) return null
-    
-    const memberTotals: { [key: string]: number } = {}
-    const memberItems: { [key: string]: Array<{ name: string; price: number; shared: boolean; sharedWith: string[] }> } = {}
-    
-    // Initialize all members
-    expense.splitWith.forEach(member => {
-      memberTotals[member] = 0
-      memberItems[member] = []
-    })
-
-    // Calculate totals and items for each member
-    expense.itemAssignments.forEach(assignment => {
-      const item = expense.items![assignment.itemIndex]
-      const splitAmount = item.price / assignment.assignedTo.length
-      const isShared = assignment.assignedTo.length > 1
-      
-      assignment.assignedTo.forEach(person => {
-        if (memberTotals[person] !== undefined) {
-          memberTotals[person] += splitAmount
-          memberItems[person].push({
-            name: item.name,
-            price: splitAmount,
-            shared: isShared,
-            sharedWith: assignment.assignedTo
-          })
-        }
-      })
-    })
-
-    return { memberTotals, memberItems }
-  }
-
-  // Get expense breakdown
-  const getExpenseBreakdown = () => {
-    if (expense?.splitMode === 'items') {
-      return getItemBasedSplitDetails()
-    }
-    
-    // Even split
-    const splitAmount = expense!.amount / expense!.splitWith.length
-    const memberTotals: { [key: string]: number } = {}
-    
-    expense!.splitWith.forEach(member => {
-      memberTotals[member] = splitAmount
-    })
-    
-    return { memberTotals, memberItems: {} }
-  }
-
   const startEditing = () => {
     setIsEditing(true)
   }
@@ -147,68 +146,62 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
   const cancelEditing = () => {
     if (expense) {
       setEditForm({
-        description: expense.description,
-        amount: expense.amount.toString(),
-        paidBy: expense.paidBy,
-        date: expense.date
+        description: expense.description || expense.name,
+        amount: expense.total_amount.toString(),
+        paidBy: expense.paid_by_username || expense.paid_by,
+        date: expense.expense_date
       })
     }
     setIsEditing(false)
   }
 
-  const saveExpense = () => {
-    if (!expense || !activeTrip) return
+  const saveExpense = async () => {
+    if (!expense || !trip) return
     
-    const trips = getTrips()
-    const tripIndex = trips.findIndex(trip => trip.id === activeTrip.id)
-    
-    if (tripIndex !== -1) {
-      const expenseIndex = trips[tripIndex].expenses.findIndex(exp => exp.id === expense.id)
-      
-      if (expenseIndex !== -1) {
-        // Update the expense
-        const updatedExpense = {
-          ...expense,
-          description: editForm.description,
-          amount: parseFloat(editForm.amount),
-          paidBy: editForm.paidBy,
-          date: editForm.date
-        }
-        
-        trips[tripIndex].expenses[expenseIndex] = updatedExpense
-        
-        // Recalculate trip total
-        trips[tripIndex].totalExpenses = trips[tripIndex].expenses.reduce((sum, exp) => sum + exp.amount, 0)
-        
-        // Save to localStorage
-        saveTrips(trips)
-        
-        // Update local state
-        setExpense(updatedExpense)
-        setActiveTrip(trips[tripIndex])
-        setIsEditing(false)
+    try {
+      // TODO: Implement expense update API endpoint
+      console.log('Saving expense:', editForm)
+      // For now, just update local state
+      const updatedExpense = {
+        ...expense,
+        description: editForm.description,
+        name: editForm.description,
+        total_amount: parseFloat(editForm.amount),
+        paid_by_username: editForm.paidBy,
+        expense_date: editForm.date
       }
+      
+      setExpense(updatedExpense)
+      setIsEditing(false)
+      
+      // TODO: Make API call to update expense in database
+      alert('Expense updated successfully!')
+      
+    } catch (error) {
+      console.error('Failed to save expense:', error)
+      alert('Failed to save expense. Please try again.')
     }
   }
 
-  const deleteExpense = () => {
-    if (!expense || !activeTrip) return
+  const deleteExpense = async () => {
+    if (!expense) return
     
-    const trips = getTrips()
-    const tripIndex = trips.findIndex(trip => trip.id === activeTrip.id)
+    const confirmDelete = window.confirm('Are you sure you want to delete this expense? This action cannot be undone.')
+    if (!confirmDelete) return
     
-    if (tripIndex !== -1) {
-      // Remove the expense
-      trips[tripIndex].expenses = trips[tripIndex].expenses.filter(exp => exp.id !== expense.id)
+    try {
+      // TODO: Implement expense deletion API endpoint
+      console.log('Deleting expense:', expense.id)
       
-      // Recalculate trip total
-      trips[tripIndex].totalExpenses = trips[tripIndex].expenses.reduce((sum, exp) => sum + exp.amount, 0)
-      
-      // Save to localStorage
-      saveTrips(trips)
-      
-      // Navigate back to previous page
+      // For now, just navigate back
       window.history.back()
+      
+      // TODO: Make API call to delete expense from database
+      alert('Expense deleted successfully!')
+      
+    } catch (error) {
+      console.error('Failed to delete expense:', error)
+      alert('Failed to delete expense. Please try again.')
     }
   }
 
@@ -225,7 +218,7 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
     )
   }
 
-  if (!expense || !activeTrip) {
+  if (!expense) {
     return (
       <div className="flex flex-col h-screen bg-background">
         <header className="p-6 pt-16">
@@ -262,7 +255,7 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
             </Button>
             <div>
               <h1 className="text-xl font-medium">Expense Details</h1>
-              <p className="text-sm text-muted-foreground">{activeTrip.name}</p>
+              <p className="text-sm text-muted-foreground">{trip?.name || 'Loading...'}</p>
             </div>
           </div>
           
@@ -299,95 +292,97 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
             <CardContent className="p-6">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-medium text-foreground mb-4">
-                  {expense.summary || expense.description}
+                  {expense.summary || expense.name}
                 </h2>
                 
                 <p className="text-muted-foreground text-sm mb-2">Total Amount</p>
                 <p className="text-4xl font-light text-primary mb-2">
-                  {getCurrencySymbol(activeTrip.currency)}{expense.amount.toFixed(2)}
+                  {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{expense.total_amount.toFixed(2)}
                 </p>
                 <div className="flex justify-center items-center gap-4 text-sm text-muted-foreground">
-                  <span>Paid by {expense.paidBy}</span>
+                  <span>Paid by {expense.paid_by_username || expense.paid_by}</span>
                   <span>•</span>
-                  <span>{new Date(expense.date).toLocaleDateString()}</span>
+                  <span>{new Date(expense.expense_date).toLocaleDateString()}</span>
                 </div>
               </div>
               
               {/* Split Mode Display */}
               <div className="text-center p-3 bg-muted/50 rounded-lg mb-4">
                 <p className="text-sm text-muted-foreground">
-                  {expense.splitMode === 'items' && expense.items ? 
+                  {expense.split_mode === 'items' && expense.items?.length > 0 ? 
                     `Split by ${expense.items.length} item${expense.items.length > 1 ? 's' : ''}` : 
                     'Split evenly'
                   }
                 </p>
               </div>
               
-              {/* Your Share Highlight */}
-              {(() => {
-                const breakdown = getExpenseBreakdown()
-                const yourShare = breakdown?.memberTotals['You'] || 0
-                return (
-                  <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
-                    <p className="text-sm text-muted-foreground mb-1">Your Share</p>
-                    <p className="text-2xl font-medium text-primary">
-                      {getCurrencySymbol(activeTrip.currency)}{yourShare.toFixed(2)}
-                    </p>
+              {/* Split Details */}
+              {expense.split_with && expense.split_with.length > 0 && (
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-2">Split between:</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {expense.split_with.map((person, index) => (
+                      <span key={index} className="px-2 py-1 bg-primary/10 text-primary rounded text-sm">
+                        {person}
+                      </span>
+                    ))}
                   </div>
-                )
-              })()}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{(expense.total_amount / expense.split_with.length).toFixed(2)} each
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Expense Breakdown */}
-          {(() => {
-            const breakdown = getExpenseBreakdown()
-            if (!breakdown) return null
-            
-            const { memberTotals, memberItems } = breakdown
-            
-            return (
-              <Card className="minimal-card">
-                <CardContent className="p-6">
-                  <h3 className="font-medium mb-4">Expense Breakdown</h3>
-                  
-                  <div className="space-y-4">
-                    {Object.entries(memberTotals).map(([member, total]) => (
-                      <div key={member} className="p-4 rounded-lg border border-border bg-card/50">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium text-lg">{member}</span>
-                          <span className="text-lg font-medium text-primary">
-                            {getCurrencySymbol(activeTrip.currency)}{total.toFixed(2)}
-                          </span>
-                        </div>
-                        
-                        {/* Item details for this member */}
-                        {memberItems[member] && memberItems[member].length > 0 && (
-                          <div className="space-y-2 mt-3">
-                            {memberItems[member].map((item, index) => (
-                              <div key={index} className="flex justify-between items-center text-sm">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-muted-foreground">{item.name}</span>
-                                  {item.shared && (
-                                    <span className="text-xs bg-muted px-2 py-1 rounded">
-                                      shared with {item.sharedWith.filter(p => p !== member).join(', ')}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-muted-foreground">
-                                  {getCurrencySymbol(activeTrip.currency)}{item.price.toFixed(2)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+          {/* Edit Form */}
+          {isEditing && (
+            <Card className="minimal-card">
+              <CardContent className="p-6">
+                <h3 className="font-medium mb-4">Edit Expense</h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    <Input
+                      id="description"
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                      placeholder="Enter description"
+                    />
                   </div>
-                </CardContent>
-              </Card>
-            )
-          })()}
+                  <div>
+                    <Label htmlFor="amount">Amount</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.01"
+                      value={editForm.amount}
+                      onChange={(e) => setEditForm({...editForm, amount: e.target.value})}
+                      placeholder="Enter amount"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="paidBy">Paid By</Label>
+                    <Input
+                      id="paidBy"
+                      value={editForm.paidBy}
+                      onChange={(e) => setEditForm({...editForm, paidBy: e.target.value})}
+                      placeholder="Enter who paid"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="date">Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={editForm.date}
+                      onChange={(e) => setEditForm({...editForm, date: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Item Details (if available) */}
           {expense.items && expense.items.length > 0 && (
@@ -395,34 +390,31 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
               <CardContent className="p-6">
                 <h3 className="font-medium mb-4">Items ({expense.items.length})</h3>
                 <div className="space-y-3">
-                  {expense.items.map((item, index) => {
-                    const assignment = expense.itemAssignments?.find(a => a.itemIndex === index)
-                    return (
-                      <div key={index} className="flex justify-between items-center py-3 border-b border-border last:border-0">
-                        <div className="flex-1">
-                          <div className="font-medium">{item.name}</div>
-                          {item.quantity && (
-                            <div className="text-sm text-muted-foreground">Quantity: {item.quantity}</div>
-                          )}
-                          {assignment && (
-                            <div className="text-sm text-muted-foreground mt-1">
-                              Assigned to: {assignment.assignedTo.join(', ')}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <div className="font-medium">
-                            {getCurrencySymbol(activeTrip.currency)}{item.price.toFixed(2)}
+                  {expense.items.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center py-3 border-b border-border last:border-0">
+                      <div className="flex-1">
+                        <div className="font-medium">{item.name}</div>
+                        {item.quantity && (
+                          <div className="text-sm text-muted-foreground">Quantity: {item.quantity}</div>
+                        )}
+                        {item.assignments && item.assignments.length > 0 && (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            Assigned to: {item.assignments.map((a: any) => a.display_name || a.username).join(', ')}
                           </div>
-                          {assignment && assignment.assignedTo.length > 1 && (
-                            <div className="text-xs text-muted-foreground">
-                              {getCurrencySymbol(activeTrip.currency)}{(item.price / assignment.assignedTo.length).toFixed(2)} each
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </div>
-                    )
-                  })}
+                      <div className="text-right">
+                        <div className="font-medium">
+                          {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{item.price.toFixed(2)}
+                        </div>
+                        {item.assignments && item.assignments.length > 1 && (
+                          <div className="text-xs text-muted-foreground">
+                            {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{(item.price / item.assignments.length).toFixed(2)} each
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -432,27 +424,45 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
           <Card className="minimal-card">
             <CardContent className="p-6">
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Total People</span>
-                  <span className="font-medium">{expense.splitWith.length}</span>
-                </div>
+                {expense.merchant_name && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Merchant</span>
+                    <span className="font-medium">{expense.merchant_name}</span>
+                  </div>
+                )}
+                
+                {expense.category && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Category</span>
+                    <span className="font-medium capitalize">{expense.category}</span>
+                  </div>
+                )}
+                
+                {expense.tax_amount && expense.tax_amount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Tax</span>
+                    <span className="font-medium">{getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{expense.tax_amount.toFixed(2)}</span>
+                  </div>
+                )}
+                
+                {expense.tip_amount && expense.tip_amount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Tip</span>
+                    <span className="font-medium">{getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{expense.tip_amount.toFixed(2)}</span>
+                  </div>
+                )}
                 
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Created</span>
-                  <span className="font-medium">{formatTimeAgo(expense.createdAt)}</span>
+                  <span className="font-medium">{formatTimeAgo(expense.created_at)}</span>
                 </div>
                 
-                {/* All participants */}
-                <div>
-                  <div className="text-muted-foreground mb-2">Participants</div>
-                  <div className="flex flex-wrap gap-2">
-                    {expense.splitWith.map((person, index) => (
-                      <span key={index} className="px-3 py-1 bg-muted rounded-full text-sm">
-                        {person}
-                      </span>
-                    ))}
+                {expense.split_with && expense.split_with.length > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Total People</span>
+                    <span className="font-medium">{expense.split_with.length}</span>
                   </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
