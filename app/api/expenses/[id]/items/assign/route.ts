@@ -4,7 +4,7 @@ import { assignItemToUser, unassignItemFromUser, getExpenseWithItems } from '@/l
 // POST /api/expenses/[id]/items/assign - Assign item to user
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
@@ -25,7 +25,8 @@ export async function POST(
     }
 
     // Get updated expense with items
-    const expense = await getExpenseWithItems(params.id)
+    const { id } = await params
+    const expense = await getExpenseWithItems(id)
 
     return NextResponse.json({ 
       message: 'Item assigned successfully',
@@ -44,7 +45,7 @@ export async function POST(
 // DELETE /api/expenses/[id]/items/assign - Unassign item from user
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
@@ -65,7 +66,8 @@ export async function DELETE(
     }
 
     // Get updated expense with items
-    const expense = await getExpenseWithItems(params.id)
+    const { id } = await params
+    const expense = await getExpenseWithItems(id)
 
     return NextResponse.json({ 
       message: 'Item unassigned successfully',

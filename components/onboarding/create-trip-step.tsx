@@ -64,7 +64,7 @@ export function CreateTripStep({ onNext, data, updateData }: CreateTripStepProps
         body: JSON.stringify({
           name: tripName,
           currency: currency,
-          createdBy: data.username
+          username: data.username
         })
       })
 

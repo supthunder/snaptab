@@ -4,10 +4,11 @@ import { getTripSettlement } from '@/lib/neon-db-new'
 // GET /api/trips/[code]/settlement - Get settlement info for a trip
 export async function GET(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    const tripCode = parseInt(params.code)
+    const { code } = await params
+    const tripCode = parseInt(code)
     
     if (isNaN(tripCode) || tripCode < 100 || tripCode > 999) {
       return NextResponse.json({ 

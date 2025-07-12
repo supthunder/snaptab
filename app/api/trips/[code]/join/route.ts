@@ -4,12 +4,13 @@ import { joinTrip, getTripByCode, getTripMembers } from '@/lib/neon-db-new'
 // POST /api/trips/[code]/join - Join trip with code
 export async function POST(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const body = await request.json()
     const { username } = body
-    const tripCode = parseInt(params.code)
+    const { code } = await params
+    const tripCode = parseInt(code)
     
     if (!username) {
       return NextResponse.json({ 
