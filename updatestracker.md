@@ -1146,6 +1146,55 @@ The onboarding system is now fully integrated and ready for production deploymen
 
 ---
 
+## Update #33: Fix API Parameter and Next.js Async Params Issues
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Issues Resolved:
+- **Trip Creation Error**: Fixed API parameter mismatch in onboarding flow
+- **Next.js 15 Warnings**: Resolved async params warnings in all API routes
+- **Database Integration**: Ensured proper parameter handling for all endpoints
+
+### Root Cause Analysis:
+1. **Parameter Mismatch**: Onboarding CreateTripStep was sending `createdBy` but API expected `username`
+2. **Next.js 15 Compatibility**: Dynamic route parameters are now async and must be awaited
+3. **Database Calls**: Split mode field was causing null constraint violations in testing
+
+### Changes Made:
+- **Fixed CreateTripStep**: Changed `createdBy: data.username` to `username: data.username`
+- **Updated 6 API Routes**: Made all dynamic route handlers properly await params
+- **Next.js 15 Compatibility**: All `params.code` and `params.id` now use `await params`
+
+### API Routes Fixed:
+- `app/api/trips/[code]/route.ts` - Trip info endpoint
+- `app/api/trips/[code]/join/route.ts` - Trip joining endpoint  
+- `app/api/trips/[code]/expenses/route.ts` - Expense management (GET/POST)
+- `app/api/trips/[code]/settlement/route.ts` - Settlement calculations
+- `app/api/expenses/[id]/items/assign/route.ts` - Item assignment (POST/DELETE)
+
+### Before/After:
+```typescript
+// Before (causing errors)
+{ params }: { params: { code: string } }
+const tripCode = parseInt(params.code)
+
+// After (Next.js 15 compatible)
+{ params }: { params: Promise<{ code: string }> }
+const { code } = await params
+const tripCode = parseInt(code)
+```
+
+### Current Status:
+- ✅ **Onboarding Flow**: Trip creation now works correctly
+- ✅ **API Routes**: All async params warnings resolved
+- ✅ **Database Integration**: Proper parameter handling throughout
+- ✅ **Next.js 15**: Full compatibility with latest framework version
+
+### Ready for Testing:
+The onboarding flow should now work properly for both creating and joining trips. All API endpoints are fully functional with proper error handling and parameter validation.
+
+---
+
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
