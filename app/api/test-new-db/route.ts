@@ -38,23 +38,24 @@ export async function GET(request: NextRequest) {
     console.log('🧪 Testing complete user flow...')
     
     try {
-      // Create test users
-      const user1 = await createUser('testuser1', 'Test User 1')
-      const user2 = await createUser('testuser2', 'Test User 2')
+      // Create test users with unique names
+      const timestamp = Date.now()
+      const user1 = await createUser(`testuser1_${timestamp}`, 'Test User 1')
+      const user2 = await createUser(`testuser2_${timestamp}`, 'Test User 2')
       
       if (!user1 || !user2) {
         throw new Error('Failed to create test users')
       }
 
       // Create a trip
-      const tripResult = await createTrip('Test Tokyo Trip', 'USD', 'testuser1')
+      const tripResult = await createTrip('Test Tokyo Trip', 'USD', user1.username)
       
       if (!tripResult) {
         throw new Error('Failed to create test trip')
       }
 
       // User 2 joins the trip
-      const joinSuccess = await joinTrip(tripResult.tripCode, 'testuser2')
+      const joinSuccess = await joinTrip(tripResult.tripCode, user2.username)
       
       if (!joinSuccess) {
         throw new Error('Failed to join trip')
@@ -63,13 +64,19 @@ export async function GET(request: NextRequest) {
       // Add an expense with items
       const expenseData = {
         name: 'Test Restaurant Bill',
+        description: 'Dinner at test restaurant',
         merchant_name: 'Test Restaurant',
         total_amount: 50.00,
         currency: 'USD',
         expense_date: '2024-12-28',
+        split_with: [], // Will be populated by function
+        split_mode: 'items' as 'even' | 'items',
         category: 'food',
         summary: 'Dinner',
-        emoji: '🍽️'
+        emoji: '🍽️',
+        tax_amount: 5.00,
+        tip_amount: 7.50,
+        confidence: 0.95
       }
 
       const items = [
@@ -80,7 +87,7 @@ export async function GET(request: NextRequest) {
 
       const expense = await addExpenseToTrip(
         tripResult.tripCode, 
-        'testuser1', 
+        user1.username, 
         expenseData, 
         items
       )

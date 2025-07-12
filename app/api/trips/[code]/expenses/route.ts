@@ -28,71 +28,77 @@ export async function GET(
   }
 }
 
-// POST /api/trips/[code]/expenses - Add new expense to trip
+// POST /api/trips/[code]/expenses - Add expense to trip
 export async function POST(
   request: NextRequest,
   { params }: { params: { code: string } }
 ) {
   try {
-    const body = await request.json()
     const tripCode = parseInt(params.code)
+    const body = await request.json()
     
-    if (isNaN(tripCode) || tripCode < 100 || tripCode > 999) {
-      return NextResponse.json({ 
-        error: 'Invalid trip code. Must be 3 digits (100-999)' 
-      }, { status: 400 })
-    }
-
     const { 
       name, 
-      merchantName, 
-      totalAmount, 
+      description,
+      merchant_name, 
+      total_amount, 
       currency, 
-      receiptImageUrl, 
-      expenseDate, 
-      paidByUsername, 
+      receipt_image_url,
+      expense_date, 
+      paid_by_username,
+      split_with_usernames,
+      split_mode = 'even',
       category, 
       summary, 
       emoji,
-      items 
+      tax_amount,
+      tip_amount,
+      confidence,
+      items = [] 
     } = body
 
-    if (!name || !totalAmount || !currency || !paidByUsername || !expenseDate) {
+    if (!name || !total_amount || !currency || !expense_date || !paid_by_username) {
       return NextResponse.json({ 
-        error: 'Required fields: name, totalAmount, currency, paidByUsername, expenseDate' 
+        error: 'Missing required fields: name, total_amount, currency, expense_date, paid_by_username' 
+      }, { status: 400 })
+    }
+
+    if (isNaN(tripCode) || tripCode < 100 || tripCode > 999) {
+      return NextResponse.json({ 
+        error: 'Invalid trip code' 
       }, { status: 400 })
     }
 
     const expenseData = {
       name,
-      merchant_name: merchantName,
-      total_amount: parseFloat(totalAmount),
+      description,
+      merchant_name,
+      total_amount: parseFloat(total_amount),
       currency,
-      receipt_image_url: receiptImageUrl,
-      expense_date: expenseDate,
+      receipt_image_url,
+      expense_date,
+      split_with: [], // Will be populated by the function
+      split_mode: split_mode as 'even' | 'items',
       category,
       summary,
-      emoji
+      emoji,
+      tax_amount: tax_amount ? parseFloat(tax_amount) : undefined,
+      tip_amount: tip_amount ? parseFloat(tip_amount) : undefined,
+      confidence: confidence ? parseFloat(confidence) : undefined
     }
-
-    const processedItems = (items || []).map((item: any, index: number) => ({
-      name: item.name,
-      price: parseFloat(item.price),
-      quantity: parseInt(item.quantity) || 1,
-      item_order: index
-    }))
 
     const expense = await addExpenseToTrip(
       tripCode, 
-      paidByUsername, 
+      paid_by_username, 
       expenseData, 
-      processedItems
+      items,
+      split_with_usernames
     )
-    
+
     if (!expense) {
       return NextResponse.json({ 
-        error: 'Failed to add expense. Check if user exists and is member of trip.' 
-      }, { status: 400 })
+        error: 'Failed to create expense. User may not be a member of this trip.' 
+      }, { status: 500 })
     }
 
     return NextResponse.json({ 

@@ -891,6 +891,60 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #30: Enhanced Database Schema - Complete GPT & Split Data Storage
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Major Database Enhancements:
+- **Complete GPT Data Storage**: Added `tax_amount`, `tip_amount`, `confidence` fields to capture all OpenAI response data
+- **Enhanced Split Information**: Added `split_with` (JSONB array), `split_mode` ('even' or 'items'), and `description` fields
+- **Settlement Calculations**: Built comprehensive settlement system with balance calculations and optimal transaction suggestions
+- **API Expansion**: Added settlement endpoint and enhanced expense creation with all new fields
+
+### New Database Fields Added:
+- **expenses.description** - User-friendly description separate from AI name
+- **expenses.split_with** - JSONB array of user IDs who expense is split with
+- **expenses.split_mode** - 'even' or 'items' to determine splitting method
+- **expenses.tax_amount** - Tax amount extracted from receipts by AI
+- **expenses.tip_amount** - Tip amount extracted from receipts by AI
+- **expenses.confidence** - AI confidence level in extraction (0.0-1.0)
+
+### Settlement System Features:
+- **Balance Calculation**: Calculates total paid vs total owed for each trip member
+- **Optimal Transactions**: Determines minimum number of transactions to settle all debts
+- **Mixed Split Support**: Handles both even splits and item-based splits in same trip
+- **Real-Time Updates**: Settlement calculations update automatically with new expenses
+
+### New API Endpoints:
+- **GET `/api/trips/[code]/settlement`** - Get settlement balances and optimal transactions
+- **Enhanced POST `/api/trips/[code]/expenses`** - Now accepts all GPT data and split information
+
+### Technical Implementation:
+- **JSONB Support**: Used PostgreSQL JSONB for flexible split_with arrays with GIN indexing
+- **Constraint Validation**: Added CHECK constraints for split_mode values
+- **Settlement Algorithm**: Implements optimal debt settlement using creditor/debtor matching
+- **Comprehensive Testing**: Full test coverage with enhanced database schema
+
+### Data Completeness:
+- ✅ **Every GPT Response Field**: tax, tip, confidence, category, summary, emoji, merchant
+- ✅ **Complete Split Data**: who paid, who owes, how much, what method
+- ✅ **Item-Level Tracking**: individual receipt items with user assignments
+- ✅ **Settlement Ready**: instant balance calculations and payment suggestions
+
+### Testing Results:
+- ✅ **Database Reset**: Successfully recreated with enhanced schema
+- ✅ **Expense Creation**: All new fields storing properly
+- ✅ **Settlement Calculation**: Balance calculations working perfectly
+- ✅ **API Endpoints**: All endpoints handling new data structure
+
+### Files Modified:
+- `lib/neon-db-new.ts` - Enhanced expense interface and settlement functions
+- `app/api/trips/[code]/expenses/route.ts` - Updated to handle all new fields
+- `app/api/trips/[code]/settlement/route.ts` - New settlement endpoint
+- `app/api/test-new-db/route.ts` - Updated tests for new schema
+
+---
+
 ## Update #24: Enhanced JSON Parsing - Trailing Comma Bug Fix
 **Date**: 2024-12-28  
 **Status**: ✅ Complete
@@ -978,7 +1032,8 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - ✅ **Username Authentication**: Simple username-only login system
 - ✅ **Trip Codes**: 3-digit codes (100-999) for easy trip sharing
 - ✅ **Multi-User Support**: Real-time collaboration across trip members
-- ✅ **Data Storage**: Cloud database with offline-first localStorage fallback
+- ✅ **Complete Data Storage**: All GPT data (tax, tip, confidence) + split info stored
+- ✅ **Settlement System**: Automatic balance calculations and optimal debt resolution
 - ✅ **UX Flow**: Smooth, popup-free experience
 - ✅ **Expense Management**: Full CRUD operations with detailed views and editing
 - ✅ **Profile Management**: Integrated trip management and profile settings

@@ -33,15 +33,21 @@ export interface Expense {
   id: string
   trip_id: string
   name: string
+  description?: string
   merchant_name?: string
   total_amount: number
   currency: string
   receipt_image_url?: string
   expense_date: string
   paid_by: string
+  split_with: string[] // Array of user IDs who this expense is split with
+  split_mode: 'even' | 'items' // How the expense is split
   category?: string
   summary?: string
   emoji?: string
+  tax_amount?: number
+  tip_amount?: number
+  confidence?: number
   created_at: string
   updated_at: string
 }
@@ -112,15 +118,21 @@ export async function initializeNewDatabase() {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         trip_id UUID NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
         name VARCHAR(200) NOT NULL,
+        description TEXT,
         merchant_name VARCHAR(200),
         total_amount DECIMAL(10,2) NOT NULL,
         currency VARCHAR(3) NOT NULL,
         receipt_image_url TEXT,
         expense_date DATE NOT NULL,
         paid_by UUID NOT NULL REFERENCES users(id),
+        split_with JSONB NOT NULL DEFAULT '[]'::jsonb,
+        split_mode VARCHAR(10) NOT NULL DEFAULT 'even' CHECK (split_mode IN ('even', 'items')),
         category VARCHAR(50),
         summary VARCHAR(100),
         emoji VARCHAR(10),
+        tax_amount DECIMAL(10,2),
+        tip_amount DECIMAL(10,2),
+        confidence DECIMAL(3,2),
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
@@ -168,6 +180,7 @@ export async function initializeNewDatabase() {
       await sql`CREATE INDEX IF NOT EXISTS idx_expense_items_order ON expense_items(expense_id, item_order)`
       await sql`CREATE INDEX IF NOT EXISTS idx_item_assignments_item ON item_assignments(expense_item_id)`
       await sql`CREATE INDEX IF NOT EXISTS idx_item_assignments_user ON item_assignments(user_id)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_expenses_split_with ON expenses USING GIN (split_with)`
       console.log('Indexes created successfully')
     } catch (indexError) {
       console.warn('Some indexes may have failed to create:', indexError)
@@ -361,7 +374,8 @@ export async function addExpenseToTrip(
   tripCode: number, 
   paidByUsername: string, 
   expenseData: Omit<Expense, 'id' | 'trip_id' | 'paid_by' | 'created_at' | 'updated_at'>,
-  items: Omit<ExpenseItem, 'id' | 'expense_id' | 'created_at'>[]
+  items: Omit<ExpenseItem, 'id' | 'expense_id' | 'created_at'>[],
+  splitWithUsernames?: string[] // Optional: usernames to split with (defaults to all trip members)
 ): Promise<Expense | null> {
   try {
     const trip = await getTripByCode(tripCode)
@@ -376,17 +390,39 @@ export async function addExpenseToTrip(
     `
     if (isMember.rows.length === 0) return null
 
+    // Determine who to split with
+    let splitWithUserIds: string[] = []
+    if (splitWithUsernames && splitWithUsernames.length > 0) {
+      // Use provided usernames
+      for (const username of splitWithUsernames) {
+        const splitUser = await getUserByUsername(username)
+        if (splitUser) {
+          splitWithUserIds.push(splitUser.id)
+        }
+      }
+    } else if (expenseData.split_with && expenseData.split_with.length > 0) {
+      // Use provided user IDs
+      splitWithUserIds = expenseData.split_with
+    } else {
+      // Default to all trip members
+      const tripMembers = await getTripMembers(tripCode)
+      splitWithUserIds = tripMembers.map(member => member.id)
+    }
+
     // Create expense
     const expenseResult = await sql`
       INSERT INTO expenses (
-        trip_id, name, merchant_name, total_amount, currency, 
-        receipt_image_url, expense_date, paid_by, category, summary, emoji
+        trip_id, name, description, merchant_name, total_amount, currency, 
+        receipt_image_url, expense_date, paid_by, split_with, split_mode,
+        category, summary, emoji, tax_amount, tip_amount, confidence
       )
       VALUES (
-        ${trip.id}, ${expenseData.name}, ${expenseData.merchant_name}, 
+        ${trip.id}, ${expenseData.name}, ${expenseData.description}, ${expenseData.merchant_name}, 
         ${expenseData.total_amount}, ${expenseData.currency}, 
         ${expenseData.receipt_image_url}, ${expenseData.expense_date}, 
-        ${user.id}, ${expenseData.category}, ${expenseData.summary}, ${expenseData.emoji}
+        ${user.id}, ${JSON.stringify(splitWithUserIds)}::jsonb, ${expenseData.split_mode},
+        ${expenseData.category}, ${expenseData.summary}, ${expenseData.emoji},
+        ${expenseData.tax_amount}, ${expenseData.tip_amount}, ${expenseData.confidence}
       )
       RETURNING *
     `
@@ -538,6 +574,131 @@ export async function getExpenseWithItems(expenseId: string): Promise<(Expense &
     console.error('Error fetching expense with items:', error)
     return null
   }
+}
+
+// Settlement & Balance Calculation Functions
+export interface SettlementBalance {
+  user_id: string
+  username: string
+  display_name?: string
+  total_paid: number
+  total_owed: number
+  net_balance: number // positive = owed money, negative = owes money
+}
+
+export interface SettlementTransaction {
+  from_user_id: string
+  from_username: string
+  to_user_id: string
+  to_username: string
+  amount: number
+}
+
+export async function getTripSettlement(tripCode: number): Promise<{
+  balances: SettlementBalance[];
+  transactions: SettlementTransaction[];
+} | null> {
+  try {
+    const trip = await getTripByCode(tripCode)
+    if (!trip) return null
+
+    // Get all trip members
+    const members = await getTripMembers(tripCode)
+    
+    // Calculate balances for each member
+    const balances: SettlementBalance[] = []
+    
+    for (const member of members) {
+      // Calculate total paid by this user
+      const paidResult = await sql`
+        SELECT COALESCE(SUM(total_amount), 0) as total_paid
+        FROM expenses 
+        WHERE trip_id = ${trip.id} AND paid_by = ${member.id}
+      `
+      const totalPaid = Number(paidResult.rows[0].total_paid)
+
+      // Calculate total owed by this user (from split_with arrays)
+      const owedResult = await sql`
+        SELECT COALESCE(SUM(
+          CASE 
+            WHEN split_mode = 'even' THEN total_amount / jsonb_array_length(split_with)
+            ELSE 0 -- For 'items' mode, we'll calculate separately
+          END
+        ), 0) as total_owed_even
+        FROM expenses 
+        WHERE trip_id = ${trip.id} 
+        AND split_with @> ${JSON.stringify([member.id])}::jsonb
+        AND split_mode = 'even'
+      `
+      let totalOwed = Number(owedResult.rows[0].total_owed_even)
+
+      // Add item-based owes
+      const itemOwedResult = await sql`
+        SELECT COALESCE(SUM(ei.price * ei.quantity), 0) as total_owed_items
+        FROM expenses e
+        JOIN expense_items ei ON e.id = ei.expense_id
+        JOIN item_assignments ia ON ei.id = ia.expense_item_id
+        WHERE e.trip_id = ${trip.id} 
+        AND ia.user_id = ${member.id}
+        AND e.split_mode = 'items'
+      `
+      totalOwed += Number(itemOwedResult.rows[0].total_owed_items)
+
+      const netBalance = totalPaid - totalOwed
+
+      balances.push({
+        user_id: member.id,
+        username: member.username,
+        display_name: member.display_name,
+        total_paid: totalPaid,
+        total_owed: totalOwed,
+        net_balance: netBalance
+      })
+    }
+
+    // Calculate optimal transactions to settle debts
+    const transactions = calculateOptimalTransactions(balances)
+
+    return { balances, transactions }
+  } catch (error) {
+    console.error('Error calculating trip settlement:', error)
+    return null
+  }
+}
+
+function calculateOptimalTransactions(balances: SettlementBalance[]): SettlementTransaction[] {
+  const transactions: SettlementTransaction[] = []
+  
+  // Separate creditors (positive balance) and debtors (negative balance)
+  const creditors = balances.filter(b => b.net_balance > 0.01).sort((a, b) => b.net_balance - a.net_balance)
+  const debtors = balances.filter(b => b.net_balance < -0.01).sort((a, b) => a.net_balance - b.net_balance)
+  
+  let i = 0, j = 0
+  
+  while (i < creditors.length && j < debtors.length) {
+    const creditor = creditors[i]
+    const debtor = debtors[j]
+    
+    const transferAmount = Math.min(creditor.net_balance, Math.abs(debtor.net_balance))
+    
+    if (transferAmount > 0.01) { // Only create transaction if amount is meaningful
+      transactions.push({
+        from_user_id: debtor.user_id,
+        from_username: debtor.username,
+        to_user_id: creditor.user_id,
+        to_username: creditor.username,
+        amount: Math.round(transferAmount * 100) / 100 // Round to 2 decimal places
+      })
+    }
+    
+    creditor.net_balance -= transferAmount
+    debtor.net_balance += transferAmount
+    
+    if (creditor.net_balance < 0.01) i++
+    if (Math.abs(debtor.net_balance) < 0.01) j++
+  }
+  
+  return transactions
 }
 
 // Utility Functions
