@@ -49,6 +49,31 @@ export default function HomePage() {
   const [trips, setTrips] = useState<Trip[]>([])
   const [isTripsLoading, setIsTripsLoading] = useState(false)
 
+  // Check for first-time user and redirect to onboarding
+  useEffect(() => {
+    const checkOnboarding = () => {
+      const onboardingComplete = localStorage.getItem('snapTab_onboardingComplete')
+      const hasUsername = localStorage.getItem('snapTab_username')
+      
+      // If onboarding is not complete and user doesn't have username, redirect to onboarding
+      if (!onboardingComplete && !hasUsername) {
+        window.location.href = '/onboarding'
+        return
+      }
+      
+      // If returning from onboarding, check if we have trip data
+      if (onboardingComplete && hasUsername) {
+        const tripCode = localStorage.getItem('snapTab_currentTripCode')
+        if (tripCode) {
+          // Here you could load the trip data from database
+          // For now, we'll load from existing localStorage system
+        }
+      }
+    }
+
+    checkOnboarding()
+  }, [])
+
   useEffect(() => {
     // Load real data from localStorage
     const trip = getActiveTrip()
