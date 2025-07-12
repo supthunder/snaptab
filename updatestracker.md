@@ -1195,6 +1195,88 @@ The onboarding flow should now work properly for both creating and joining trips
 
 ---
 
+## Update #34: Remove Sample Data and Integrate Database Loading
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Issues Resolved:
+- **Sample Data Removal**: Eliminated all prefilled mock data from the app
+- **Database Integration**: App now properly loads data from database after onboarding
+- **Trip Member Loading**: Add-expense page shows real trip members from database
+- **Expense Saving**: Expenses now saved to database instead of localStorage
+- **Real-Time Sync**: App updates from database when trip data changes
+
+### Root Cause Analysis:
+1. **Sample Data Persistence**: App was showing mock data (Tokyo Adventure, Paris Weekend, etc.) instead of real trip data
+2. **localStorage Fallback**: Main app was still using localStorage functions after onboarding
+3. **API Disconnect**: Add-expense page wasn't loading trip members from database
+4. **Data Sync Issues**: Changes weren't reflected because app wasn't connected to database
+
+### Changes Made:
+- **Removed Sample Data**: Eliminated mock trips from `lib/data.ts`
+- **Database Loading**: Updated main app to load from `/api/trips/[code]` using saved trip code
+- **Trip Member Loading**: Add-expense now loads real members from database API
+- **Expense API Integration**: Expenses saved via `/api/trips/[code]/expenses` endpoint
+- **Proper Fallback**: Added localStorage fallback for backward compatibility
+
+### Files Modified:
+- `lib/data.ts` - Removed mock data, return empty arrays instead
+- `app/page.tsx` - Added database loading with trip code from onboarding
+- `app/add-expense/page.tsx` - Database integration for trip members and expense saving
+
+### Before/After:
+```typescript
+// Before (showing sample data)
+function getDefaultTrips(): Trip[] {
+  return [
+    {
+      id: "1",
+      name: "Tokyo Adventure",
+      members: ["You", "Sarah", "Mike", "Emma"],
+      // ... mock data
+    }
+  ]
+}
+
+// After (real data only)
+function getDefaultTrips(): Trip[] {
+  return [] // No mock data
+}
+```
+
+### Database Integration Flow:
+1. **Onboarding Complete**: Trip code saved to `snapTab_currentTripCode`
+2. **Main App Load**: Calls `/api/trips/[code]` to load real trip data
+3. **Trip Members**: Loads actual members who joined the trip
+4. **Expense Creation**: Saves to database via API, not localStorage
+5. **Real-Time Updates**: App reflects database changes immediately
+
+### User Experience Improvements:
+- ✅ **No More Sample Data**: Only shows real trips and members
+- ✅ **Accurate Member Lists**: Add-expense shows who actually joined the trip
+- ✅ **Database Sync**: All changes saved to and loaded from database
+- ✅ **Fresh Trip Data**: New trips properly update the main app
+- ✅ **Real Balances**: Calculations based on actual expenses, not mock data
+
+### Technical Details:
+- **Trip Loading**: Uses saved trip code from onboarding localStorage
+- **Member Display**: Shows `display_name` or `username` from database
+- **Expense Format**: Proper API format with all required fields
+- **Error Handling**: Graceful fallback to localStorage if database fails
+- **Backward Compatibility**: Still works with existing localStorage data
+
+### Testing Results:
+- ✅ **New Trip Creation**: Main app updates with real trip data
+- ✅ **Member Lists**: Add-expense shows actual trip members
+- ✅ **Expense Saving**: Expenses saved to database successfully
+- ✅ **Data Persistence**: Trip data persists across app refreshes
+- ✅ **Multi-User**: Works correctly with multiple users in same trip
+
+### Ready for Production:
+The app now properly integrates with the database system. No more sample data confusion - users will see only their real trips, real members, and real expenses. The onboarding flow seamlessly connects to the main app with proper database synchronization.
+
+---
+
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
