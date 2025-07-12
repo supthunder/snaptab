@@ -1277,6 +1277,92 @@ The app now properly integrates with the database system. No more sample data co
 
 ---
 
+## Update #35: Fix Expense Details Page Database Integration
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Issue Resolved:
+- **Problem**: When clicking on an expense, the expense details page showed outdated localStorage data instead of current database information
+- **Root Cause**: Expense details page was using `getActiveTrip()` and localStorage functions instead of database API calls
+- **Impact**: Users couldn't see accurate expense details after creating new expenses through onboarding flow
+
+### Changes Made:
+
+#### 1. **New API Endpoint Created**
+- **File**: `app/api/expenses/[id]/route.ts` (new file)
+- **Purpose**: Fetch individual expense details by ID from database
+- **Endpoint**: `GET /api/expenses/[id]`
+- **Returns**: Full expense data with items and assignments
+- **Database Function**: Uses `getExpenseWithItems()` from neon-db-new.ts
+
+#### 2. **Expense Details Page Overhaul**
+- **File**: `app/expense-details/[id]/page.tsx` (major update)
+- **Before**: Used localStorage functions (`getActiveTrip()`, `getTripExpenses()`)
+- **After**: Uses database API calls (`/api/expenses/[id]`, `/api/trips/[code]`)
+- **Data Structure**: Updated to match database schema with proper field mapping
+
+#### 3. **Database Schema Mapping**
+- **Interface**: Added `DatabaseExpense` and `DatabaseTrip` interfaces
+- **Field Mapping**: 
+  - `expense.amount` → `expense.total_amount`
+  - `expense.paidBy` → `expense.paid_by_username`
+  - `expense.date` → `expense.expense_date`
+  - `expense.splitWith` → `expense.split_with`
+  - `expense.description` → `expense.name` or `expense.description`
+
+#### 4. **Enhanced Display Features**
+- **Merchant Information**: Shows `merchant_name` from database
+- **Category Display**: Shows expense category with proper capitalization
+- **Tax & Tip**: Displays tax_amount and tip_amount when available
+- **Item Assignments**: Shows proper item assignments from database
+- **Split Details**: Displays real split_with members from database
+
+#### 5. **Error Handling & UX**
+- **Loading States**: Proper loading indicators while fetching data
+- **Error States**: Graceful handling of missing expenses
+- **Trip Data**: Loads trip information using saved trip code
+- **Edit Form**: Properly maps database fields to form inputs
+
+### Technical Details:
+
+#### Database API Integration:
+```typescript
+// New API endpoint
+GET /api/expenses/[id]
+// Returns: { expense: DatabaseExpense & { items: ExpenseItem[] } }
+
+// Updated page loading
+const expenseResponse = await fetch(`/api/expenses/${expenseId}`)
+const expenseData = await expenseResponse.json()
+const expense = expenseData.expense
+```
+
+#### Data Structure Updates:
+- **Before**: Used localStorage Expense interface
+- **After**: Uses DatabaseExpense interface matching database schema
+- **Currency**: Uses expense.currency with fallback to trip.currency
+- **Split Calculation**: Real-time calculation from database split_with array
+
+### Files Modified:
+- `app/api/expenses/[id]/route.ts` - New API endpoint for expense details
+- `app/expense-details/[id]/page.tsx` - Complete database integration overhaul
+
+### Testing Verification:
+- ✅ Expense details load from database after creating new expenses
+- ✅ Real-time data display matches database content
+- ✅ Item assignments and split details show correctly
+- ✅ Edit form pre-populated with database values
+- ✅ Trip information loads from database via API
+
+### Next Steps:
+- **Edit Functionality**: TODO - Implement expense update API endpoint
+- **Delete Functionality**: TODO - Implement expense deletion API endpoint
+- **Real-time Updates**: Consider adding auto-refresh for collaborative editing
+
+This resolves the core issue where expense details were showing stale localStorage data instead of current database information, ensuring users always see accurate, up-to-date expense details.
+
+---
+
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility
