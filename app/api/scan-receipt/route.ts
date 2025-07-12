@@ -132,6 +132,14 @@ export async function POST(request: NextRequest) {
         "confidence": "Confidence level from 0.0 to 1.0"
       }
       
+      CRITICAL ITEM SPLITTING RULE:
+      - If a receipt shows "qty 6 lemonade $60", create 6 separate items each with "lemonade" at $10 each
+      - If a receipt shows "3x Coffee $15", create 3 separate items each with "Coffee" at $5 each
+      - ALWAYS split items by their quantity into individual entries rather than grouping them
+      - Each item should have quantity: 1 and the individual item price
+      - This allows for better expense splitting between people
+      - Example: "2 Burgers $20" should become 2 items: [{"name": "Burger", "price": 10, "quantity": 1}, {"name": "Burger", "price": 10, "quantity": 1}]
+      
       TRAVEL EXPENSE CATEGORIES (choose the most appropriate one):
       - "food" - Restaurants, cafes, food delivery, groceries, snacks
       - "lodging" - Hotels, Airbnb, hostels, vacation rentals  
