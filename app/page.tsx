@@ -56,7 +56,7 @@ export default function HomePage() {
       setActiveTrip(trip)
       
       // Get recent expenses for this trip
-      const recent = getRecentExpenses(trip.id, 3)
+      const recent = getRecentExpenses(trip.id, 6)
       setRecentExpenses(recent)
       
       // Calculate user balance

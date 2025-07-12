@@ -695,6 +695,85 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - `app/api/scan-receipt/route.ts` - Enhanced OpenAI prompt with Airbnb-specific rules
 
 ---
+
+## Update #24: Enhanced JSON Parsing - Trailing Comma Bug Fix
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Robust Trailing Comma Handling**: Enhanced JSON parsing to properly handle trailing commas in OpenAI responses
+- **Multiple Fallback Strategies**: Implemented comprehensive error handling for malformed JSON responses
+- **Improved Regex Cleaning**: Enhanced regex patterns to catch and remove trailing commas before closing braces and brackets
+- **Better Error Logging**: Added detailed error messages showing exact parse position and content for debugging
+- **Production Stability**: Ensured receipt scanning continues working even with malformed OpenAI responses
+
+### Bug Fixed:
+- **Trailing Comma Issue**: OpenAI occasionally returned JSON with trailing commas (e.g., `"quantity": 1,}`) which broke `JSON.parse()`
+- **Parse Error**: `SyntaxError: Expected double-quoted property name in JSON at position 417`
+- **Specific Case**: Trailing comma after `"quantity": 1,` in items array caused parsing failure
+
+### Technical Enhancements:
+- **Enhanced Regex Patterns**: Improved trailing comma removal with more comprehensive regex matching
+- **Fallback Parsing**: Multiple parsing attempts with different cleaning strategies
+- **Error Context**: Better error reporting showing exact position and content of parsing failures
+- **Graceful Degradation**: Fallback to mock responses when all parsing attempts fail
+
+### Files Modified:
+- `app/api/scan-receipt/route.ts` - Enhanced JSON parsing with improved trailing comma handling and error recovery
+
+---
+
+## Update #25: Increased Recent Expenses Display
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **More Recent Items**: Increased recent expenses display from 3 to 6 items on homepage
+- **Better Space Utilization**: Better use of available screen space between Recent section and bottom navigation
+- **Enhanced User Experience**: Users can now see more recent expenses at a glance without needing to navigate to "View all"
+
+### Technical Changes:
+- Updated `getRecentExpenses(trip.id, 3)` to `getRecentExpenses(trip.id, 6)`
+- Maintained same responsive design and card styling
+- No layout changes needed - existing design handles additional items gracefully
+
+### Visual Improvements:
+- **Better Screen Usage**: Fills empty space between Recent section and bottom navigation
+- **More Information**: Users can see twice as many recent expenses on the main screen
+- **Consistent Design**: All expense cards maintain the same visual style and category colors
+
+### Files Modified:
+- `app/page.tsx` - Increased recent expenses limit from 3 to 6 items
+
+---
+
+## Update #26: Gitignore Refinement - Environment Files
+**Date**: 2024-12-28  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **More Specific Environment File Handling**: Refined `.gitignore` to be more selective about which environment files to ignore
+- **Lock File Confirmation**: Confirmed `pnpm-lock.yaml` is correctly **not** in `.gitignore` (lock files should be committed)
+- **Better Environment Management**: Only ignore local environment files while allowing shared ones to be committed
+
+### Previous Issue:
+- **Too Broad**: `.env*` pattern ignored all environment files including shared ones like `.env.development`
+- **Lost Flexibility**: Shared environment configurations couldn't be committed to version control
+
+### Improved Pattern:
+- **Specific Local Files**: `.env.local`, `.env*.local` patterns only ignore local overrides
+- **Shared Files Allowed**: `.env.development`, `.env.production`, `.env.test` can be committed
+- **Template Files Allowed**: Base `.env` files can be committed as templates
+
+### Benefits:
+- **Team Consistency**: Shared environment configurations can be version controlled
+- **Security**: Local files with secrets remain ignored
+- **Flexibility**: Different environments can have committed base configurations
+
+### Files Modified:
+- `.gitignore` - Refined environment file patterns for better specificity
+
+---
 ## Current Status
 - ✅ **Core App**: Fully functional expense tracking
 - ✅ **PWA**: Optimized for mobile/iPhone usage with improved button accessibility

@@ -48,6 +48,19 @@ function parseOpenAIResponse(content: string) {
     cleanContent = cleanContent.replace(/\s*```$/, '')
   }
   
+  // Remove markdown comments like **additional text**
+  cleanContent = cleanContent.replace(/\*\*[^*]+\*\*/g, '')
+  
+  // Remove any text before the first { or after the last }
+  const firstBrace = cleanContent.indexOf('{')
+  const lastBrace = cleanContent.lastIndexOf('}')
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleanContent = cleanContent.substring(firstBrace, lastBrace + 1)
+  }
+  
+  // Remove trailing commas before closing braces/brackets
+  cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1')
+  
   // Parse the cleaned JSON
   return JSON.parse(cleanContent.trim())
 }
@@ -174,7 +187,16 @@ export async function POST(request: NextRequest) {
       Focus on creating a concise, recognizable summary that fits in limited UI space.
       
       Please be as accurate as possible. If any information is unclear or missing, use null for that field.
-      Return ONLY the JSON object, no additional text, no markdown formatting, no code blocks.
+      
+      IMPORTANT OUTPUT REQUIREMENTS:
+      - Return ONLY valid JSON - no additional text, comments, or explanations
+      - Do NOT include markdown code blocks or formatting
+      - Do NOT include any comments or notes in the response
+      - Do NOT add trailing commas in the JSON
+      - Make sure all strings are properly quoted
+      - The response must be parseable by JSON.parse()
+      
+      Return ONLY the JSON object, nothing else.
     `
 
     try {

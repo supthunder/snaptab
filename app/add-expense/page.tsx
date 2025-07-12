@@ -32,6 +32,7 @@ export default function AddExpensePage() {
   const [showItemFlow, setShowItemFlow] = useState(false)
   const [currentStep, setCurrentStep] = useState(0) // 0: select items, 1: assign person
   const [selectedItems, setSelectedItems] = useState<number[]>([])
+  const [selectedPeople, setSelectedPeople] = useState<string[]>([])
   const [availableItems, setAvailableItems] = useState<number[]>([])
 
   useEffect(() => {
@@ -110,65 +111,78 @@ export default function AddExpensePage() {
     )
   }
 
+  const handlePersonSelection = (person: string) => {
+    setSelectedPeople(prev => 
+      prev.includes(person) 
+        ? prev.filter(p => p !== person)
+        : [...prev, person]
+    )
+  }
+
   const proceedToPersonSelection = () => {
     if (selectedItems.length > 0) {
       setCurrentStep(1)
+      setSelectedPeople([]) // Reset person selection
     }
   }
 
-  const assignItemsToPerson = (person: string) => {
-    // Create new assignments for selected items
-    const newAssignments = selectedItems.map(itemIndex => ({
-      itemIndex,
-      assignedTo: [person]
-    }))
+  const assignItemsToSelectedPeople = () => {
+    if (selectedPeople.length === 0) return
 
     setItemAssignments(prev => {
-      // Remove any existing assignments for these items
-      const filtered = prev.filter(assignment => 
-        !selectedItems.includes(assignment.itemIndex)
-      )
-      return [...filtered, ...newAssignments]
+      const updatedAssignments = [...prev]
+      
+      selectedItems.forEach(itemIndex => {
+        // Check if this item already has an assignment
+        const existingAssignmentIndex = updatedAssignments.findIndex(
+          assignment => assignment.itemIndex === itemIndex
+        )
+        
+        if (existingAssignmentIndex !== -1) {
+          // Item already assigned - add selected people to existing assignment (avoid duplicates)
+          const existingAssignment = updatedAssignments[existingAssignmentIndex]
+          const newPeople = selectedPeople.filter(person => !existingAssignment.assignedTo.includes(person))
+          if (newPeople.length > 0) {
+            updatedAssignments[existingAssignmentIndex] = {
+              ...existingAssignment,
+              assignedTo: [...existingAssignment.assignedTo, ...newPeople]
+            }
+          }
+        } else {
+          // Item not assigned yet - create new assignment
+          updatedAssignments.push({
+            itemIndex,
+            assignedTo: [...selectedPeople]
+          })
+        }
+      })
+      
+      return updatedAssignments
     })
 
-    // Remove assigned items from available items if they're not shared
-    setAvailableItems(prev => 
-      prev.filter(itemIndex => !selectedItems.includes(itemIndex))
-    )
-
-    // Reset selection and go back to item selection
+    // Reset selections and go back to item selection
     setSelectedItems([])
-    setCurrentStep(0)
-
-    // If no more items available, close the flow
-    if (availableItems.length === selectedItems.length) {
-      setShowItemFlow(false)
-    }
-  }
-
-  const shareItemsWithPerson = (person: string) => {
-    // Add person to existing assignments for selected items
-    setItemAssignments(prev => 
-      prev.map(assignment => {
-        if (selectedItems.includes(assignment.itemIndex)) {
-          return {
-            ...assignment,
-            assignedTo: [...assignment.assignedTo, person]
-          }
-        }
-        return assignment
-      })
-    )
-
-    // Reset selection and go back to item selection
-    setSelectedItems([])
+    setSelectedPeople([])
     setCurrentStep(0)
   }
+
+  const getPersonAssignments = (person: string) => {
+    return itemAssignments
+      .filter(assignment => assignment.assignedTo.includes(person))
+      .map(assignment => ({
+        item: receiptItems[assignment.itemIndex],
+        cost: receiptItems[assignment.itemIndex].price / assignment.assignedTo.length,
+        shared: assignment.assignedTo.length > 1
+      }))
+  }
+
+
 
   const finishItemAssignment = () => {
     setShowItemFlow(false)
     setCurrentStep(0)
     setSelectedItems([])
+    setSelectedPeople([])
   }
 
   const calculateItemBasedSplit = () => {
@@ -269,11 +283,13 @@ export default function AddExpensePage() {
         // Go back to item selection step
         setCurrentStep(0)
         setSelectedItems([])
+        setSelectedPeople([])
       } else {
         // Go back to main form
         setShowItemFlow(false)
         setCurrentStep(0)
         setSelectedItems([])
+        setSelectedPeople([])
       }
     }
 
@@ -296,13 +312,14 @@ export default function AddExpensePage() {
         <main className="flex-1 px-6 pb-32 overflow-y-auto">
           {currentStep === 0 && (
             <div className="space-y-4">
-              {/* Available Items */}
+              {/* All Items - with assigned items grayed out */}
               <Card className="minimal-card">
                 <CardContent className="p-6">
-                  <h3 className="font-medium mb-4">Available Items</h3>
+                  <h3 className="font-medium mb-4">Items</h3>
                   <div className="space-y-3">
-                    {availableItems.map((itemIndex) => {
-                      const item = receiptItems[itemIndex]
+                    {receiptItems.map((item, itemIndex) => {
+                      const assignment = itemAssignments.find(a => a.itemIndex === itemIndex)
+                      const isAssigned = !!assignment
                       return (
                         <div
                           key={itemIndex}
@@ -310,7 +327,7 @@ export default function AddExpensePage() {
                             selectedItems.includes(itemIndex)
                               ? "bg-primary/10 border border-primary/20"
                               : "bg-background border border-border"
-                          }`}
+                          } ${isAssigned ? "opacity-60" : ""}`}
                           onClick={() => handleItemSelection(itemIndex)}
                         >
                           <div className="flex items-center space-x-3">
@@ -322,13 +339,29 @@ export default function AddExpensePage() {
                               {selectedItems.includes(itemIndex) && <Check className="h-3 w-3 text-primary-foreground" />}
                             </div>
                             <div>
-                              <span className="font-medium">{item.name}</span>
+                              <span className={`font-medium ${isAssigned ? "text-muted-foreground" : ""}`}>
+                                {item.name}
+                              </span>
                               {item.quantity && (
                                 <span className="text-sm text-muted-foreground ml-2">×{item.quantity}</span>
                               )}
+                              {isAssigned && assignment && (
+                                <div className="text-xs text-muted-foreground">
+                                  Assigned to: {assignment.assignedTo.join(', ')}
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <span className="text-primary font-medium">{activeTrip.currency} {item.price.toFixed(2)}</span>
+                          <div className="text-right">
+                            <span className={`font-medium ${isAssigned ? "text-muted-foreground" : "text-primary"}`}>
+                              {activeTrip.currency} {item.price.toFixed(2)}
+                            </span>
+                            {isAssigned && assignment && assignment.assignedTo.length > 1 && (
+                              <div className="text-xs text-muted-foreground">
+                                {activeTrip.currency} {(item.price / assignment.assignedTo.length).toFixed(2)} each
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
@@ -336,116 +369,75 @@ export default function AddExpensePage() {
                 </CardContent>
               </Card>
 
-              {/* Already Assigned Items */}
-              {itemAssignments.length > 0 && (
-                <Card className="minimal-card">
-                  <CardContent className="p-6">
-                    <h3 className="font-medium mb-4">Already Assigned</h3>
-                    <div className="space-y-3">
-                      {itemAssignments.map((assignment) => {
-                        const item = receiptItems[assignment.itemIndex]
-                        return (
-                          <div
-                            key={assignment.itemIndex}
-                            className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-colors ${
-                              selectedItems.includes(assignment.itemIndex)
-                                ? "bg-primary/10 border border-primary/20"
-                                : "bg-muted/50 border border-border"
-                            }`}
-                            onClick={() => handleItemSelection(assignment.itemIndex)}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div
-                                className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                                  selectedItems.includes(assignment.itemIndex) ? "border-primary bg-primary" : "border-muted-foreground"
-                                }`}
-                              >
-                                {selectedItems.includes(assignment.itemIndex) && <Check className="h-3 w-3 text-primary-foreground" />}
-                              </div>
-                              <div>
-                                <span className="font-medium opacity-75">{item.name}</span>
-                                <div className="text-sm text-muted-foreground">
-                                  {assignment.assignedTo.join(', ')}
-                                </div>
-                              </div>
-                            </div>
-                            <span className="text-muted-foreground font-medium">{activeTrip.currency} {item.price.toFixed(2)}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+
             </div>
           )}
 
           {currentStep === 1 && (
             <Card className="minimal-card">
               <CardContent className="p-6">
-                {(() => {
-                  // Get people who already have ANY items assigned (not just selected items)
-                  const alreadyAssignedPeople = new Set<string>()
-                  itemAssignments.forEach(assignment => {
-                    assignment.assignedTo.forEach(person => alreadyAssignedPeople.add(person))
-                  })
-
-                  // Get people who can be assigned (not already assigned to any items)
-                  const availablePeople = selectedMembers.filter(member => !alreadyAssignedPeople.has(member))
-                  const assignedPeople = selectedMembers.filter(member => alreadyAssignedPeople.has(member))
-
-                  return (
-                    <>
-                      {/* Available people to assign */}
-                      {availablePeople.length > 0 && (
-                        <>
-                          <h3 className="font-medium mb-4">Assign to Person</h3>
-                          <div className="space-y-3 mb-6">
-                            {availablePeople.map((member) => (
-                              <div
-                                key={member}
-                                className="flex items-center justify-between p-4 rounded-xl cursor-pointer transition-colors bg-background border border-border hover:bg-primary/5"
-                                onClick={() => assignItemsToPerson(member)}
-                              >
-                                <div className="flex items-center space-x-3">
-                                  <span className="font-medium">{member}</span>
+                <h3 className="font-medium mb-4">Select People</h3>
+                <div className="space-y-4">
+                  {selectedMembers.map((member) => {
+                    const assignments = getPersonAssignments(member)
+                    const totalCost = assignments.reduce((sum, a) => sum + a.cost, 0)
+                    
+                    return (
+                      <div
+                        key={member}
+                        className={`p-4 rounded-xl cursor-pointer transition-colors border ${
+                          selectedPeople.includes(member)
+                            ? "bg-primary/10 border-primary/20"
+                            : "bg-background border-border hover:bg-primary/5"
+                        }`}
+                        onClick={() => handlePersonSelection(member)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                selectedPeople.includes(member) ? "border-primary bg-primary" : "border-muted-foreground"
+                              }`}
+                            >
+                              {selectedPeople.includes(member) && <Check className="h-3 w-3 text-primary-foreground" />}
+                            </div>
+                            <div>
+                              <span className="font-medium">{member}</span>
+                              {assignments.length > 0 && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {assignments.length} item{assignments.length > 1 ? 's' : ''} • {activeTrip.currency}{totalCost.toFixed(2)}
                                 </div>
-                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {/* Already assigned people */}
-                      {assignedPeople.length > 0 && (
-                        <div className={availablePeople.length > 0 ? "border-t border-border pt-6" : ""}>
-                          <h4 className="font-medium mb-3 text-sm text-muted-foreground">Already Assigned</h4>
-                          <div className="space-y-2">
-                            {assignedPeople.map((member) => (
-                              <Button
-                                key={member}
-                                variant="outline"
-                                className="w-full justify-start opacity-60"
-                                onClick={() => shareItemsWithPerson(member)}
-                              >
-                                <Users className="h-4 w-4 mr-2" />
-                                Add {member} (share cost)
-                              </Button>
-                            ))}
+                              )}
+                            </div>
                           </div>
                         </div>
-                      )}
-
-                      {/* No one available */}
-                      {availablePeople.length === 0 && assignedPeople.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <p>No one available to assign</p>
-                        </div>
-                      )}
-                    </>
-                  )
-                })()}
+                        
+                        {/* Compact assignment summary */}
+                        {assignments.length > 0 && (
+                          <div className="mt-3 pl-8">
+                            <div className="flex flex-wrap gap-1">
+                              {assignments.map((assignment, index) => (
+                                <span
+                                  key={index}
+                                  className={`inline-flex items-center px-2 py-1 rounded text-xs ${
+                                    assignment.shared 
+                                      ? "bg-orange-100 text-orange-700 border border-orange-200" 
+                                      : "bg-blue-100 text-blue-700 border border-blue-200"
+                                  }`}
+                                >
+                                  {assignment.item.name} {activeTrip.currency}{assignment.cost.toFixed(2)}
+                                  {assignment.shared && (
+                                    <Users className="h-3 w-3 ml-1" />
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -474,13 +466,22 @@ export default function AddExpensePage() {
                 </div>
               )}
               {currentStep === 1 && (
-                <Button
-                  variant="outline"
-                  className="w-full h-16 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
-                  onClick={() => setCurrentStep(0)}
-                >
-                  Back to Items
-                </Button>
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-16 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    onClick={() => setCurrentStep(0)}
+                  >
+                    Back to Items
+                  </Button>
+                  <Button
+                    className="flex-1 h-16 bg-primary hover:bg-primary/90 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    disabled={selectedPeople.length === 0}
+                    onClick={assignItemsToSelectedPeople}
+                  >
+                    Assign to {selectedPeople.length || 0}
+                  </Button>
+                </div>
               )}
             </div>
           </div>
