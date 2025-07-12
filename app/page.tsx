@@ -65,17 +65,85 @@ export default function HomePage() {
       if (onboardingComplete && hasUsername) {
         const tripCode = localStorage.getItem('snapTab_currentTripCode')
         if (tripCode) {
-          // Here you could load the trip data from database
-          // For now, we'll load from existing localStorage system
+          // Load trip data from database
+          loadTripFromDatabase(tripCode)
+        } else {
+          // No trip code, load from localStorage fallback
+          loadFromLocalStorage()
         }
+      } else {
+        // No onboarding data, load from localStorage fallback
+        loadFromLocalStorage()
       }
     }
 
     checkOnboarding()
   }, [])
 
-  useEffect(() => {
-    // Load real data from localStorage
+  const loadTripFromDatabase = async (tripCode: string) => {
+    try {
+      setIsLoading(true)
+      
+      // Get trip data from database
+      const response = await fetch(`/api/trips/${tripCode}`)
+      if (!response.ok) {
+        throw new Error('Failed to load trip data')
+      }
+      
+      const tripData = await response.json()
+      
+      // Convert database trip to our Trip interface
+      const trip: Trip = {
+        id: tripData.trip.id,
+        name: tripData.trip.name,
+        members: tripData.members?.map((member: any) => member.display_name || member.username) || [],
+        totalExpenses: tripData.expenses?.reduce((sum: number, expense: any) => sum + expense.total_amount, 0) || 0,
+        currency: tripData.trip.currency || 'USD',
+        startDate: undefined,
+        endDate: undefined,
+        isActive: tripData.trip.is_active || false,
+        createdAt: tripData.trip.created_at,
+        expenses: tripData.expenses?.map((expense: any) => ({
+          id: expense.id,
+          tripId: expense.trip_id,
+          description: expense.name,
+          amount: expense.total_amount,
+          date: expense.expense_date,
+          paidBy: expense.paid_by_username || "You",
+          splitWith: expense.split_with || [],
+          category: expense.category,
+          summary: expense.summary,
+          emoji: expense.emoji,
+          createdAt: expense.created_at,
+          items: expense.items || [],
+          itemAssignments: expense.item_assignments || [],
+          splitMode: expense.split_mode || 'even'
+        })) || []
+      }
+      
+      setActiveTrip(trip)
+      
+      // Get recent expenses
+      const recentExpenses = trip.expenses.slice(-6).reverse()
+      setRecentExpenses(recentExpenses)
+      
+      // Calculate user balance (simplified for now)
+      const username = localStorage.getItem('snapTab_username') || "You"
+      const userPaid = trip.expenses.filter(exp => exp.paidBy === username).reduce((sum, exp) => sum + exp.amount, 0)
+      const userOwes = trip.expenses.length > 0 ? trip.totalExpenses / trip.members.length : 0
+      setUserBalance(userPaid - userOwes)
+      
+    } catch (error) {
+      console.error('Failed to load trip from database:', error)
+      // Fallback to localStorage
+      loadFromLocalStorage()
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const loadFromLocalStorage = () => {
+    // Load data from localStorage as fallback
     const trip = getActiveTrip()
     if (trip) {
       setActiveTrip(trip)
@@ -90,7 +158,7 @@ export default function HomePage() {
     }
     
     setIsLoading(false)
-  }, [])
+  }
 
   // Load trips when profile tab is active
   useEffect(() => {

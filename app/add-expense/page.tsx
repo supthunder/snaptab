@@ -36,12 +36,58 @@ export default function AddExpensePage() {
   const [availableItems, setAvailableItems] = useState<number[]>([])
 
   useEffect(() => {
-    // Load active trip data
-    const trip = getActiveTrip()
-    if (trip) {
-      setActiveTrip(trip)
-      setSelectedMembers(trip.members) // Default to all members
+    const loadTripData = async () => {
+      // Check if we have a trip code from onboarding
+      const tripCode = localStorage.getItem('snapTab_currentTripCode')
+      
+      if (tripCode) {
+        // Load trip data from database
+        try {
+          const response = await fetch(`/api/trips/${tripCode}`)
+          if (!response.ok) {
+            throw new Error('Failed to load trip data')
+          }
+          
+          const tripData = await response.json()
+          
+          // Convert database trip to our Trip interface
+          const trip: Trip = {
+            id: tripData.trip.id,
+            name: tripData.trip.name,
+            members: tripData.members?.map((member: any) => member.display_name || member.username) || [],
+            totalExpenses: tripData.expenses?.reduce((sum: number, expense: any) => sum + expense.total_amount, 0) || 0,
+            currency: tripData.trip.currency || 'USD',
+            startDate: undefined,
+            endDate: undefined,
+            isActive: tripData.trip.is_active || false,
+            createdAt: tripData.trip.created_at,
+            expenses: []
+          }
+          
+          setActiveTrip(trip)
+          setSelectedMembers(trip.members) // Default to all members
+          
+        } catch (error) {
+          console.error('Failed to load trip from database:', error)
+          // Fallback to localStorage
+          loadFromLocalStorage()
+        }
+      } else {
+        // Fallback to localStorage
+        loadFromLocalStorage()
+      }
     }
+
+    const loadFromLocalStorage = () => {
+      // Load active trip data from localStorage as fallback
+      const trip = getActiveTrip()
+      if (trip) {
+        setActiveTrip(trip)
+        setSelectedMembers(trip.members) // Default to all members
+      }
+    }
+
+    loadTripData()
 
     // Handle URL parameters from scanned receipts
     const urlParams = new URLSearchParams(window.location.search)
@@ -219,27 +265,70 @@ export default function AddExpensePage() {
     setIsSubmitting(true)
 
     try {
-      // Save expense to the active trip
-      const expenseData = {
-        description: formData.description,
-        amount: parseFloat(formData.amount),
-        date: formData.date,
-        paidBy: formData.paidBy,
-        splitWith: selectedMembers,
-        // Category and visual
-        category: formData.category || undefined,
-        summary: formData.summary || undefined,
-        emoji: formData.emoji || undefined,
-        // Item-level details
-        items: receiptItems.length > 0 ? receiptItems : undefined,
-        itemAssignments: itemAssignments.length > 0 ? itemAssignments : undefined,
-        splitMode: splitMode,
-      }
-
-      await addExpenseToTrip(activeTrip.id, expenseData)
+      // Check if we have a trip code from onboarding
+      const tripCode = localStorage.getItem('snapTab_currentTripCode')
+      const username = localStorage.getItem('snapTab_username')
       
-      // Navigate back to home (no popup needed)
-      window.location.href = "/"
+      if (tripCode && username) {
+        // Save expense to database
+        const expenseData = {
+          name: formData.description,
+          description: formData.description,
+          merchant_name: formData.description,
+          total_amount: parseFloat(formData.amount),
+          currency: activeTrip.currency,
+          expense_date: formData.date,
+          paid_by_username: username,
+          split_with_usernames: selectedMembers,
+          split_mode: splitMode,
+          category: formData.category || undefined,
+          summary: formData.summary || undefined,
+          emoji: formData.emoji || undefined,
+          items: receiptItems.length > 0 ? receiptItems.map((item, index) => ({
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity || 1,
+            item_order: index
+          })) : []
+        }
+
+        const response = await fetch(`/api/trips/${tripCode}/expenses`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(expenseData)
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to save expense')
+        }
+
+        // Navigate back to home (no popup needed)
+        window.location.href = "/"
+        
+      } else {
+        // Fallback to localStorage
+        const expenseData = {
+          description: formData.description,
+          amount: parseFloat(formData.amount),
+          date: formData.date,
+          paidBy: formData.paidBy,
+          splitWith: selectedMembers,
+          // Category and visual
+          category: formData.category || undefined,
+          summary: formData.summary || undefined,
+          emoji: formData.emoji || undefined,
+          // Item-level details
+          items: receiptItems.length > 0 ? receiptItems : undefined,
+          itemAssignments: itemAssignments.length > 0 ? itemAssignments : undefined,
+          splitMode: splitMode,
+        }
+
+        await addExpenseToTrip(activeTrip.id, expenseData)
+        
+        // Navigate back to home (no popup needed)
+        window.location.href = "/"
+      }
       
     } catch (error) {
       console.error("Error saving expense:", error)

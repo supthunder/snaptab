@@ -47,14 +47,14 @@ export function getTrips(): Trip[] {
   
   const stored = localStorage.getItem('snaptab-trips')
   if (!stored) {
-    // Return default mock data if nothing stored
-    return getDefaultTrips()
+    // Return empty array instead of mock data
+    return []
   }
   
   try {
     return JSON.parse(stored)
   } catch {
-    return getDefaultTrips()
+    return []
   }
 }
 
@@ -120,36 +120,6 @@ export function getRecentExpenses(tripId?: string, limit: number = 5): Expense[]
 // Generate unique ID
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2)
-}
-
-// Get default mock data
-function getDefaultTrips(): Trip[] {
-  return [
-    {
-      id: "1",
-      name: "Tokyo Adventure",
-      members: ["You", "Sarah", "Mike", "Emma"],
-      totalExpenses: 0,
-      currency: "USD",
-      startDate: "2024-01-10",
-      endDate: "2024-01-20",
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      expenses: []
-    },
-    {
-      id: "2",
-      name: "Paris Weekend",
-      members: ["You", "Sarah", "Mike"],
-      totalExpenses: 0,
-      currency: "EUR",
-      startDate: "2023-12-15",
-      endDate: "2023-12-18",
-      isActive: false,
-      createdAt: new Date().toISOString(),
-      expenses: []
-    }
-  ]
 }
 
 // Calculate user balance for a trip
