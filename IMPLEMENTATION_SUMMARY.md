@@ -88,9 +88,9 @@ NEXT_PUBLIC_ORIGIN=http://localhost:3000
 
 #### For Users
 1. Visit `/auth` page
-2. Click "Sign Up" tab
-3. Enter username and display name
-4. Click "Create Account with Passkey"
+2. Click "Create Account" tab
+3. Enter username and display name (identifier-first approach)
+4. Click "Create Account & Passkey"
 5. Use Face ID/Touch ID to create passkey
 6. Account created and ready to use!
 

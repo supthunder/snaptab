@@ -60,15 +60,15 @@ export default function PasskeySignup({ onSuccess, onError }: PasskeySignupProps
       const result = await registerPasskey(username.trim(), displayName.trim() || undefined)
       
       if (result.success) {
-        setSuccess('Passkey created successfully! You can now use it to sign in.')
+        setSuccess('Account created successfully with passkey!')
         onSuccess({
           id: result.credentialId || '',
           username: username.trim(),
           displayName: displayName.trim() || undefined
         })
       } else {
-        setError(result.error || 'Failed to create passkey')
-        onError?.(result.error || 'Failed to create passkey')
+        setError(result.error || 'Failed to create account with passkey')
+        onError?.(result.error || 'Failed to create account with passkey')
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
@@ -119,10 +119,10 @@ export default function PasskeySignup({ onSuccess, onError }: PasskeySignupProps
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
-          Sign Up with Passkey
+          Create Account
         </CardTitle>
         <CardDescription>
-          Create your account and set up a passkey for secure, passwordless authentication
+          Enter your username and name, then create a passkey for secure, passwordless authentication
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -141,15 +141,16 @@ export default function PasskeySignup({ onSuccess, onError }: PasskeySignupProps
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="displayName">Display Name (Optional)</Label>
+            <Label htmlFor="displayName">Display Name</Label>
             <Input
               id="displayName"
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Enter your display name"
+              placeholder="Enter your full name"
               disabled={isLoading}
             />
+            <p className="text-sm text-gray-500">This name will be shown when you sign in with your passkey</p>
           </div>
 
           {error && (
@@ -178,7 +179,7 @@ export default function PasskeySignup({ onSuccess, onError }: PasskeySignupProps
             ) : (
               <>
                 <Shield className="mr-2 h-4 w-4" />
-                Create Account with Passkey
+                Create Account & Passkey
               </>
             )}
           </Button>
@@ -188,8 +189,8 @@ export default function PasskeySignup({ onSuccess, onError }: PasskeySignupProps
           <div className="flex items-start gap-2">
             <Smartphone className="h-4 w-4 text-blue-600 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <p className="font-medium">On iOS:</p>
-              <p>Use Face ID or Touch ID to create your passkey. This will be stored securely on your device.</p>
+              <p className="font-medium">How it works:</p>
+              <p>After entering your details, you'll use Face ID or Touch ID to create a secure passkey. No passwords needed!</p>
             </div>
           </div>
         </div>

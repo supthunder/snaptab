@@ -16,6 +16,7 @@ The passkey authentication system allows users to:
 - Supports platform authenticators (Face ID, Touch ID, Windows Hello)
 - No passwords stored or transmitted
 - Cryptographic signatures for authentication
+- **Identifier-first approach** following Web.dev and FIDO Alliance best practices
 
 ### 📱 iOS Support
 - Optimized for iOS Safari and Chrome
@@ -107,8 +108,8 @@ Visit `/auth` to access the authentication page.
 
 ### 2. Sign Up
 1. Enter a username (required)
-2. Enter display name (optional)
-3. Click "Create Account with Passkey"
+2. Enter display name (recommended)
+3. Click "Create Account & Passkey"
 4. Follow iOS prompts to create passkey with Face ID/Touch ID
 5. Account created and passkey stored
 

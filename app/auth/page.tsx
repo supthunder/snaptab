@@ -34,7 +34,7 @@ export default function AuthPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsTrigger value="signup">Create Account</TabsTrigger>
             <TabsTrigger value="login">Sign In</TabsTrigger>
           </TabsList>
           
