@@ -69,6 +69,20 @@ export interface ItemAssignment {
   assigned_at: string
 }
 
+export interface PasskeyCredential {
+  id: string
+  user_id: string
+  credential_id: string
+  public_key: string
+  counter: number
+  device_type: string
+  backup_eligible: boolean
+  backup_state: boolean
+  transports: string[]
+  created_at: string
+  last_used: string
+}
+
 // Database initialization - create the new schema
 export async function initializeNewDatabase() {
   try {
@@ -162,6 +176,23 @@ export async function initializeNewDatabase() {
       )
     `
 
+    // Create passkey_credentials table
+    await sql`
+      CREATE TABLE IF NOT EXISTS passkey_credentials (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        credential_id TEXT UNIQUE NOT NULL,
+        public_key TEXT NOT NULL,
+        counter BIGINT NOT NULL DEFAULT 0,
+        device_type VARCHAR(50),
+        backup_eligible BOOLEAN DEFAULT false,
+        backup_state BOOLEAN DEFAULT false,
+        transports JSONB DEFAULT '[]'::jsonb,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        last_used TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+
     // Create indexes (with error handling)
     console.log('Creating indexes...')
     try {
@@ -181,6 +212,8 @@ export async function initializeNewDatabase() {
       await sql`CREATE INDEX IF NOT EXISTS idx_item_assignments_item ON item_assignments(expense_item_id)`
       await sql`CREATE INDEX IF NOT EXISTS idx_item_assignments_user ON item_assignments(user_id)`
       await sql`CREATE INDEX IF NOT EXISTS idx_expenses_split_with ON expenses USING GIN (split_with)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_passkey_credentials_user ON passkey_credentials(user_id)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_passkey_credentials_credential_id ON passkey_credentials(credential_id)`
       console.log('Indexes created successfully')
     } catch (indexError) {
       console.warn('Some indexes may have failed to create:', indexError)
@@ -704,6 +737,137 @@ function calculateOptimalTransactions(balances: SettlementBalance[]): Settlement
 // Utility Functions
 function isValidUsername(username: string): boolean {
   return /^[a-zA-Z0-9_]{3,50}$/.test(username)
+}
+
+// Passkey Credential Management Functions
+export async function createPasskeyCredential(
+  userId: string,
+  credentialId: string,
+  publicKey: string,
+  counter: number,
+  deviceType?: string,
+  backupEligible?: boolean,
+  backupState?: boolean,
+  transports?: string[]
+): Promise<PasskeyCredential | null> {
+  try {
+    const result = await sql`
+      INSERT INTO passkey_credentials (
+        user_id, credential_id, public_key, counter, device_type, 
+        backup_eligible, backup_state, transports
+      )
+      VALUES (
+        ${userId}, ${credentialId}, ${publicKey}, ${counter}, ${deviceType || 'unknown'},
+        ${backupEligible || false}, ${backupState || false}, ${JSON.stringify(transports || [])}
+      )
+      RETURNING *
+    `
+    
+    if (result.rows.length === 0) return null
+    
+    const row = result.rows[0]
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      credential_id: row.credential_id,
+      public_key: row.public_key,
+      counter: row.counter,
+      device_type: row.device_type,
+      backup_eligible: row.backup_eligible,
+      backup_state: row.backup_state,
+      transports: row.transports,
+      created_at: row.created_at,
+      last_used: row.last_used
+    }
+  } catch (error) {
+    console.error('Error creating passkey credential:', error)
+    return null
+  }
+}
+
+export async function getPasskeyCredentialByCredentialId(credentialId: string): Promise<PasskeyCredential | null> {
+  try {
+    const result = await sql`
+      SELECT * FROM passkey_credentials 
+      WHERE credential_id = ${credentialId}
+    `
+    
+    if (result.rows.length === 0) return null
+    
+    const row = result.rows[0]
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      credential_id: row.credential_id,
+      public_key: row.public_key,
+      counter: row.counter,
+      device_type: row.device_type,
+      backup_eligible: row.backup_eligible,
+      backup_state: row.backup_state,
+      transports: row.transports,
+      created_at: row.created_at,
+      last_used: row.last_used
+    }
+  } catch (error) {
+    console.error('Error getting passkey credential:', error)
+    return null
+  }
+}
+
+export async function getPasskeyCredentialsByUserId(userId: string): Promise<PasskeyCredential[]> {
+  try {
+    const result = await sql`
+      SELECT * FROM passkey_credentials 
+      WHERE user_id = ${userId}
+      ORDER BY created_at DESC
+    `
+    
+    return result.rows.map(row => ({
+      id: row.id,
+      user_id: row.user_id,
+      credential_id: row.credential_id,
+      public_key: row.public_key,
+      counter: row.counter,
+      device_type: row.device_type,
+      backup_eligible: row.backup_eligible,
+      backup_state: row.backup_state,
+      transports: row.transports,
+      created_at: row.created_at,
+      last_used: row.last_used
+    }))
+  } catch (error) {
+    console.error('Error getting passkey credentials for user:', error)
+    return []
+  }
+}
+
+export async function updatePasskeyCredentialCounter(credentialId: string, counter: number): Promise<boolean> {
+  try {
+    const result = await sql`
+      UPDATE passkey_credentials 
+      SET counter = ${counter}, last_used = NOW()
+      WHERE credential_id = ${credentialId}
+    `
+    
+    return result.rowCount > 0
+  } catch (error) {
+    console.error('Error updating passkey credential counter:', error)
+    return false
+  }
+}
+
+export async function deletePasskeyCredential(credentialId: string): Promise<boolean> {
+  try {
+    const result = await sql`
+      DELETE FROM passkey_credentials 
+      WHERE credential_id = ${credentialId}
+    `
+    
+    return result.rowCount > 0
+  } catch (error) {
+    console.error('Error deleting passkey credential:', error)
+    return false
+  }
 }
 
 async function generateUniqueTripCode(): Promise<number> {

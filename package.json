@@ -37,6 +37,8 @@
     "@radix-ui/react-toggle": "1.1.1",
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
+    "@simplewebauthn/browser": "^13.1.2",
+    "@simplewebauthn/server": "^13.1.2",
     "@vercel/analytics": "^1.5.0",
     "@vercel/postgres": "^0.10.0",
     "autoprefixer": "^10.4.20",
