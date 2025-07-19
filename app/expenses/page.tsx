@@ -20,7 +20,77 @@ export default function ExpensesPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Load real data from localStorage
+    loadTripData()
+  }, [])
+
+  const loadTripData = async () => {
+    setIsLoading(true)
+    
+    try {
+      // Check if we have a trip code from the database
+      const tripCode = localStorage.getItem('snapTab_currentTripCode')
+      
+      if (tripCode) {
+        // Load trip data from database
+        try {
+          const response = await fetch(`/api/trips/${tripCode}`)
+          if (!response.ok) {
+            throw new Error('Failed to load trip data')
+          }
+          
+          const tripData = await response.json()
+          
+          // Convert database trip to our Trip interface
+          const trip: Trip = {
+            id: tripData.trip.id,
+            name: tripData.trip.name,
+            members: tripData.members?.map((member: any) => member.display_name || member.username) || [],
+            totalExpenses: tripData.expenses?.reduce((sum: number, expense: any) => sum + parseFloat(expense.total_amount || 0), 0) || 0,
+            currency: tripData.trip.currency || 'USD',
+            startDate: undefined,
+            endDate: undefined,
+            isActive: tripData.trip.is_active || false,
+            createdAt: tripData.trip.created_at,
+            expenses: tripData.expenses?.map((expense: any) => ({
+              id: expense.id,
+              tripId: expense.trip_id,
+              description: expense.name,
+              amount: parseFloat(expense.total_amount || 0),
+              date: expense.expense_date,
+              paidBy: expense.paid_by_username || "You",
+              splitWith: expense.split_with || [],
+              category: expense.category,
+              summary: expense.summary,
+              emoji: expense.emoji,
+              createdAt: expense.created_at,
+              items: expense.items || [],
+              itemAssignments: expense.item_assignments || [],
+              splitMode: expense.split_mode || 'even'
+            })) || []
+          }
+          
+          setActiveTrip(trip)
+          setExpenses(trip.expenses)
+          
+        } catch (error) {
+          console.error('Failed to load trip from database:', error)
+          // Fallback to localStorage
+          loadFromLocalStorage()
+        }
+      } else {
+        // Fallback to localStorage
+        loadFromLocalStorage()
+      }
+    } catch (error) {
+      console.error('Error loading trip data:', error)
+      loadFromLocalStorage()
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const loadFromLocalStorage = () => {
+    // Load data from localStorage as fallback
     const trip = getActiveTrip()
     if (trip) {
       setActiveTrip(trip)
@@ -29,9 +99,7 @@ export default function ExpensesPage() {
       const tripExpenses = getTripExpenses(trip.id)
       setExpenses(tripExpenses)
     }
-    
-    setIsLoading(false)
-  }, [])
+  }
 
   const filteredExpenses = expenses.filter((expense) =>
     expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||

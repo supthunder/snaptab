@@ -163,12 +163,57 @@ export default function HomePage() {
   // Load trips when profile tab is active
   useEffect(() => {
     if (activeTab === 'profile') {
-      setIsTripsLoading(true)
-      const loadedTrips = getTrips()
-      setTrips(loadedTrips)
-      setIsTripsLoading(false)
+      loadUserTrips()
     }
   }, [activeTab])
+
+  const loadUserTrips = async () => {
+    setIsTripsLoading(true)
+    try {
+      const username = localStorage.getItem('snapTab_username')
+      if (!username) {
+        // No username, fallback to localStorage trips
+        const localTrips = getTrips()
+        setTrips(localTrips)
+        return
+      }
+
+      // Try to load trips from database
+      const response = await fetch(`/api/trips?username=${encodeURIComponent(username)}`)
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Convert database trips to our Trip interface
+        const dbTrips = data.trips.map((trip: any) => ({
+          id: trip.id,
+          name: trip.name,
+          members: [], // We'll need member info if we want to show it
+          totalExpenses: 0, // We'll need to calculate this
+          currency: trip.currency,
+          startDate: undefined,
+          endDate: undefined,
+          isActive: trip.is_active,
+          createdAt: trip.created_at,
+          expenses: [],
+          tripCode: trip.trip_code // Include trip code for database trips
+        }))
+        
+        setTrips(dbTrips)
+      } else {
+        // Database query failed, fallback to localStorage
+        console.warn('Failed to load trips from database, using localStorage fallback')
+        const localTrips = getTrips()
+        setTrips(localTrips)
+      }
+    } catch (error) {
+      console.error('Error loading user trips:', error)
+      // Fallback to localStorage trips
+      const localTrips = getTrips()
+      setTrips(localTrips)
+    } finally {
+      setIsTripsLoading(false)
+    }
+  }
 
   const handleScanClick = () => {
     fileInputRef.current?.click()
@@ -349,14 +394,24 @@ export default function HomePage() {
   }
 
   const handleTripSelect = (tripId: string) => {
-    // Set selected trip as active and others as inactive
-    const updatedTrips = trips.map(trip => ({
-      ...trip,
-      isActive: trip.id === tripId
-    }))
+    const selectedTrip = trips.find(trip => trip.id === tripId)
     
-    setTrips(updatedTrips)
-    saveTrips(updatedTrips)
+    if (selectedTrip?.tripCode) {
+      // This is a database trip - set the trip code in localStorage
+      localStorage.setItem('snapTab_currentTripCode', selectedTrip.tripCode.toString())
+    } else {
+      // This is a localStorage trip - use the old method
+      const updatedTrips = trips.map(trip => ({
+        ...trip,
+        isActive: trip.id === tripId
+      }))
+      
+      setTrips(updatedTrips)
+      saveTrips(updatedTrips)
+      
+      // Clear any database trip code since we're using localStorage trip
+      localStorage.removeItem('snapTab_currentTripCode')
+    }
     
     // Switch to home tab and refresh data
     setActiveTab('home')

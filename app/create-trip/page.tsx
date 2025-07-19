@@ -1,253 +1,246 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
-import { ArrowLeft, Users, Plus, X } from "lucide-react"
+import { ArrowLeft, Calendar, Users, Coins, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { getTrips, saveTrips, type Trip } from "@/lib/data"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function CreateTripPage() {
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
-    startDate: "",
-    endDate: "",
     currency: "USD",
+    startDate: "",
+    endDate: ""
   })
 
-  const [members, setMembers] = useState<string[]>(["You"])
+  const [members, setMembers] = useState<string[]>([])
   const [newMember, setNewMember] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const currencies = [
-    { code: "USD", name: "US Dollar", symbol: "$" },
-    { code: "EUR", name: "Euro", symbol: "€" },
-    { code: "GBP", name: "British Pound", symbol: "£" },
-    { code: "JPY", name: "Japanese Yen", symbol: "¥" },
-    { code: "CAD", name: "Canadian Dollar", symbol: "C$" },
-    { code: "AUD", name: "Australian Dollar", symbol: "A$" },
+    { value: "USD", label: "USD ($)", flag: "🇺🇸" },
+    { value: "EUR", label: "EUR (€)", flag: "🇪🇺" },
+    { value: "GBP", label: "GBP (£)", flag: "🇬🇧" },
+    { value: "JPY", label: "JPY (¥)", flag: "🇯🇵" },
+    { value: "CAD", label: "CAD ($)", flag: "🇨🇦" },
+    { value: "AUD", label: "AUD ($)", flag: "🇦🇺" }
   ]
 
-  const handleAddMember = () => {
+  const addMember = () => {
     if (newMember.trim() && !members.includes(newMember.trim())) {
       setMembers([...members, newMember.trim()])
       setNewMember("")
     }
   }
 
-  const handleRemoveMember = (memberToRemove: string) => {
-    if (memberToRemove !== "You") {
-      setMembers(members.filter(member => member !== memberToRemove))
-    }
+  const removeMember = (member: string) => {
+    setMembers(members.filter(m => m !== member))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError(null)
 
     try {
-      // Get existing trips and set all as inactive
-      const existingTrips = getTrips()
-      const updatedTrips = existingTrips.map(trip => ({ ...trip, isActive: false }))
-
-      // Create new trip
-      const newTrip: Trip = {
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2),
-        name: formData.name,
-        members: members,
-        totalExpenses: 0,
-        currency: formData.currency,
-        startDate: formData.startDate || undefined,
-        endDate: formData.endDate || undefined,
-        isActive: true, // Set as active trip
-        createdAt: new Date().toISOString(),
-        expenses: []
+      // Get username from localStorage
+      const username = localStorage.getItem('snapTab_username')
+      const displayName = localStorage.getItem('snapTab_displayName')
+      
+      if (!username) {
+        throw new Error('No username found. Please complete onboarding first.')
       }
 
-      // Save all trips (existing + new)
-      saveTrips([...updatedTrips, newTrip])
+      // First, create/ensure the user exists in the database
+      const userResponse = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username,
+          displayName: displayName || username
+        })
+      })
 
-      // Navigate back to home (no popup needed)
+      if (!userResponse.ok) {
+        throw new Error('Failed to create user')
+      }
+
+      // Create the trip in the database
+      const tripResponse = await fetch('/api/trips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          currency: formData.currency,
+          username: username
+        })
+      })
+
+      if (!tripResponse.ok) {
+        const errorData = await tripResponse.json()
+        throw new Error(errorData.error || 'Failed to create trip')
+      }
+
+      const tripData = await tripResponse.json()
+      
+      // Store the trip code in localStorage so other parts of the app can find it
+      localStorage.setItem('snapTab_currentTripCode', tripData.tripCode.toString())
+      
+      // TODO: If we want to invite other members, we'll need to implement that
+      // For now, just the creator is added to the trip
+      
+      // Navigate back to home
       window.location.href = "/"
       
     } catch (error) {
       console.error("Error creating trip:", error)
-      alert("Failed to create trip. Please try again.")
+      setError(error instanceof Error ? error.message : "Failed to create trip. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const isValid = formData.name.length >= 3
+
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <header className="p-6 pt-16">
+      <header className="p-6 pt-16 safe-area-top">
         <div className="flex items-center mb-6">
           <Button variant="ghost" size="icon" className="mr-4" onClick={() => window.history.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-medium">Create Trip</h1>
+          <h1 className="text-xl font-medium">Create New Trip</h1>
         </div>
       </header>
 
-      {/* Form */}
-      <main className="flex-1 px-6 pb-32 overflow-y-auto">
+      <main className="flex-1 px-6 pb-24 overflow-y-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Details */}
-          <Card className="minimal-card">
-            <CardContent className="p-6 space-y-4">
-              <div>
-                <Label htmlFor="name" className="text-muted-foreground text-sm">
-                  Trip Name *
-                </Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., Tokyo Adventure"
-                  value={formData.name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                  className="mt-2 bg-background border-border rounded-xl h-12"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="description" className="text-muted-foreground text-sm">
-                  Description (optional)
-                </Label>
-                <Input
-                  id="description"
-                  placeholder="Brief description of your trip"
-                  value={formData.description}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                  className="mt-2 bg-background border-border rounded-xl h-12"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="startDate" className="text-muted-foreground text-sm">
-                    Start Date (optional)
-                  </Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
-                    className="mt-2 bg-background border-border rounded-xl h-12"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="endDate" className="text-muted-foreground text-sm">
-                    End Date (optional)
-                  </Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
-                    className="mt-2 bg-background border-border rounded-xl h-12"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="currency" className="text-muted-foreground text-sm">
-                  Currency
-                </Label>
-                <select
-                  id="currency"
-                  value={formData.currency}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
-                  className="mt-2 w-full bg-background border border-border rounded-xl h-12 px-4"
-                  required
-                >
-                  {currencies.map((currency) => (
-                    <option key={currency.code} value={currency.code}>
-                      {currency.code} - {currency.name} ({currency.symbol})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Members */}
+          {/* Trip Name */}
           <Card className="minimal-card">
             <CardContent className="p-6">
-              <div className="flex items-center mb-4">
-                <Users className="h-5 w-5 mr-2 text-primary" />
-                <h3 className="font-medium">Trip Members</h3>
-              </div>
-
-              {/* Current Members */}
-              <div className="space-y-2 mb-4">
-                {members.map((member) => (
-                  <div
-                    key={member}
-                    className="flex items-center justify-between p-3 bg-background rounded-xl border border-border"
-                  >
-                    <span className="font-medium">{member}</span>
-                    {member !== "You" && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveMember(member)}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Add Member */}
-              <div className="flex space-x-2">
-                <Input
-                  placeholder="Add member name"
-                  value={newMember}
-                  onChange={(e) => setNewMember(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddMember())}
-                  className="flex-1 bg-background border-border rounded-xl h-12"
-                />
-                <Button
-                  type="button"
-                  onClick={handleAddMember}
-                  disabled={!newMember.trim() || members.includes(newMember.trim())}
-                  className="h-12 px-6 rounded-xl"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <p className="text-sm text-muted-foreground mt-3">
-                You can add more members later and invite them to join the trip.
+              <Label htmlFor="trip-name" className="text-foreground mb-3 flex items-center">
+                <span className="mr-2">🗺️</span>
+                Trip Name
+              </Label>
+              <Input
+                id="trip-name"
+                type="text"
+                placeholder="e.g., Tokyo Adventure 2024"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="bg-card border-border text-foreground"
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                This will be shared with your group members
               </p>
             </CardContent>
           </Card>
+
+          {/* Currency */}
+          <Card className="minimal-card">
+            <CardContent className="p-6">
+              <Label className="text-foreground mb-3 flex items-center">
+                <Coins className="h-4 w-4 mr-2" />
+                Base Currency
+              </Label>
+              <Select 
+                value={formData.currency} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+              >
+                <SelectTrigger className="bg-card border-border text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {currencies.map((currency) => (
+                    <SelectItem key={currency.value} value={currency.value}>
+                      {currency.flag} {currency.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-2">
+                All expenses will be tracked in this currency
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Dates (Optional) */}
+          <Card className="minimal-card">
+            <CardContent className="p-6">
+              <Label className="text-foreground mb-3 flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                Trip Dates (Optional)
+              </Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="start-date" className="text-sm text-muted-foreground mb-1 block">
+                    Start Date
+                  </Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="bg-card border-border text-foreground"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="end-date" className="text-sm text-muted-foreground mb-1 block">
+                    End Date
+                  </Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="bg-card border-border text-foreground"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Trip Code Preview */}
+          <Card className="minimal-card">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-foreground font-semibold mb-2">Trip Code</h3>
+              <div className="text-3xl font-bold text-primary mb-1">###</div>
+              <p className="text-muted-foreground text-sm">
+                A unique 3-digit code will be generated for your friends to join
+              </p>
+            </CardContent>
+          </Card>
+
+          {error && (
+            <Card className="minimal-card border-destructive">
+              <CardContent className="p-4">
+                <p className="text-destructive text-sm">{error}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          <Button
+            type="submit"
+            disabled={!isValid || isSubmitting}
+            className="w-full"
+            size="lg"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating Trip...
+              </>
+            ) : (
+              "Create Trip"
+            )}
+          </Button>
         </form>
       </main>
-
-      {/* Bottom Submit Button */}
-      <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
-        <div className="p-8 bg-gradient-to-t from-background via-background/98 to-background/80 backdrop-blur-sm">
-          <div className="max-w-md mx-auto">
-            <Button
-              type="submit"
-              className="w-full h-16 bg-primary hover:bg-primary/90 text-lg font-medium rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
-              disabled={!formData.name.trim() || isSubmitting}
-              onClick={handleSubmit}
-            >
-              {isSubmitting ? "Creating..." : "Create Trip"}
-            </Button>
-          </div>
-        </div>
-      </div>
     </div>
   )
 } 

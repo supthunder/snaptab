@@ -39,6 +39,7 @@ export interface Trip {
   isActive: boolean
   createdAt: string
   expenses: Expense[]
+  tripCode?: number // For database trips with 3-digit codes
 }
 
 // Get all trips from localStorage
