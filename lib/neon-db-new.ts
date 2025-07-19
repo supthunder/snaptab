@@ -69,6 +69,17 @@ export interface ItemAssignment {
   assigned_at: string
 }
 
+export interface PasskeyCredential {
+  id: string
+  user_id: string
+  credential_id: string
+  public_key: string
+  counter: number
+  device_name?: string
+  created_at: string
+  last_used_at?: string
+}
+
 // Database initialization - create the new schema
 export async function initializeNewDatabase() {
   try {
@@ -83,6 +94,20 @@ export async function initializeNewDatabase() {
         avatar_url TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+
+    // Create passkey_credentials table
+    await sql`
+      CREATE TABLE IF NOT EXISTS passkey_credentials (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        credential_id VARCHAR(255) UNIQUE NOT NULL,
+        public_key TEXT NOT NULL,
+        counter BIGINT DEFAULT 0,
+        device_name VARCHAR(100),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        last_used_at TIMESTAMPTZ
       )
     `
 
@@ -166,6 +191,8 @@ export async function initializeNewDatabase() {
     console.log('Creating indexes...')
     try {
       await sql`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_passkey_credentials_user_id ON passkey_credentials(user_id)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_passkey_credentials_credential_id ON passkey_credentials(credential_id)`
       await sql`CREATE INDEX IF NOT EXISTS idx_trips_code ON trips(trip_code)`
       await sql`CREATE INDEX IF NOT EXISTS idx_trips_created_by ON trips(created_by)`
       await sql`CREATE INDEX IF NOT EXISTS idx_trips_active ON trips(is_active)`
@@ -716,6 +743,68 @@ function calculateOptimalTransactions(balances: SettlementBalance[]): Settlement
   }
   
   return transactions
+}
+
+// Passkey credential functions
+export async function savePasskeyCredential(
+  userId: string, 
+  credentialId: string, 
+  publicKey: string, 
+  deviceName?: string
+): Promise<PasskeyCredential | null> {
+  try {
+    const result = await sql`
+      INSERT INTO passkey_credentials (user_id, credential_id, public_key, device_name)
+      VALUES (${userId}, ${credentialId}, ${publicKey}, ${deviceName})
+      RETURNING *
+    `
+    return result.rows[0] as PasskeyCredential
+  } catch (error) {
+    console.error('Error saving passkey credential:', error)
+    return null
+  }
+}
+
+export async function getPasskeyCredentialsByUserId(userId: string): Promise<PasskeyCredential[]> {
+  try {
+    const result = await sql`
+      SELECT * FROM passkey_credentials 
+      WHERE user_id = ${userId} 
+      ORDER BY created_at DESC
+    `
+    return result.rows as PasskeyCredential[]
+  } catch (error) {
+    console.error('Error fetching passkey credentials:', error)
+    return []
+  }
+}
+
+export async function getPasskeyCredentialByCredentialId(credentialId: string): Promise<PasskeyCredential | null> {
+  try {
+    const result = await sql`
+      SELECT * FROM passkey_credentials 
+      WHERE credential_id = ${credentialId} 
+      LIMIT 1
+    `
+    return result.rows.length > 0 ? result.rows[0] as PasskeyCredential : null
+  } catch (error) {
+    console.error('Error fetching passkey credential:', error)
+    return null
+  }
+}
+
+export async function updatePasskeyCredentialCounter(credentialId: string, counter: number): Promise<boolean> {
+  try {
+    await sql`
+      UPDATE passkey_credentials 
+      SET counter = ${counter}, last_used_at = NOW() 
+      WHERE credential_id = ${credentialId}
+    `
+    return true
+  } catch (error) {
+    console.error('Error updating passkey credential counter:', error)
+    return false
+  }
 }
 
 // Utility Functions
