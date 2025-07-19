@@ -158,10 +158,21 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
 
     } catch (error: any) {
       console.error('Error creating account:', error)
+      console.log('Error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      })
+      
       if (error.name === 'NotAllowedError') {
-        setError('Passkey creation was cancelled or failed. Please try again.')
+        setError('Passkey creation was cancelled, timed out, or blocked by the browser. Please try again and make sure to approve the biometric prompt.')
       } else if (error.name === 'InvalidStateError') {
         setError('A passkey already exists for this device. Try signing in instead.')
+      } else if (error.name === 'NotSupportedError') {
+        setError('Passkeys are not supported on this device or browser.')
+      } else if (error.name === 'SecurityError') {
+        setError('Security error: Make sure you\'re using HTTPS or localhost.')
       } else {
         setError(error.message || 'Failed to create account. Please try again.')
       }
@@ -249,8 +260,21 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
 
     } catch (error: any) {
       console.error('Error signing in:', error)
+      console.log('Sign-in error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      })
+      
       if (error.name === 'NotAllowedError') {
-        setError('Authentication was cancelled. Please try again.')
+        setError('Authentication was cancelled, timed out, or blocked. Please try again and approve the biometric prompt.')
+      } else if (error.name === 'NotSupportedError') {
+        setError('Passkeys are not supported on this device or browser.')
+      } else if (error.name === 'SecurityError') {
+        setError('Security error: Make sure you\'re using HTTPS or localhost.')
+      } else if (error.name === 'InvalidStateError') {
+        setError('No passkey found for this account on this device.')
       } else {
         setError(error.message || 'Authentication failed. Please try again.')
       }
