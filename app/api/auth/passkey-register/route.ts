@@ -40,16 +40,35 @@ export async function POST(request: NextRequest) {
       console.log(`Creating new user: ${username}`)
       user = await createUser(username, username) // username as display name
       if (!user) {
+        console.error(`Failed to create user: ${username}`)
         return NextResponse.json({ 
           error: 'Failed to create user' 
         }, { status: 500 })
       }
+      console.log(`Successfully created user:`, { id: user.id, username: user.username })
+    }
+
+    // Validate user data for WebAuthn
+    if (!user.username || user.username.length === 0) {
+      console.error('Invalid user data - username is empty')
+      return NextResponse.json({ 
+        error: 'Invalid user data' 
+      }, { status: 500 })
     }
 
     // Generate challenge and credential creation options
     const challenge = generateChallenge()
     
     const rpId = getRpId(request)
+    
+    // Create WebAuthn user ID (must be 1-64 bytes)
+    const userIdBytes = new TextEncoder().encode(user.username)
+    if (userIdBytes.length === 0 || userIdBytes.length > 64) {
+      console.error(`Invalid user ID length: ${userIdBytes.length} bytes for username: ${user.username}`)
+      return NextResponse.json({ 
+        error: 'Username too long for WebAuthn' 
+      }, { status: 400 })
+    }
     
     const creationOptions = {
       challenge: challenge,
@@ -58,7 +77,7 @@ export async function POST(request: NextRequest) {
         id: rpId
       },
       user: {
-        id: new TextEncoder().encode(user.id),
+        id: userIdBytes,
         name: user.username,
         displayName: user.display_name || user.username
       },

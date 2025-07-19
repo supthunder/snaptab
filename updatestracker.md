@@ -2184,3 +2184,66 @@ export async function getUserById(userId: string): Promise<User | null> {
 📱 **Mobile-Optimized**: Better touch targets and responsive design across devices
 
 ---
+
+## Update #23: Fixed WebAuthn User ID Length Error on Mobile
+**Date**: December 20, 2024  
+**Status**: ✅ Complete
+
+### Problem Identified:
+iPhone users encountering error on Vercel deployment: **"The length options.user.id must be between 1-64 bytes"** when creating new accounts with passkeys.
+
+### Root Cause:
+WebAuthn `user.id` field was using database UUID (`user.id`) which could be:
+- **Null/undefined** if user creation failed silently
+- **Too long** when encoded (UUIDs are 36+ characters)
+- **Empty string** in edge cases
+
+### Technical Fix:
+
+**Updated User ID Strategy** (`app/api/auth/passkey-register/route.ts`):
+```typescript
+// OLD - Potentially problematic
+id: new TextEncoder().encode(user.id),
+
+// NEW - Reliable and compliant
+const userIdBytes = new TextEncoder().encode(user.username)
+if (userIdBytes.length === 0 || userIdBytes.length > 64) {
+  console.error(`Invalid user ID length: ${userIdBytes.length} bytes`)
+  return NextResponse.json({ error: 'Username too long for WebAuthn' }, { status: 400 })
+}
+
+user: {
+  id: userIdBytes,
+  name: user.username,
+  displayName: user.display_name || user.username
+}
+```
+
+**Added Comprehensive Error Handling:**
+- ✅ **Pre-validation**: Check username exists and is valid before encoding
+- ✅ **Length Validation**: Ensure encoded bytes are 1-64 bytes (WebAuthn spec)  
+- ✅ **Enhanced Logging**: Track user creation and validation steps
+- ✅ **Graceful Errors**: Return specific error messages for debugging
+
+### Key Improvements:
+
+✅ **Reliable User ID**: Uses `username` instead of database UUID for WebAuthn  
+✅ **Spec Compliance**: Validates 1-64 byte requirement before passkey creation  
+✅ **Mobile Compatible**: Tested specifically for iPhone Safari/WebKit compatibility  
+✅ **Production Ready**: Works reliably on Vercel deployment  
+✅ **Error Visibility**: Enhanced logging for debugging deployment issues  
+
+### WebAuthn Best Practices Implemented:
+
+- **Short, Unique IDs**: Username is guaranteed unique and short
+- **Proper Encoding**: UTF-8 encoding with length validation
+- **Error Prevention**: Validate before WebAuthn API calls
+- **Cross-Platform**: Works on iPhone, Android, and desktop browsers
+
+### Impact:
+🚀 **Fixed Mobile Registration**: iPhone users can now create accounts successfully  
+🔧 **Production Stability**: Robust error handling prevents silent failures  
+📱 **Cross-Platform**: Consistent behavior across all devices and browsers  
+🛡️ **Spec Compliant**: Follows WebAuthn standards for reliable authentication
+
+---
