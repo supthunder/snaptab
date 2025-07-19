@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { WelcomeStep } from "./welcome-step"
-import { UsernameStep } from "./username-step"
+import { PasskeyAuthStep } from "./passkey-auth-step"
 import { TripChoiceStep } from "./trip-choice-step"
 import { CreateTripStep } from "./create-trip-step"
 import { JoinTripStep } from "./join-trip-step"
@@ -70,7 +70,7 @@ export function OnboardingFlow() {
       case 1:
         return <WelcomeStep onNext={nextStep} />
       case 2:
-        return <UsernameStep onNext={nextStep} data={data} updateData={updateData} />
+        return <PasskeyAuthStep onNext={nextStep} data={data} updateData={updateData} />
       case 3:
         return (
           <TripChoiceStep
