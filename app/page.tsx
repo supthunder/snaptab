@@ -778,6 +778,30 @@ export default function HomePage() {
 
         {activeTab === 'profile' && (
           <div className="space-y-6">
+            {/* Logout Button - Top Right */}
+            <div className="flex justify-end mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  // Clear all authentication data
+                  localStorage.removeItem('snapTab_onboardingComplete')
+                  localStorage.removeItem('snapTab_username')
+                  localStorage.removeItem('snapTab_displayName')
+                  localStorage.removeItem('snapTab_currentTripCode')
+                  localStorage.removeItem('snapTab_currentTripId')
+                  
+                  // Redirect to onboarding
+                  window.location.href = '/onboarding'
+                }}
+                className="text-muted-foreground hover:text-red-500 transition-colors duration-200 flex items-center gap-2"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+              </Button>
+            </div>
             {/* User Profile Section */}
             <div className="text-center mb-8">
               <div className="relative inline-block mb-6">
