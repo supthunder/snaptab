@@ -1761,3 +1761,75 @@ snaptab/
 ├── OPENAI_INTEGRATION.md            # API documentation
 └── updatestracker.md                # This file
 ```
+
+---
+
+## Update #38: WebAuthn SecurityError Fix
+**Date**: December 18, 2024  
+**Status**: ✅ Complete
+
+### Problem Identified:
+The user encountered a WebAuthn SecurityError during passkey registration:
+```
+SecurityError: The relying party ID is not a registrable domain suffix of, nor equal to the current domain.
+```
+
+### Root Cause:
+- **Inconsistent RP ID Configuration**: WebAuthn Relying Party ID was using dynamic environment detection
+- **Domain Mismatch**: The RP ID calculation `process.env.VERCEL_URL?.replace('https://', '')` was not matching the current localhost domain
+- **Import Issues**: Path resolution issues with TypeScript imports
+
+### Changes Made:
+
+#### 1. Fixed Relying Party ID Configuration
+- **Before**: Dynamic RP ID with environment detection
+- **After**: Fixed `'localhost'` for development environment
+- **Files**: `app/api/auth/passkey-register/route.ts`, `app/api/auth/passkey-authenticate/route.ts`
+
+#### 2. Updated WebAuthn Utility Functions
+- Fixed both `generateCredentialCreationOptions` and `generateCredentialRequestOptions`
+- Simplified RP ID to always use `'localhost'` during development
+- **File**: `lib/webauthn-utils.ts`
+
+#### 3. Resolved Import Issues
+- Inlined `generateChallenge()` function to avoid import path problems
+- Removed dependency on `@/lib/webauthn-utils` imports where causing issues
+- Used direct configuration instead of utility functions
+
+#### 4. Enhanced Error Handling
+- Added detailed error logging with error name, message, code, and stack
+- Improved error messages for different WebAuthn failure scenarios:
+  - `NotAllowedError`: Clearer cancellation/timeout guidance
+  - `NotSupportedError`: Device/browser compatibility message
+  - `SecurityError`: HTTPS requirement guidance
+  - `InvalidStateError`: Different messages for registration vs authentication
+
+### Files Modified:
+- `app/api/auth/passkey-register/route.ts` - Fixed RP ID, inlined utilities
+- `app/api/auth/passkey-authenticate/route.ts` - Fixed RP ID, inlined utilities
+- `lib/webauthn-utils.ts` - Updated RP ID configuration
+- `components/onboarding/passkey-auth-step.tsx` - Enhanced error handling
+
+### Testing Instructions:
+1. Go to `/onboarding` page
+2. Enter a username and click "Create Account with Passkey"
+3. When biometric prompt appears, approve it (don't cancel)
+4. Check browser console for detailed error information if issues persist
+
+### Technical Details:
+- **WebAuthn Requirement**: RP ID must exactly match the current domain
+- **Development**: Uses `'localhost'` as RP ID
+- **Production**: Will need domain-specific configuration
+- **Error Types**: Now handles all major WebAuthn error scenarios
+
+### What Was Fixed:
+- ✅ **SecurityError Resolved**: RP ID now matches localhost domain
+- ✅ **Import Issues Fixed**: Removed problematic path dependencies
+- ✅ **Better Error Messages**: Clear user guidance for failures
+- ✅ **Consistent Configuration**: Uniform RP ID across all WebAuthn functions
+- ✅ **Enhanced Debugging**: Detailed console logging for troubleshooting
+
+### Impact:
+The passkey authentication system should now work properly in the development environment without SecurityError issues. Users can successfully register and authenticate using biometric methods (Face ID, Touch ID, Windows Hello).
+
+---
