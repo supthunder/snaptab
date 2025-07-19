@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserByUsername, savePasskeyCredential } from '@/lib/neon-db-new'
+import { getUserByUsername, savePasskeyCredential, createUser } from '@/lib/neon-db-new'
 
 // Generate a cryptographically secure challenge for WebAuthn
 function generateChallenge(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(32))
+}
+
+// Get the correct RP ID based on environment
+function getRpId(request: NextRequest): string {
+  const host = request.headers.get('host')
+  if (!host) return 'localhost'
+  
+  // For localhost development
+  if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    return 'localhost'
+  }
+  
+  // For production (remove port if present)
+  return host.split(':')[0]
 }
 
 // POST /api/auth/passkey-register - Generate registration options
@@ -18,23 +32,30 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Check if user exists
-    const user = await getUserByUsername(username)
+    // Check if user exists, create if not
+    let user = await getUserByUsername(username)
     
     if (!user) {
-      return NextResponse.json({ 
-        error: 'User not found. Please create an account first.' 
-      }, { status: 404 })
+      // Create new user
+      console.log(`Creating new user: ${username}`)
+      user = await createUser(username, username) // username as display name
+      if (!user) {
+        return NextResponse.json({ 
+          error: 'Failed to create user' 
+        }, { status: 500 })
+      }
     }
 
     // Generate challenge and credential creation options
     const challenge = generateChallenge()
     
+    const rpId = getRpId(request)
+    
     const creationOptions = {
       challenge: challenge,
       rp: {
         name: "SnapTab",
-        id: 'localhost' // Always use localhost for development
+        id: rpId
       },
       user: {
         id: new TextEncoder().encode(user.id),

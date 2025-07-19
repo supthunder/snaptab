@@ -29,7 +29,6 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [authMode, setAuthMode] = useState<'signup' | 'signin' | null>(null)
   const [isWebAuthnAvailable, setIsWebAuthnAvailable] = useState(false)
   const [isPlatformAvailable, setIsPlatformAvailable] = useState(false)
 
@@ -50,36 +49,7 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
     setIsValid(isValidUsername)
   }, [username])
 
-  const checkUserExists = async () => {
-    if (!isValid) return
-
-    try {
-      setIsLoading(true)
-      setError(null)
-      
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        if (data.isNew) {
-          setAuthMode('signup')
-        } else {
-          setAuthMode('signin')
-        }
-      } else {
-        throw new Error('Failed to check user')
-      }
-    } catch (error) {
-      console.error('Error checking user:', error)
-      setError('Failed to check username. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // No longer need checkUserExists - show both options directly
 
   const handleCreateAccount = async () => {
     if (!isWebAuthnAvailable) {
@@ -358,7 +328,7 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
-            disabled={authMode !== null}
+            disabled={isLoading}
           />
 
           {!isPlatformAvailable && (
@@ -370,57 +340,32 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
             </Alert>
           )}
 
-          {authMode === null && (
+          {/* Show both options directly - no need to check user existence first */}
+          <div className="space-y-3">
             <Button
-              onClick={checkUserExists}
+              onClick={handleCreateAccount}
               disabled={!isValid || isLoading}
-              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-400 text-white py-3 rounded-full font-semibold"
+              className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 text-white py-3 rounded-full font-semibold flex items-center justify-center gap-2"
             >
-              {isLoading ? 'Checking...' : 'Continue →'}
+              <UserPlus className="w-5 h-5" />
+              {isLoading ? 'Creating Account...' : 'Create Account with Passkey'}
             </Button>
-          )}
-
-          {authMode === 'signup' && (
-            <div className="space-y-4">
-              <p className="text-center text-gray-400">New user! Create your account with a passkey</p>
-              <Button
-                onClick={handleCreateAccount}
-                disabled={isLoading}
-                className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 text-white py-3 rounded-full font-semibold flex items-center justify-center gap-2"
-              >
-                <UserPlus className="w-5 h-5" />
-                {isLoading ? 'Creating Account...' : 'Create Account with Passkey'}
-              </Button>
-            </div>
-          )}
-
-          {authMode === 'signin' && (
-            <div className="space-y-4">
-              <p className="text-center text-gray-400">Welcome back! Sign in with your passkey</p>
-              <Button
+            
+                          <Button
                 onClick={handleSignIn}
-                disabled={isLoading}
-                className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 text-white py-3 rounded-full font-semibold flex items-center justify-center gap-2"
+                disabled={!isValid || isLoading}
+                variant="outline"
+                className="w-full border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white py-3 rounded-full font-semibold flex items-center justify-center gap-2"
               >
                 <Fingerprint className="w-5 h-5" />
                 {isLoading ? 'Signing In...' : 'Sign In with Passkey'}
               </Button>
             </div>
-          )}
-
-          {authMode && (
-            <Button
-              onClick={() => {
-                setAuthMode(null)
-                setError(null)
-                setSuccess(null)
-              }}
-              variant="ghost"
-              className="w-full text-gray-400 hover:text-white"
-            >
-              Try Different Username
-            </Button>
-          )}
+            
+            <p className="text-xs text-gray-500 text-center">
+              <strong>Create Account</strong>: Creates new user if needed<br />
+              <strong>Sign In</strong>: Only for existing users with passkeys
+            </p>
 
           {error && (
             <Alert variant="destructive">

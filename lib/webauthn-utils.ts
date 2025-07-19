@@ -14,9 +14,9 @@ export function generateCredentialCreationOptions(
   userId: string,
   username: string,
   displayName: string,
-  challenge: Uint8Array
+  challenge: Uint8Array,
+  rpId: string = 'localhost'
 ) {
-  const rpId = 'localhost' // Always use localhost for development
 
   return {
     challenge: challenge,
@@ -48,9 +48,9 @@ export function generateCredentialCreationOptions(
  */
 export function generateCredentialRequestOptions(
   challenge: Uint8Array,
-  allowCredentials?: Array<{ id: string; type: "public-key" }>
+  allowCredentials?: Array<{ id: string; type: "public-key" }>,
+  rpId: string = 'localhost'
 ) {
-  const rpId = 'localhost' // Always use localhost for development
 
   return {
     challenge: challenge,

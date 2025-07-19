@@ -6,6 +6,20 @@ function generateChallenge(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(32))
 }
 
+// Get the correct RP ID based on environment
+function getRpId(request: NextRequest): string {
+  const host = request.headers.get('host')
+  if (!host) return 'localhost'
+  
+  // For localhost development
+  if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    return 'localhost'
+  }
+  
+  // For production (remove port if present)
+  return host.split(':')[0]
+}
+
 // POST /api/auth/passkey-authenticate - Generate authentication options
 export async function POST(request: NextRequest) {
   try {
@@ -45,10 +59,12 @@ export async function POST(request: NextRequest) {
       type: "public-key" as const
     }))
 
+    const rpId = getRpId(request)
+    
     const requestOptions = {
       challenge: challenge,
       timeout: 60000,
-      rpId: 'localhost', // Always use localhost for development
+      rpId: rpId,
       allowCredentials: allowCredentials || [],
       userVerification: "required" as const
     }
