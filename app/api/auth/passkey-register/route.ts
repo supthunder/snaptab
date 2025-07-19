@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserByUsername, savePasskeyCredential } from '@/lib/neon-db-new'
-import { generateChallenge, generateCredentialCreationOptions } from '@/lib/webauthn-utils'
+
+// Generate a cryptographically secure challenge for WebAuthn
+function generateChallenge(): Uint8Array {
+  return crypto.getRandomValues(new Uint8Array(32))
+}
 
 // POST /api/auth/passkey-register - Generate registration options
 export async function POST(request: NextRequest) {
@@ -30,7 +34,7 @@ export async function POST(request: NextRequest) {
       challenge: challenge,
       rp: {
         name: "SnapTab",
-        id: process.env.NODE_ENV === 'production' ? process.env.VERCEL_URL?.replace('https://', '') : 'localhost'
+        id: 'localhost' // Always use localhost for development
       },
       user: {
         id: new TextEncoder().encode(user.id),

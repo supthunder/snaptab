@@ -16,9 +16,7 @@ export function generateCredentialCreationOptions(
   displayName: string,
   challenge: Uint8Array
 ) {
-  const rpId = process.env.NODE_ENV === 'production' 
-    ? process.env.VERCEL_URL?.replace('https://', '') || 'snaptab.vercel.app'
-    : 'localhost'
+  const rpId = 'localhost' // Always use localhost for development
 
   return {
     challenge: challenge,
@@ -52,9 +50,7 @@ export function generateCredentialRequestOptions(
   challenge: Uint8Array,
   allowCredentials?: Array<{ id: string; type: "public-key" }>
 ) {
-  const rpId = process.env.NODE_ENV === 'production' 
-    ? process.env.VERCEL_URL?.replace('https://', '') || 'snaptab.vercel.app'
-    : 'localhost'
+  const rpId = 'localhost' // Always use localhost for development
 
   return {
     challenge: challenge,
