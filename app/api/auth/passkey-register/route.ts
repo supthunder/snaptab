@@ -52,13 +52,13 @@ export async function POST(request: NextRequest) {
     const rpId = getRpId(request)
     
     const creationOptions = {
-      challenge: challenge,
+      challenge: Array.from(challenge),
       rp: {
         name: "SnapTab",
         id: rpId
       },
       user: {
-        id: new TextEncoder().encode(user.id),
+        id: Array.from(new TextEncoder().encode(user.username)), // Convert to array for JSON
         name: user.username,
         displayName: user.display_name || user.username
       },
