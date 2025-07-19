@@ -52,6 +52,17 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
     setIsValid(isValidUsername)
   }, [username])
 
+  // Auto-trigger sign in when flow changes to signin
+  useEffect(() => {
+    if (currentFlow === 'signin' && !isLoading && !error && !success) {
+      const timer = setTimeout(() => {
+        handleSignInFlow()
+      }, 500) // Small delay to let the UI render
+      
+      return () => clearTimeout(timer)
+    }
+  }, [currentFlow, isLoading, error, success])
+
   const resetToChoose = () => {
     setCurrentFlow('choose')
     setError(null)
@@ -134,7 +145,17 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
         username: result.user.username,
         displayName: result.user.displayName 
       })
-      setTimeout(() => onNext(), 2000)
+      
+      // For existing users, redirect to home page instead of continuing onboarding
+      setTimeout(() => {
+        // Store user data in localStorage for the main app
+        localStorage.setItem('snapTab_username', result.user.username)
+        localStorage.setItem('snapTab_displayName', result.user.displayName || result.user.username)
+        localStorage.setItem('snapTab_onboardingComplete', 'true')
+        
+        // Redirect to main app (existing user)
+        window.location.href = '/'
+      }, 1500)
 
     } catch (error: any) {
       console.error('Error signing in:', error)
@@ -371,14 +392,31 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.8 }}
+        className="text-center"
       >
-        <Button
-          onClick={handleSignInFlow}
-          disabled={isLoading}
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-full font-semibold text-lg"
-        >
-          {isLoading ? 'Authenticating...' : 'Authenticate with Passkey'}
-        </Button>
+        {isLoading ? (
+          <div className="flex flex-col items-center space-y-4">
+            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-blue-400 font-semibold">Authenticating with passkey...</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center space-y-4">
+            <p className="text-gray-400">
+              {error ? 'Authentication failed.' : 'Tap your biometric sensor when prompted'}
+            </p>
+            {error && (
+              <Button
+                onClick={() => {
+                  setError(null)
+                  handleSignInFlow()
+                }}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold"
+              >
+                Try Again
+              </Button>
+            )}
+          </div>
+        )}
       </motion.div>
 
       {error && (

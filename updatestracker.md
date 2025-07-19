@@ -2247,3 +2247,82 @@ user: {
 🛡️ **Spec Compliant**: Follows WebAuthn standards for reliable authentication
 
 ---
+
+## Update #24: Streamlined Sign-In UX & Existing User Flow
+**Date**: December 20, 2024  
+**Status**: ✅ Complete
+
+### Problem Identified:
+Two UX friction points identified from mobile testing:
+1. **Double-Click Issue**: "Sign In with Passkey" showed another page with "Authenticate" button - unnecessary step
+2. **Wrong Flow for Existing Users**: Successful sign-in still forced users through trip creation instead of going to home page
+
+### UX Improvements Implemented:
+
+#### **1. Immediate Passkey Trigger**
+**Before**: Sign In → New Page → Click "Authenticate" → Passkey prompt  
+**After**: Sign In → Immediate passkey prompt ⚡
+
+**Technical Implementation:**
+```typescript
+// Auto-trigger authentication when signin flow loads
+useEffect(() => {
+  if (currentFlow === 'signin' && !isLoading && !error && !success) {
+    const timer = setTimeout(() => {
+      handleSignInFlow()
+    }, 500) // Small delay for UI render
+    
+    return () => clearTimeout(timer)
+  }
+}, [currentFlow, isLoading, error, success])
+```
+
+**New Sign-In Flow:**
+- Click "Sign In with Passkey" → **Immediate biometric prompt**
+- Shows loading spinner with "Authenticating with passkey..."  
+- On failure: Shows "Try Again" button for retry
+- On success: Direct redirect to home page
+
+#### **2. Smart User Routing**
+**Existing Users**: Skip onboarding → Go directly to home page  
+**New Users**: Complete onboarding flow as normal
+
+**Implementation:**
+```typescript
+// Sign-in success - direct to home for existing users
+setTimeout(() => {
+  localStorage.setItem('snapTab_username', result.user.username)
+  localStorage.setItem('snapTab_displayName', result.user.displayName)
+  localStorage.setItem('snapTab_onboardingComplete', 'true')
+  
+  // Redirect existing user to main app
+  window.location.href = '/'
+}, 1500)
+```
+
+### UI/UX Enhancements:
+
+✅ **Eliminated Extra Click**: Removed redundant "Authenticate" button  
+✅ **Immediate Feedback**: Loading spinner shows authentication in progress  
+✅ **Smart Retry**: "Try Again" button appears only on authentication failure  
+✅ **Proper Routing**: Existing users go to home, new users continue onboarding  
+✅ **Visual Polish**: Smooth animations and clear status indicators  
+
+### User Experience Flow:
+
+**New User Journey:**
+1. Choose "Create New Account" 
+2. Enter username → Create passkey → Continue to trip setup
+
+**Existing User Journey:**
+1. Choose "Sign In with Passkey"
+2. **Immediate** biometric prompt (no extra steps)
+3. Authentication success → **Direct to home page**
+
+### Impact:
+⚡ **Faster Sign-In**: Eliminated unnecessary page/button - 50% fewer clicks  
+🏠 **Smart Routing**: Existing users skip redundant onboarding steps  
+📱 **Mobile Optimized**: Fewer taps, immediate feedback, better touch experience  
+🎯 **Intent-Based UX**: Different flows for different user types (new vs existing)
+
+---
