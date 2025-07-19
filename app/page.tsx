@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle, Home, User, Users, Calendar } from "lucide-react"
+import { MembersList, MembersModal } from "@/components/ui/members-list"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -55,6 +56,13 @@ export default function HomePage() {
   } | null>(null)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const profileInputRef = useRef<HTMLInputElement>(null)
+  const [isMembersModalOpen, setIsMembersModalOpen] = useState(false)
+  const [tripMembers, setTripMembers] = useState<Array<{
+    id: string
+    username: string
+    display_name?: string
+    avatar_url?: string
+  }>>([])
 
   // Check for first-time user and redirect to onboarding
   useEffect(() => {
@@ -129,6 +137,9 @@ export default function HomePage() {
       }
       
       setActiveTrip(trip)
+      
+      // Set trip members for the members list component
+      setTripMembers(tripData.members || [])
       
       // Get recent expenses
       const recentExpenses = trip.expenses.slice(-6).reverse()
@@ -702,9 +713,19 @@ export default function HomePage() {
                 {getCurrencySymbol(activeTrip.currency)}
                 {Math.abs(userBalance).toFixed(2)}
               </p>
-              <div className="flex justify-between text-sm text-muted-foreground">
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
                 <span>Total: {getCurrencySymbol(activeTrip.currency)}{activeTrip.totalExpenses.toFixed(2)}</span>
-                <span>{activeTrip.members.length} members</span>
+                <div className="flex items-center space-x-2">
+                  <MembersList 
+                    members={tripMembers}
+                    maxVisible={3}
+                    onEditClick={() => setIsMembersModalOpen(true)}
+                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {activeTrip.members.length} members
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1011,6 +1032,14 @@ export default function HomePage() {
         accept="image/*" 
         className="hidden" 
         onChange={handleAvatarUpload} 
+      />
+
+      {/* Members Modal */}
+      <MembersModal
+        members={tripMembers}
+        isOpen={isMembersModalOpen}
+        onClose={() => setIsMembersModalOpen(false)}
+        canEdit={false} // For now, we'll keep it read-only
       />
     </div>
   )
