@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Fingerprint, Key, UserPlus, LogIn, AlertTriangle } from "lucide-react"
+import { Fingerprint, Key, UserPlus, LogIn, AlertTriangle, ArrowLeft } from "lucide-react"
 import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, arrayBufferToBase64url } from "@/lib/webauthn-utils"
 interface OnboardingData {
   username?: string
@@ -23,7 +23,10 @@ interface PasskeyAuthStepProps {
   updateData: (data: Partial<OnboardingData>) => void
 }
 
+type AuthFlow = 'choose' | 'signin' | 'create'
+
 export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepProps) {
+  const [currentFlow, setCurrentFlow] = useState<AuthFlow>('choose')
   const [username, setUsername] = useState(data.username || "")
   const [isValid, setIsValid] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -49,11 +52,113 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
     setIsValid(isValidUsername)
   }, [username])
 
-  // No longer need checkUserExists - show both options directly
+  const resetToChoose = () => {
+    setCurrentFlow('choose')
+    setError(null)
+    setSuccess(null)
+    setUsername('')
+  }
+
+  const handleSignInFlow = async () => {
+    if (!isWebAuthnAvailable) {
+      setError('Passkeys are not supported on this device.')
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      // For sign-in, we don't need a username - passkeys are device-bound
+      // Step 1: Get authentication options from server (without username)
+      const optionsResponse = await fetch('/api/auth/passkey-authenticate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}) // Empty body - let server handle device-based auth
+      })
+
+      if (!optionsResponse.ok) {
+        const errorData = await optionsResponse.json()
+        throw new Error(errorData.error || 'No passkeys found on this device')
+      }
+
+      const { requestOptions, challenge } = await optionsResponse.json()
+
+      // Step 2: Get credential using WebAuthn API
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          ...requestOptions,
+          challenge: new Uint8Array(requestOptions.challenge),
+          allowCredentials: requestOptions.allowCredentials?.map((cred: any) => ({
+            ...cred,
+            id: new Uint8Array(Buffer.from(cred.id, 'base64'))
+          })) || []
+        }
+      }) as PublicKeyCredential
+
+      if (!credential) {
+        throw new Error('Authentication failed')
+      }
+
+      // Step 3: Verify credential with server
+      const response = credential.response as AuthenticatorAssertionResponse
+      const authData = {
+        credential: {
+          id: credential.id,
+          rawId: arrayBufferToBase64url(credential.rawId),
+          response: {
+            clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+            authenticatorData: arrayBufferToBase64url(response.authenticatorData),
+            signature: arrayBufferToBase64url(response.signature),
+            counter: 0 // Would be extracted from authenticatorData in production
+          },
+          type: credential.type
+        },
+        challenge
+      }
+
+      const authResponse = await fetch('/api/auth/passkey-authenticate', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authData)
+      })
+
+      if (!authResponse.ok) {
+        const errorData = await authResponse.json()
+        throw new Error(errorData.error || 'Authentication failed')
+      }
+
+      const result = await authResponse.json()
+      setSuccess('Successfully signed in!')
+      updateData({ 
+        username: result.user.username,
+        displayName: result.user.displayName 
+      })
+      setTimeout(() => onNext(), 2000)
+
+    } catch (error: any) {
+      console.error('Error signing in:', error)
+      
+      if (error.name === 'NotAllowedError') {
+        setError('Authentication was cancelled. Please try again and approve the biometric prompt.')
+      } else if (error.name === 'InvalidStateError') {
+        setError('No passkey found on this device. Try creating an account instead.')
+      } else {
+        setError(error.message || 'No passkey found. Try creating an account instead.')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleCreateAccount = async () => {
     if (!isWebAuthnAvailable) {
       setError('Passkeys are not supported on this device.')
+      return
+    }
+
+    if (!isValid) {
+      setError('Please enter a valid username')
       return
     }
 
@@ -128,21 +233,11 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
 
     } catch (error: any) {
       console.error('Error creating account:', error)
-      console.log('Error details:', {
-        name: error.name,
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      })
       
       if (error.name === 'NotAllowedError') {
-        setError('Passkey creation was cancelled, timed out, or blocked by the browser. Please try again and make sure to approve the biometric prompt.')
+        setError('Passkey creation was cancelled. Please try again and approve the biometric prompt.')
       } else if (error.name === 'InvalidStateError') {
         setError('A passkey already exists for this device. Try signing in instead.')
-      } else if (error.name === 'NotSupportedError') {
-        setError('Passkeys are not supported on this device or browser.')
-      } else if (error.name === 'SecurityError') {
-        setError('Security error: Make sure you\'re using HTTPS or localhost.')
       } else {
         setError(error.message || 'Failed to create account. Please try again.')
       }
@@ -151,246 +246,248 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
     }
   }
 
-  const handleSignIn = async () => {
-    if (!isWebAuthnAvailable) {
-      setError('Passkeys are not supported on this device.')
-      return
-    }
-
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      // Step 1: Get authentication options from server
-      const optionsResponse = await fetch('/api/auth/passkey-authenticate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
-      })
-
-      if (!optionsResponse.ok) {
-        const errorData = await optionsResponse.json()
-        throw new Error(errorData.error || 'Failed to get authentication options')
-      }
-
-      const { requestOptions, challenge } = await optionsResponse.json()
-
-      // Step 2: Get credential using WebAuthn API
-      const credential = await navigator.credentials.get({
-        publicKey: {
-          ...requestOptions,
-          challenge: new Uint8Array(requestOptions.challenge),
-          allowCredentials: requestOptions.allowCredentials.map((cred: any) => ({
-            ...cred,
-            id: new Uint8Array(Buffer.from(cred.id, 'base64'))
-          }))
-        }
-      }) as PublicKeyCredential
-
-      if (!credential) {
-        throw new Error('Authentication failed')
-      }
-
-      // Step 3: Verify credential with server
-      const response = credential.response as AuthenticatorAssertionResponse
-      const authData = {
-        username,
-        credential: {
-          id: credential.id,
-          rawId: arrayBufferToBase64url(credential.rawId),
-          response: {
-            clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
-            authenticatorData: arrayBufferToBase64url(response.authenticatorData),
-            signature: arrayBufferToBase64url(response.signature),
-            counter: 0 // Would be extracted from authenticatorData in production
-          },
-          type: credential.type
-        },
-        challenge
-      }
-
-      const authResponse = await fetch('/api/auth/passkey-authenticate', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authData)
-      })
-
-      if (!authResponse.ok) {
-        const errorData = await authResponse.json()
-        throw new Error(errorData.error || 'Authentication failed')
-      }
-
-      const result = await authResponse.json()
-      setSuccess('Successfully signed in!')
-      updateData({ 
-        username: result.user.username,
-        displayName: result.user.displayName 
-      })
-      setTimeout(() => onNext(), 2000)
-
-    } catch (error: any) {
-      console.error('Error signing in:', error)
-      console.log('Sign-in error details:', {
-        name: error.name,
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      })
-      
-      if (error.name === 'NotAllowedError') {
-        setError('Authentication was cancelled, timed out, or blocked. Please try again and approve the biometric prompt.')
-      } else if (error.name === 'NotSupportedError') {
-        setError('Passkeys are not supported on this device or browser.')
-      } else if (error.name === 'SecurityError') {
-        setError('Security error: Make sure you\'re using HTTPS or localhost.')
-      } else if (error.name === 'InvalidStateError') {
-        setError('No passkey found for this account on this device.')
-      } else {
-        setError(error.message || 'Authentication failed. Please try again.')
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  if (!isWebAuthnAvailable) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6">
+  const renderChooseFlow = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="w-full max-w-md"
+    >
+      <div className="text-center mb-8">
         <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6"
+        >
+          <Key className="w-12 h-12 text-white" />
+        </motion.div>
+
+        <motion.h2
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md text-center"
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="text-2xl font-bold text-white mb-2"
         >
-          <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
-            <AlertTriangle className="w-12 h-12 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Passkeys Not Supported</h2>
-          <p className="text-gray-400 mb-6">
-            Your device or browser doesn't support passkeys. Please use a modern browser on a supported device.
-          </p>
-          <Button
-            onClick={() => window.history.back()}
-            className="bg-gray-700 hover:bg-gray-600"
-          >
-            Go Back
-          </Button>
-        </motion.div>
+          Secure Authentication
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="text-gray-400"
+        >
+          Choose how you'd like to proceed
+        </motion.p>
       </div>
-    )
-  }
+
+      {!isPlatformAvailable && (
+        <Alert className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Platform authenticator not available. You may need to set up Face ID, Touch ID, or Windows Hello.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.8 }}
+        className="space-y-4"
+      >
+        <Button
+          onClick={() => setCurrentFlow('signin')}
+          disabled={!isWebAuthnAvailable || isLoading}
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-full font-semibold flex items-center justify-center gap-3 text-lg"
+        >
+          <Fingerprint className="w-6 h-6" />
+          Sign In with Passkey
+        </Button>
+
+        <Button
+          onClick={() => setCurrentFlow('create')}
+          disabled={!isWebAuthnAvailable || isLoading}
+          variant="outline"
+          className="w-full border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white py-4 rounded-full font-semibold flex items-center justify-center gap-3 text-lg"
+        >
+          <UserPlus className="w-6 h-6" />
+          Create New Account
+        </Button>
+
+        <p className="text-xs text-gray-500 text-center mt-4">
+          <strong>Sign In</strong>: Use your existing passkey<br />
+          <strong>Create Account</strong>: Set up a new account with passkey
+        </p>
+      </motion.div>
+
+      {error && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+    </motion.div>
+  )
+
+  const renderSignInFlow = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="w-full max-w-md"
+    >
+      <div className="text-center mb-8">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-6"
+        >
+          <Fingerprint className="w-12 h-12 text-white" />
+        </motion.div>
+
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="text-2xl font-bold text-white mb-2"
+        >
+          Sign In with Passkey
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="text-gray-400"
+        >
+          Use your biometric authentication to sign in securely
+        </motion.p>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.8 }}
+      >
+        <Button
+          onClick={handleSignInFlow}
+          disabled={isLoading}
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-full font-semibold text-lg"
+        >
+          {isLoading ? 'Authenticating...' : 'Authenticate with Passkey'}
+        </Button>
+      </motion.div>
+
+      {error && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {success && (
+        <Alert className="border-green-500 bg-green-500/10 mt-4">
+          <LogIn className="h-4 w-4 text-green-500" />
+          <AlertDescription className="text-green-500">{success}</AlertDescription>
+        </Alert>
+      )}
+    </motion.div>
+  )
+
+  const renderCreateFlow = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="w-full max-w-md"
+    >
+      <div className="text-center mb-8">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6"
+        >
+          <UserPlus className="w-12 h-12 text-white" />
+        </motion.div>
+
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="text-2xl font-bold text-white mb-2"
+        >
+          Create New Account
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="text-gray-400"
+        >
+          Choose a username and create your secure account
+        </motion.p>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.8 }}
+        className="space-y-4"
+      >
+        <Input
+          type="text"
+          placeholder="Enter username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-green-500 focus:ring-green-500"
+          disabled={isLoading}
+        />
+
+        <Button
+          onClick={handleCreateAccount}
+          disabled={!isValid || isLoading}
+          className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 text-white py-4 rounded-full font-semibold text-lg flex items-center justify-center gap-3"
+        >
+          <Fingerprint className="w-6 h-6" />
+          {isLoading ? 'Creating Account...' : 'Create Account with Passkey'}
+        </Button>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 1 }}
+          className="text-xs text-gray-500 text-center"
+        >
+          3-20 characters, letters, numbers, and underscores only
+        </motion.p>
+      </motion.div>
+
+      {error && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {success && (
+        <Alert className="border-green-500 bg-green-500/10 mt-4">
+          <LogIn className="h-4 w-4 text-green-500" />
+          <AlertDescription className="text-green-500">{success}</AlertDescription>
+        </Alert>
+      )}
+    </motion.div>
+  )
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6">
-      <motion.div
-        initial={{ opacity: 0, x: 50 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="w-full max-w-md"
-      >
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6"
-          >
-            <Key className="w-12 h-12 text-white" />
-          </motion.div>
-
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="text-2xl font-bold text-white mb-2"
-          >
-            Secure Authentication
-          </motion.h2>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="text-gray-400"
-          >
-            Sign in securely with passkeys
-          </motion.p>
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="space-y-4"
-        >
-          <Input
-            type="text"
-            placeholder="Enter username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
-            disabled={isLoading}
-          />
-
-          {!isPlatformAvailable && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Platform authenticator not available. You may need to set up Face ID, Touch ID, or Windows Hello.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Show both options directly - no need to check user existence first */}
-          <div className="space-y-3">
-            <Button
-              onClick={handleCreateAccount}
-              disabled={!isValid || isLoading}
-              className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 text-white py-3 rounded-full font-semibold flex items-center justify-center gap-2"
-            >
-              <UserPlus className="w-5 h-5" />
-              {isLoading ? 'Creating Account...' : 'Create Account with Passkey'}
-            </Button>
-            
-                          <Button
-                onClick={handleSignIn}
-                disabled={!isValid || isLoading}
-                variant="outline"
-                className="w-full border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white py-3 rounded-full font-semibold flex items-center justify-center gap-2"
-              >
-                <Fingerprint className="w-5 h-5" />
-                {isLoading ? 'Signing In...' : 'Sign In with Passkey'}
-              </Button>
-            </div>
-            
-            <p className="text-xs text-gray-500 text-center">
-              <strong>Create Account</strong>: Creates new user if needed<br />
-              <strong>Sign In</strong>: Only for existing users with passkeys
-            </p>
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert className="border-green-500 bg-green-500/10">
-              <LogIn className="h-4 w-4 text-green-500" />
-              <AlertDescription className="text-green-500">{success}</AlertDescription>
-            </Alert>
-          )}
-
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 1 }}
-            className="text-sm text-gray-400 text-center"
-          >
-            3-20 characters, letters, numbers, and underscores only
-          </motion.p>
-        </motion.div>
-      </motion.div>
+      {currentFlow === 'choose' && renderChooseFlow()}
+      {currentFlow === 'signin' && renderSignInFlow()}
+      {currentFlow === 'create' && renderCreateFlow()}
     </div>
   )
 } 

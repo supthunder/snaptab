@@ -254,6 +254,18 @@ export async function getUserByUsername(username: string): Promise<User | null> 
   }
 }
 
+export async function getUserById(userId: string): Promise<User | null> {
+  try {
+    const result = await sql`
+      SELECT * FROM users WHERE id = ${userId} LIMIT 1
+    `
+    return result.rows[0] as User || null
+  } catch (error) {
+    console.error('Error fetching user by ID:', error)
+    return null
+  }
+}
+
 export async function updateUser(username: string, updates: Partial<User>): Promise<User | null> {
   try {
     const result = await sql`

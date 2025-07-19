@@ -2047,3 +2047,140 @@ function getRpId(request: NextRequest): string {
 This represents a complete overhaul of the passkey authentication system, making it production-ready and user-friendly. The flow now works intuitively: users enter their username and choose either to create an account or sign in, with the system handling all complexity automatically.
 
 ---
+
+## Update #21: Onboarding Folder Consolidation
+**Date**: December 20, 2024  
+**Status**: ✅ Complete
+
+### Problem Identified:
+User discovered two conflicting onboarding folders:
+- `components/onboarding/` - Today's work with latest changes
+- `snaptab-onboarding/` - Last week's work as separate Next.js project
+
+### Analysis Results:
+**Main onboarding folder** (`components/onboarding/`) contained superior features:
+- ✅ **PasskeyAuthStep** with WebAuthn implementation (missing from old version)
+- ✅ **Advanced API Integration** with real database calls
+- ✅ **Complete Onboarding Flow** with localStorage and redirect functionality
+- ✅ **Better Error Handling** and loading states
+- ✅ **Enhanced Success Step** with confetti animation and completion handler
+
+**Old snaptab-onboarding folder** contained outdated features:
+- ❌ **Basic UsernameStep** instead of advanced PasskeyAuth
+- ❌ **Mock API Calls** instead of real integration
+- ❌ **Incomplete Success Flow** without proper completion handling
+- ✅ **Theme Provider** (but this already existed in main project)
+
+### Actions Taken:
+1. **Comprehensive Comparison**: Analyzed all components in both folders
+2. **Feature Assessment**: Confirmed main folder had all latest improvements
+3. **Redundancy Removal**: Safely deleted outdated `snaptab-onboarding/` folder
+4. **Verification**: Confirmed theme-provider and all UI components already exist in main project
+
+### Files Affected:
+- **Removed**: Entire `snaptab-onboarding/` directory and contents
+- **Preserved**: `components/onboarding/` with all latest features
+- **Confirmed Present**: `components/theme-provider.tsx` (no duplication needed)
+
+### Key Features Retained in Main Onboarding:
+- 🔐 **PasskeyAuthStep**: Advanced WebAuthn authentication
+- 🚀 **API Integration**: Real database operations
+- 📱 **Complete Flow**: Welcome → Auth → Trip Choice → Create/Join → Success
+- ✨ **Enhanced UX**: Proper loading states, error handling, completion flow
+- 🎉 **Success Animation**: Confetti effect and localStorage persistence
+
+### Impact:
+✅ **Eliminated Confusion**: No more duplicate onboarding folders  
+✅ **Preserved Latest Work**: All today's improvements maintained  
+✅ **Clean Architecture**: Single source of truth for onboarding  
+✅ **No Feature Loss**: All valuable components confirmed present in main project
+
+---
+
+## Update #22: Improved Passkey Authentication UX Flow
+**Date**: December 20, 2024  
+**Status**: ✅ Complete
+
+### Problem Identified:
+Authentication flow was confusing - showing username field with both "Sign In" and "Create Account" options simultaneously, causing user confusion about which action to take.
+
+### UX Flow Redesign:
+**New Three-Step Flow:**
+
+1. **Initial Choice Screen**:
+   - Clean interface with two clear options
+   - 🔑 "Sign In with Passkey" (blue button)
+   - 👤 "Create New Account" (outlined button)
+   - No input fields shown initially
+
+2. **Sign In Flow** (usernameless):
+   - No username required (passkeys are device-bound)
+   - Direct biometric authentication
+   - Back button to return to choice screen
+   - Device-based credential discovery
+
+3. **Create Account Flow**:
+   - Shows username input field only when needed
+   - Green-themed UI for account creation
+   - Back button to return to choice screen
+   - Validates username before proceeding
+
+### Technical Implementation:
+
+**Frontend Changes** (`components/onboarding/passkey-auth-step.tsx`):
+- Added `currentFlow` state: `'choose' | 'signin' | 'create'`
+- Created separate render functions for each flow
+- Implemented navigation between flows with back buttons
+- Improved visual design with color-coded flows (blue for sign-in, green for create)
+
+**Backend Changes** (`app/api/auth/passkey-authenticate/route.ts`):
+- **Usernameless Authentication**: POST endpoint now accepts empty body for device-based auth
+- **Dynamic User Discovery**: Finds user by credential ID instead of requiring username
+- **Added getUserById**: New database function for credential-to-user mapping
+- **Backward Compatibility**: Still supports username-based flow if provided
+
+**Database Enhancement** (`lib/neon-db-new.ts`):
+```typescript
+export async function getUserById(userId: string): Promise<User | null> {
+  try {
+    const result = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`
+    return result.rows[0] as User || null
+  } catch (error) {
+    console.error('Error fetching user by ID:', error)
+    return null
+  }
+}
+```
+
+### Key Improvements:
+
+✅ **Intuitive UX**: Clear choice between sign-in and account creation  
+✅ **Usernameless Sign-In**: Leverages passkey device-binding for seamless auth  
+✅ **Progressive Disclosure**: Only shows username field when creating account  
+✅ **Visual Hierarchy**: Color-coded flows (blue/green) for better distinction  
+✅ **Error Clarity**: Specific messaging for each flow's failure scenarios  
+✅ **Backward Compatibility**: Existing username-based flows still work  
+
+### User Experience Flow:
+
+**Sign In Journey:**
+1. User clicks "Sign In with Passkey"
+2. System immediately triggers biometric authentication
+3. Device returns available passkey
+4. System maps credential to user automatically
+5. User signed in (no username required)
+
+**Create Account Journey:**  
+1. User clicks "Create New Account"
+2. Username input field appears
+3. User enters desired username
+4. System creates passkey with biometric authentication
+5. Account created and user signed in
+
+### Impact:
+🚀 **Streamlined Authentication**: Reduced friction from confusing dual-button interface to clear step-by-step flow  
+🔐 **True Passkey Experience**: Leverages device-bound nature of passkeys for passwordless authentication  
+🎨 **Professional UX**: Clean, modern interface with intuitive navigation and visual feedback  
+📱 **Mobile-Optimized**: Better touch targets and responsive design across devices
+
+---

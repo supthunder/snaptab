@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserByUsername, getPasskeyCredentialsByUserId, updatePasskeyCredentialCounter } from '@/lib/neon-db-new'
+import { getUserByUsername, getUserById, getPasskeyCredentialsByUserId, updatePasskeyCredentialCounter, getPasskeyCredentialByCredentialId } from '@/lib/neon-db-new'
 
 // Generate a cryptographically secure challenge for WebAuthn
 function generateChallenge(): Uint8Array {
@@ -26,46 +26,46 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { username } = body
 
-    if (!username) {
-      return NextResponse.json({ 
-        error: 'Username is required' 
-      }, { status: 400 })
-    }
+    let allowCredentials: any[] = []
 
-    // Check if user exists
-    const user = await getUserByUsername(username)
-    
-    if (!user) {
-      return NextResponse.json({ 
-        error: 'User not found' 
-      }, { status: 404 })
-    }
+    if (username) {
+      // Username-based flow (existing)
+      const user = await getUserByUsername(username)
+      
+      if (!user) {
+        return NextResponse.json({ 
+          error: 'User not found' 
+        }, { status: 404 })
+      }
 
-    // Get user's passkey credentials
-    const credentials = await getPasskeyCredentialsByUserId(user.id)
-    
-    if (credentials.length === 0) {
-      return NextResponse.json({ 
-        error: 'No passkeys found for this user. Please register a passkey first.' 
-      }, { status: 404 })
+      // Get user's passkey credentials
+      const credentials = await getPasskeyCredentialsByUserId(user.id)
+      
+      if (credentials.length === 0) {
+        return NextResponse.json({ 
+          error: 'No passkeys found for this user. Please register a passkey first.' 
+        }, { status: 404 })
+      }
+
+      allowCredentials = credentials.map(cred => ({
+        id: cred.credential_id,
+        type: "public-key" as const
+      }))
+    } else {
+      // Device-based flow (new) - allow any credential from this device
+      // Don't specify allowCredentials to let the browser choose from available passkeys
+      allowCredentials = []
     }
 
     // Generate challenge for authentication
     const challenge = generateChallenge()
-    
-    // Prepare allowed credentials
-    const allowCredentials = credentials.map(cred => ({
-      id: cred.credential_id,
-      type: "public-key" as const
-    }))
-
     const rpId = getRpId(request)
     
     const requestOptions = {
       challenge: challenge,
       timeout: 60000,
       rpId: rpId,
-      allowCredentials: allowCredentials || [],
+      allowCredentials: allowCredentials,
       userVerification: "required" as const
     }
 
@@ -90,18 +90,38 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const { username, credential, challenge } = body
 
-    if (!username || !credential || !challenge) {
+    if (!credential || !challenge) {
       return NextResponse.json({ 
-        error: 'Username, credential, and challenge are required' 
+        error: 'Credential and challenge are required' 
       }, { status: 400 })
     }
 
-    // Get user
-    const user = await getUserByUsername(username)
-    if (!user) {
-      return NextResponse.json({ 
-        error: 'User not found' 
-      }, { status: 404 })
+    let user: any = null
+
+    if (username) {
+      // Username-based flow (existing)
+      user = await getUserByUsername(username)
+      if (!user) {
+        return NextResponse.json({ 
+          error: 'User not found' 
+        }, { status: 404 })
+      }
+    } else {
+      // Device-based flow (new) - find user by credential ID
+      const credentialRecord = await getPasskeyCredentialByCredentialId(credential.id)
+      if (!credentialRecord) {
+        return NextResponse.json({ 
+          error: 'Credential not found' 
+        }, { status: 404 })
+      }
+      
+      // Get the user associated with this credential
+      user = await getUserById(credentialRecord.user_id)
+      if (!user) {
+        return NextResponse.json({ 
+          error: 'User not found for this credential' 
+        }, { status: 404 })
+      }
     }
 
     // Verify credential (simplified - in production, use proper WebAuthn verification)
