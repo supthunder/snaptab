@@ -1090,34 +1090,6 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
-## Update #26: Gitignore Refinement - Environment Files
-**Date**: 2024-12-28  
-**Status**: ✅ Complete
-
-### Changes Made:
-- **More Specific Environment File Handling**: Refined `.gitignore` to be more selective about which environment files to ignore
-- **Lock File Confirmation**: Confirmed `pnpm-lock.yaml` is correctly **not** in `.gitignore` (lock files should be committed)
-- **Better Environment Management**: Only ignore local environment files while allowing shared ones to be committed
-
-### Previous Issue:
-- **Too Broad**: `.env*` pattern ignored all environment files including shared ones like `.env.development`
-- **Lost Flexibility**: Shared environment configurations couldn't be committed to version control
-
-### Improved Pattern:
-- **Specific Local Files**: `.env.local`, `.env*.local` patterns only ignore local overrides
-- **Shared Files Allowed**: `.env.development`, `.env.production`, `.env.test` can be committed
-- **Template Files Allowed**: Base `.env` files can be committed as templates
-
-### Benefits:
-- **Team Consistency**: Shared environment configurations can be version controlled
-- **Security**: Local files with secrets remain ignored
-- **Flexibility**: Different environments can have committed base configurations
-
-### Files Modified:
-- `.gitignore` - Refined environment file patterns for better specificity
-
----
-
 ## Update #32: Commit Onboarding Integration
 **Date**: 2025-01-12  
 **Status**: ✅ Complete
@@ -2045,5 +2017,55 @@ function getRpId(request: NextRequest): string {
 
 ### Impact:
 This represents a complete overhaul of the passkey authentication system, making it production-ready and user-friendly. The flow now works intuitively: users enter their username and choose either to create an account or sign in, with the system handling all complexity automatically.
+
+---
+
+## Update #40: Clean Auth Flow - Modified Existing PasskeyAuthStep  
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Course Correction:
+Rejected separate onboarding app approach and instead modified the **existing** `PasskeyAuthStep` component in the main app to provide the cleaner authentication flow without username input first.
+
+### **Changes Made:**
+- **Modified Existing Component**: Updated `components/onboarding/passkey-auth-step.tsx` 
+- **Removed Username First**: No "Enter username" field on initial screen
+- **Direct Choice Interface**: "Sign In with Passkey" vs "Create Account" buttons upfront
+- **Conditional Username Form**: Username/display name inputs only appear when creating account
+- **Dynamic UI**: Title and description change based on current mode
+
+### **New Authentication Flow:**
+1. **Welcome** → 2. **Auth Choice** (Sign In / Create Account) → 3. **Username Form** (new accounts only) → 4. **Trip Setup**
+
+### **User Experience:**
+- **Initial Screen**: Shows "Welcome Back" with two clear action buttons
+- **Existing Users**: Click "Sign In with Passkey" → Face ID/Touch ID → Trip setup
+- **New Users**: Click "Create Account" → Username/display name form → Face ID/Touch ID → Trip setup  
+- **Back Navigation**: Can return from create form to main choice screen
+
+### **Technical Implementation:**
+- **`showCreateForm` state**: Controls toggle between auth choice and account creation form
+- **Conditional validation**: Form validation only applies when in create account mode
+- **Dynamic content**: Titles, descriptions, and UI adapt to current step
+- **Display name support**: Added display name field alongside username for new accounts
+
+### **UI Improvements:**
+- **Clean Initial State**: No input fields on first load, just clear buttons
+- **Better Visual Hierarchy**: Large prominent buttons with icons and descriptive text
+- **Contextual Help**: Informational text about biometric authentication
+- **Smooth Transitions**: All UI changes use smooth animations
+- **Professional Icons**: Fingerprint for signin, UserPlus for account creation
+
+### **Files Modified:**
+- `components/onboarding/passkey-auth-step.tsx` - Complete UI restructure with conditional form display
+
+### **Benefits:**
+- **Streamlined UX**: Users immediately understand their options
+- **No Username Guessing**: Clear distinction between existing and new users  
+- **Faster for Existing Users**: Direct biometric authentication without form input
+- **Better New User Flow**: Comprehensive account setup when needed
+- **Professional Feel**: Clean, modern authentication interface
+
+This approach modifies the existing onboarding system cleanly without separate apps or complex integrations, providing the requested user experience improvement.
 
 ---

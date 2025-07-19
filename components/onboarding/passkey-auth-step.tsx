@@ -25,12 +25,14 @@ interface PasskeyAuthStepProps {
 
 export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepProps) {
   const [username, setUsername] = useState(data.username || "")
+  const [displayName, setDisplayName] = useState(data.displayName || "")
   const [isValid, setIsValid] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isWebAuthnAvailable, setIsWebAuthnAvailable] = useState(false)
   const [isPlatformAvailable, setIsPlatformAvailable] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
 
   useEffect(() => {
     const checkWebAuthnSupport = async () => {
@@ -46,8 +48,14 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
 
   useEffect(() => {
     const isValidUsername = username.length >= 3 && username.length <= 20 && /^[a-zA-Z0-9_]+$/.test(username)
-    setIsValid(isValidUsername)
-  }, [username])
+    const isValidDisplayName = displayName.trim().length >= 2
+    
+    if (showCreateForm) {
+      setIsValid(isValidUsername && isValidDisplayName)
+    } else {
+      setIsValid(true) // For signin, no validation needed upfront
+    }
+  }, [username, displayName, showCreateForm])
 
   // No longer need checkUserExists - show both options directly
 
@@ -65,7 +73,10 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
       const optionsResponse = await fetch('/api/auth/passkey-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
+        body: JSON.stringify({ 
+          username: username.toLowerCase(),
+          displayName: displayName.trim()
+        })
       })
 
       if (!optionsResponse.ok) {
@@ -123,7 +134,10 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
       }
 
       setSuccess('Account created successfully with passkey!')
-      updateData({ username })
+      updateData({ 
+        username: username.toLowerCase(),
+        displayName: displayName.trim()
+      })
       setTimeout(() => onNext(), 2000)
 
     } catch (error: any) {
@@ -301,9 +315,9 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="text-2xl font-bold text-white mb-2"
+            className="text-3xl font-bold text-white mb-3"
           >
-            Secure Authentication
+            {showCreateForm ? 'Create Your Account' : 'Welcome Back'}
           </motion.h2>
 
           <motion.p
@@ -312,7 +326,7 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
             transition={{ duration: 0.6, delay: 0.6 }}
             className="text-gray-400"
           >
-            Sign in securely with passkeys
+            {showCreateForm ? 'Set up your username and secure it with a passkey' : 'Sign in to your account or create a new one'}
           </motion.p>
         </div>
 
@@ -322,14 +336,75 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
           transition={{ duration: 0.6, delay: 0.8 }}
           className="space-y-4"
         >
-          <Input
-            type="text"
-            placeholder="Enter username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
-            disabled={isLoading}
-          />
+          {showCreateForm ? (
+            // Create Account Form
+            <>
+              <Input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
+                disabled={isLoading}
+              />
+              
+              <Input
+                type="text"
+                placeholder="Display Name"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
+                disabled={isLoading}
+              />
+
+              <p className="text-sm text-gray-400 text-center">
+                Username: 3-20 characters, letters, numbers, and underscores only
+              </p>
+
+              <Button
+                onClick={handleCreateAccount}
+                disabled={!isValid || isLoading}
+                className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 text-white py-3 rounded-full font-semibold flex items-center justify-center gap-2"
+              >
+                <Fingerprint className="w-5 h-5" />
+                {isLoading ? 'Creating Account...' : 'Create Account with Passkey'}
+              </Button>
+
+              <Button
+                onClick={() => setShowCreateForm(false)}
+                variant="ghost"
+                className="w-full text-gray-400 hover:text-white py-2"
+              >
+                ← Back to options
+              </Button>
+            </>
+          ) : (
+            // Auth Choice Buttons
+            <div className="space-y-4">
+              <Button
+                onClick={handleSignIn}
+                disabled={isLoading}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-full font-semibold flex items-center justify-center gap-3 text-lg"
+              >
+                <Fingerprint className="w-6 h-6" />
+                {isLoading ? 'Signing In...' : 'Sign In with Passkey'}
+              </Button>
+              
+              <Button
+                onClick={() => setShowCreateForm(true)}
+                variant="outline"
+                className="w-full border-gray-600 bg-gray-800 hover:bg-gray-700 text-white py-4 rounded-full font-semibold flex items-center justify-center gap-3 text-lg"
+              >
+                <UserPlus className="w-6 h-6" />
+                Create Account
+              </Button>
+
+              <p className="text-gray-500 text-sm text-center mt-8">
+                Passkeys use your device's biometric authentication<br />
+                (Face ID, Touch ID, or Windows Hello)
+              </p>
+            </div>
+          )}
 
           {!isPlatformAvailable && (
             <Alert>
@@ -339,33 +414,6 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
               </AlertDescription>
             </Alert>
           )}
-
-          {/* Show both options directly - no need to check user existence first */}
-          <div className="space-y-3">
-            <Button
-              onClick={handleCreateAccount}
-              disabled={!isValid || isLoading}
-              className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 text-white py-3 rounded-full font-semibold flex items-center justify-center gap-2"
-            >
-              <UserPlus className="w-5 h-5" />
-              {isLoading ? 'Creating Account...' : 'Create Account with Passkey'}
-            </Button>
-            
-                          <Button
-                onClick={handleSignIn}
-                disabled={!isValid || isLoading}
-                variant="outline"
-                className="w-full border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white py-3 rounded-full font-semibold flex items-center justify-center gap-2"
-              >
-                <Fingerprint className="w-5 h-5" />
-                {isLoading ? 'Signing In...' : 'Sign In with Passkey'}
-              </Button>
-            </div>
-            
-            <p className="text-xs text-gray-500 text-center">
-              <strong>Create Account</strong>: Creates new user if needed<br />
-              <strong>Sign In</strong>: Only for existing users with passkeys
-            </p>
 
           {error && (
             <Alert variant="destructive">
