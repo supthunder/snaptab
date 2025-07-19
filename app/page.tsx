@@ -80,11 +80,14 @@ export default function HomePage() {
       if (onboardingComplete && hasUsername) {
         const tripCode = localStorage.getItem('snapTab_currentTripCode')
         if (tripCode) {
-          // Load trip data from database
-          loadTripFromDatabase(tripCode)
+          // Load specific trip data from database and user profile
+          Promise.all([
+            loadTripFromDatabase(tripCode),
+            loadUserProfile()
+          ])
         } else {
-          // No trip code, load from localStorage fallback
-          loadFromLocalStorage()
+          // No specific trip code, load user's trips and set most recent as active
+          loadUserTripsAndSetActive()
         }
       } else {
         // No onboarding data, load from localStorage fallback
@@ -94,6 +97,54 @@ export default function HomePage() {
 
     checkOnboarding()
   }, [])
+
+  const loadUserTripsAndSetActive = async () => {
+    try {
+      setIsLoading(true)
+      const username = localStorage.getItem('snapTab_username')
+      if (!username) {
+        console.warn('No username found, falling back to localStorage')
+        loadFromLocalStorage()
+        return
+      }
+
+      // Load all user trips from database
+      const response = await fetch(`/api/trips?username=${encodeURIComponent(username)}`)
+      if (!response.ok) {
+        console.warn('Failed to load trips from database, using localStorage fallback')
+        loadFromLocalStorage()
+        return
+      }
+
+      const data = await response.json()
+      if (!data.trips || data.trips.length === 0) {
+        console.log('No trips found for user, using localStorage fallback')
+        loadFromLocalStorage()
+        return
+      }
+
+      // Find the most recent active trip or the most recent trip
+      const sortedTrips = data.trips.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      const activeTrip = sortedTrips.find((trip: any) => trip.is_active) || sortedTrips[0]
+      
+      if (activeTrip) {
+        // Set as current trip and save to localStorage for future use
+        localStorage.setItem('snapTab_currentTripCode', activeTrip.trip_code.toString())
+        
+        // Load full trip data and user profile in parallel
+        await Promise.all([
+          loadTripFromDatabase(activeTrip.trip_code.toString()),
+          loadUserProfile()
+        ])
+      } else {
+        console.warn('No active trip found, falling back to localStorage')
+        loadFromLocalStorage()
+      }
+    } catch (error) {
+      console.error('Error loading user trips:', error)
+      loadFromLocalStorage()
+    }
+  }
 
   const loadTripFromDatabase = async (tripCode: string) => {
     try {

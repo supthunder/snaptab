@@ -2326,3 +2326,77 @@ setTimeout(() => {
 🎯 **Intent-Based UX**: Different flows for different user types (new vs existing)
 
 ---
+
+## Update #25: Fixed Home Page Data Loading for Existing Users
+**Date**: December 20, 2024  
+**Status**: ✅ Complete
+
+### Problem Identified:
+After successful sign-in, existing users were redirected to home page but **no trip data was loading from database**. Home page remained empty despite users having trips in the database.
+
+### Root Cause:
+Home page data loading logic had a gap for existing users without a specific `tripCode` in localStorage:
+- ✅ **New users** (with tripCode): Loaded specific trip correctly
+- ❌ **Existing users** (without tripCode): Fell back to empty localStorage instead of fetching from database
+
+### Technical Fix:
+
+**Added `loadUserTripsAndSetActive()` Function** (`app/page.tsx`):
+```typescript
+const loadUserTripsAndSetActive = async () => {
+  // 1. Load all user trips from database
+  const response = await fetch(`/api/trips?username=${encodeURIComponent(username)}`)
+  
+  // 2. Find most recent active trip or most recent trip
+  const sortedTrips = data.trips.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  const activeTrip = sortedTrips.find(trip => trip.is_active) || sortedTrips[0]
+  
+  // 3. Set as current trip and load full data
+  localStorage.setItem('snapTab_currentTripCode', activeTrip.trip_code.toString())
+  await loadTripFromDatabase(activeTrip.trip_code.toString())
+}
+```
+
+**Updated Data Loading Flow:**
+```typescript
+// Before - existing users got empty localStorage
+if (tripCode) {
+  loadTripFromDatabase(tripCode)
+} else {
+  loadFromLocalStorage() // ❌ Empty for existing users
+}
+
+// After - existing users get database trips
+if (tripCode) {
+  Promise.all([loadTripFromDatabase(tripCode), loadUserProfile()])
+} else {
+  loadUserTripsAndSetActive() // ✅ Loads from database
+}
+```
+
+### Key Improvements:
+
+✅ **Database Trip Loading**: Fetches user trips from database after sign-in  
+✅ **Smart Trip Selection**: Automatically selects most recent active trip  
+✅ **Full Data Loading**: Loads trip members, expenses, and user balance  
+✅ **Profile Loading**: Loads user profile data alongside trip data  
+✅ **Fallback Handling**: Graceful fallback to localStorage if database fails  
+✅ **localStorage Sync**: Updates localStorage with current trip for future visits  
+
+### User Experience Flow:
+
+**Existing User Journey After Sign-In:**
+1. ✅ **Sign in** → Redirect to home page
+2. ✅ **Fetch trips** → Load all user trips from database  
+3. ✅ **Select active trip** → Find most recent active or most recent trip
+4. ✅ **Load trip data** → Fetch full trip details (members, expenses, balance)
+5. ✅ **Display data** → Show populated home page with real trip information
+
+### Impact:
+🏠 **Populated Home Page**: Existing users see their actual trip data after sign-in  
+📊 **Real-Time Data**: Shows current expenses, balances, and trip members from database  
+🔄 **Proper Sync**: Trip selection syncs between database and localStorage  
+⚡ **Fast Loading**: Parallel loading of trip data and user profile  
+🛡️ **Robust Fallbacks**: Handles edge cases and network failures gracefully  
+
+---
