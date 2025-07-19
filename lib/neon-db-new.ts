@@ -245,6 +245,23 @@ export async function updateUser(username: string, updates: Partial<User>): Prom
   }
 }
 
+export async function updateUserAvatar(username: string, avatarUrl: string): Promise<User | null> {
+  try {
+    const result = await sql`
+      UPDATE users 
+      SET 
+        avatar_url = ${avatarUrl},
+        updated_at = NOW()
+      WHERE username = ${username.toLowerCase()}
+      RETURNING *
+    `
+    return result.rows[0] as User || null
+  } catch (error) {
+    console.error('Error updating user avatar:', error)
+    return null
+  }
+}
+
 // Trip Management Functions
 export async function createTrip(name: string, currency: string, createdByUsername: string): Promise<{ trip: Trip; tripCode: number } | null> {
   try {

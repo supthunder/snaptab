@@ -48,6 +48,13 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'home' | 'camera' | 'profile'>('home')
   const [trips, setTrips] = useState<Trip[]>([])
   const [isTripsLoading, setIsTripsLoading] = useState(false)
+  const [userProfile, setUserProfile] = useState<{
+    username: string
+    displayName: string
+    avatarUrl?: string
+  } | null>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const profileInputRef = useRef<HTMLInputElement>(null)
 
   // Check for first-time user and redirect to onboarding
   useEffect(() => {
@@ -164,6 +171,7 @@ export default function HomePage() {
   useEffect(() => {
     if (activeTab === 'profile') {
       loadUserTrips()
+      loadUserProfile()
     }
   }, [activeTab])
 
@@ -212,6 +220,86 @@ export default function HomePage() {
       setTrips(localTrips)
     } finally {
       setIsTripsLoading(false)
+    }
+  }
+
+  const loadUserProfile = async () => {
+    try {
+      const username = localStorage.getItem('snapTab_username')
+      const displayName = localStorage.getItem('snapTab_displayName')
+      
+      if (!username) return
+
+      // Try to load user data from database to get avatar URL
+      try {
+        const response = await fetch(`/api/users?username=${encodeURIComponent(username)}`)
+        
+        if (response.ok) {
+          const data = await response.json()
+          setUserProfile({
+            username,
+            displayName: displayName || username,
+            avatarUrl: data.user?.avatar_url
+          })
+        } else {
+          // Fallback to localStorage data only
+          setUserProfile({
+            username,
+            displayName: displayName || username
+          })
+        }
+      } catch (error) {
+        console.error('Failed to load user profile:', error)
+        // Fallback to localStorage data only
+        setUserProfile({
+          username,
+          displayName: displayName || username
+        })
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error)
+    }
+  }
+
+  const handleAvatarClick = () => {
+    profileInputRef.current?.click()
+  }
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !userProfile?.username) return
+
+    setIsUploadingAvatar(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('username', userProfile.username)
+
+      const response = await fetch('/api/users/avatar', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setUserProfile(prev => prev ? {
+          ...prev,
+          avatarUrl: data.avatarUrl
+        } : null)
+      } else {
+        const errorData = await response.json()
+        alert(errorData.error || 'Failed to upload profile picture')
+      }
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+      alert('Failed to upload profile picture')
+    } finally {
+      setIsUploadingAvatar(false)
+      // Clear the input so the same file can be selected again
+      if (profileInputRef.current) {
+        profileInputRef.current.value = ''
+      }
     }
   }
 
@@ -693,17 +781,46 @@ export default function HomePage() {
             {/* User Profile Section */}
             <div className="text-center mb-8">
               <div className="relative inline-block mb-6">
-                <div className="w-40 h-40 bg-muted/50 rounded-full flex flex-col items-center justify-center mx-auto">
-                  <User className="h-16 w-16 text-muted-foreground/60 mb-2" />
-                  <p className="text-muted-foreground text-xs">Add profile<br/>picture</p>
-                </div>
-                <div className="absolute bottom-3 right-3 w-8 h-8 bg-foreground rounded-full flex items-center justify-center">
-                  <svg className="h-4 w-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </div>
+                <button
+                  onClick={handleAvatarClick}
+                  disabled={isUploadingAvatar}
+                  className="w-40 h-40 bg-muted/50 rounded-full flex flex-col items-center justify-center mx-auto overflow-hidden group hover:bg-muted/70 transition-colors"
+                >
+                  {userProfile?.avatarUrl ? (
+                    <img 
+                      src={userProfile.avatarUrl} 
+                      alt="Profile picture" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <>
+                      <User className="h-16 w-16 text-muted-foreground/60 mb-2" />
+                      <p className="text-muted-foreground text-xs">Add profile<br/>picture</p>
+                    </>
+                  )}
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 text-white animate-spin" />
+                    </div>
+                  )}
+                </button>
+                <button
+                  onClick={handleAvatarClick}
+                  disabled={isUploadingAvatar}
+                  className="absolute bottom-3 right-3 w-8 h-8 bg-foreground rounded-full flex items-center justify-center hover:bg-foreground/90 transition-colors"
+                >
+                  {isUploadingAvatar ? (
+                    <Loader2 className="h-4 w-4 text-background animate-spin" />
+                  ) : (
+                    <svg className="h-4 w-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  )}
+                </button>
               </div>
-              <h3 className="text-xl font-medium text-foreground">@test</h3>
+              <h3 className="text-xl font-medium text-foreground">
+                @{userProfile?.username || 'loading...'}
+              </h3>
             </div>
 
             {/* Your Trips Section */}
@@ -885,6 +1002,15 @@ export default function HomePage() {
         accept="image/*" 
         className="hidden" 
         onChange={handleFileUpload} 
+      />
+
+      {/* Hidden file input for profile picture upload */}
+      <input 
+        ref={profileInputRef} 
+        type="file" 
+        accept="image/*" 
+        className="hidden" 
+        onChange={handleAvatarUpload} 
       />
     </div>
   )
