@@ -225,10 +225,31 @@ export default function HomePage() {
       const recentExpenses = trip.expenses.slice(-6).reverse()
       setRecentExpenses(recentExpenses)
       
-      // Calculate user balance (simplified for now)
+      // Calculate user balance using actual database split data
       const username = localStorage.getItem('snapTab_username') || "You"
+      
+      // Calculate how much user paid
       const userPaid = trip.expenses.filter(exp => exp.paidBy === username).reduce((sum, exp) => sum + exp.amount, 0)
-      const userOwes = trip.expenses.length > 0 ? trip.totalExpenses / trip.members.length : 0
+      
+      // Calculate how much user owes based on actual split_with data from database
+      let userOwes = 0
+      
+      // Get current user ID to match against split_with arrays (which contain user IDs)
+      const currentUserMember = tripData.members?.find((member: any) => member.username === username)
+      const currentUserId = currentUserMember?.id
+      
+      if (currentUserId) {
+        userOwes = tripData.expenses?.reduce((total: number, expense: any) => {
+          // Check if current user is in the split_with array for this expense
+          if (expense.split_with && expense.split_with.includes(currentUserId)) {
+            // User owes their share of this expense
+            const splitAmount = parseFloat(expense.total_amount || 0) / expense.split_with.length
+            return total + splitAmount
+          }
+          return total
+        }, 0) || 0
+      }
+      
       setUserBalance(userPaid - userOwes)
       
     } catch (error) {
