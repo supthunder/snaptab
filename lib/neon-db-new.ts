@@ -406,6 +406,26 @@ export async function getTripMembers(tripCode: number): Promise<User[]> {
   }
 }
 
+export async function removeUserFromTrip(tripCode: number, userId: string): Promise<boolean> {
+  try {
+    const trip = await getTripByCode(tripCode)
+    if (!trip) return false
+
+    // Set user as inactive in trip_members instead of deleting
+    // This preserves historical data while removing access
+    const result = await sql`
+      UPDATE trip_members 
+      SET is_active = false 
+      WHERE trip_id = ${trip.id} AND user_id = ${userId}
+    `
+    
+    return (result.rowCount ?? 0) > 0
+  } catch (error) {
+    console.error('Error removing user from trip:', error)
+    return false
+  }
+}
+
 export async function getUserTrips(username: string): Promise<Trip[]> {
   try {
     const user = await getUserByUsername(username)

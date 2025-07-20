@@ -63,6 +63,7 @@ export default function HomePage() {
     display_name?: string
     avatar_url?: string
   }>>([])
+  const [currentTripCode, setCurrentTripCode] = useState<string | null>(null)
 
   // Check for first-time user and redirect to onboarding
   useEffect(() => {
@@ -80,6 +81,7 @@ export default function HomePage() {
       if (onboardingComplete && hasUsername) {
         const tripCode = localStorage.getItem('snapTab_currentTripCode')
         if (tripCode) {
+          setCurrentTripCode(tripCode)
           // Load specific trip data from database and user profile
           Promise.all([
             loadTripFromDatabase(tripCode),
@@ -123,13 +125,14 @@ export default function HomePage() {
         return
       }
 
-      // Find the most recent active trip or the most recent trip
+      // Find the most recent trip (we'll determine active status based on expenses when loaded)
       const sortedTrips = data.trips.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      const activeTrip = sortedTrips.find((trip: any) => trip.is_active) || sortedTrips[0]
+      const activeTrip = sortedTrips[0] // Just use the most recent trip
       
       if (activeTrip) {
         // Set as current trip and save to localStorage for future use
         localStorage.setItem('snapTab_currentTripCode', activeTrip.trip_code.toString())
+        setCurrentTripCode(activeTrip.trip_code.toString())
         
         // Load full trip data and user profile in parallel
         await Promise.all([
@@ -167,7 +170,7 @@ export default function HomePage() {
         currency: tripData.trip.currency || 'USD',
         startDate: undefined,
         endDate: undefined,
-        isActive: tripData.trip.is_active || false,
+        isActive: (tripData.expenses && tripData.expenses.length > 0) || false, // Only active if has expenses
         createdAt: tripData.trip.created_at,
         expenses: tripData.expenses?.map((expense: any) => ({
           id: expense.id,
@@ -262,7 +265,7 @@ export default function HomePage() {
           currency: trip.currency,
           startDate: undefined,
           endDate: undefined,
-          isActive: trip.is_active,
+          isActive: false, // Will be determined by expense count when we have full trip data
           createdAt: trip.created_at,
           expenses: [],
           tripCode: trip.trip_code // Include trip code for database trips
@@ -569,9 +572,70 @@ export default function HomePage() {
   }
 
   const getTripStatus = (trip: Trip) => {
-    if (trip.isActive) return "active"
+    // Trip is only active if it has expenses
+    const hasExpenses = trip.expenses && trip.expenses.length > 0
+    if (hasExpenses) return "active"
     if (trip.endDate && new Date(trip.endDate) < new Date()) return "completed"
     return "upcoming"
+  }
+
+  const handleRemoveMember = async (memberId: string) => {
+    if (!activeTrip) return
+    
+    // Safety check: prevent removal if trip has expenses
+    if (activeTrip.expenses && activeTrip.expenses.length > 0) {
+      alert('Cannot remove members from trips with expenses. Members involved in expense splitting cannot be removed to maintain data integrity.')
+      return
+    }
+    
+    // Find the member to show confirmation with their name
+    const member = tripMembers.find(m => m.id === memberId)
+    const memberName = member?.display_name || member?.username || 'this member'
+    
+    // Confirm removal
+    const confirmed = window.confirm(`Are you sure you want to remove ${memberName} from this trip? This cannot be undone.`)
+    if (!confirmed) return
+
+    try {
+      // Get current trip code from localStorage
+      const tripCode = localStorage.getItem('snapTab_currentTripCode')
+      if (!tripCode) {
+        alert('Error: Could not find trip information')
+        return
+      }
+
+      const response = await fetch(`/api/trips/${tripCode}/members`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: memberId }),
+      })
+
+      if (response.ok) {
+        // Update local state by removing the member
+        setTripMembers(prev => prev.filter(m => m.id !== memberId))
+        
+        // Update active trip members count
+        if (activeTrip) {
+          setActiveTrip(prev => prev ? {
+            ...prev,
+            members: prev.members.filter(name => {
+              const memberToRemove = tripMembers.find(m => m.id === memberId)
+              return name !== (memberToRemove?.display_name || memberToRemove?.username)
+            })
+          } : null)
+        }
+        
+        alert(`${memberName} has been removed from the trip`)
+      } else {
+        const errorData = await response.json()
+        alert(`Failed to remove member: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error removing member:', error)
+      alert('Failed to remove member. Please try again.')
+    }
   }
 
 
@@ -748,35 +812,51 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Trip Code in top right corner - positioned absolutely */}
+      {activeTab === 'home' && currentTripCode && (
+        <div className="absolute top-6 right-6 z-10" style={{paddingTop: 'env(safe-area-inset-top)'}}>
+          <div className="text-sm text-muted-foreground">
+            Trip #{currentTripCode}
+          </div>
+        </div>
+      )}
+
       {/* Clean Header - Only show on home tab */}
       {activeTab === 'home' && (
         <header className="p-6 pt-16 safe-area-top">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-medium text-foreground">{activeTrip.name}</h1>
+          <div className="flex justify-center items-center mb-8 w-full">
+            <div className="flex-1 flex justify-center">
+              <h1 className="text-2xl font-medium text-foreground">{activeTrip.name}</h1>
+            </div>
           </div>
 
           {/* Balance Card */}
           <Card className="minimal-card mb-6">
-            <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground text-sm mb-2">Your balance</p>
-              <p className={`text-4xl font-light mb-4 ${userBalance < 0 ? "text-red-400" : "text-green-400"}`}>
-                {userBalance < 0 ? "-" : "+"}
-                {getCurrencySymbol(activeTrip.currency)}
-                {Math.abs(userBalance).toFixed(2)}
-              </p>
-              <div className="flex justify-between items-center text-sm text-muted-foreground">
-                <span>Total: {getCurrencySymbol(activeTrip.currency)}{activeTrip.totalExpenses.toFixed(2)}</span>
-                <div className="flex items-center space-x-2">
-                  <MembersList 
-                    members={tripMembers}
-                    maxVisible={3}
-                    onEditClick={() => setIsMembersModalOpen(true)}
-                    className="cursor-pointer hover:opacity-80 transition-opacity"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    {activeTrip.members.length} members
+            <CardContent className="p-6">
+              {/* Balance Section */}
+              <div className="text-center mb-6">
+                <p className="text-muted-foreground text-sm mb-2">Your balance</p>
+                <div className="text-4xl font-bold">
+                  <span className={userBalance < 0 ? "text-red-400" : "text-green-400"}>
+                    {userBalance < 0 ? "" : "+"}
+                    {getCurrencySymbol(activeTrip.currency)}
+                    {Math.abs(userBalance).toFixed(2)}
                   </span>
                 </div>
+              </div>
+
+              {/* Bottom Row: Total + Members + Edit */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-foreground text-lg">Total: {getCurrencySymbol(activeTrip.currency)}{activeTrip.totalExpenses.toFixed(2)}</p>
+                </div>
+
+                <MembersList 
+                  members={tripMembers}
+                  maxVisible={3}
+                  onEditClick={() => setIsMembersModalOpen(true)}
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                />
               </div>
             </CardContent>
           </Card>
@@ -947,12 +1027,13 @@ export default function HomePage() {
                   {trips.map((trip) => {
                     const userBalance = getUserBalance(trip.id, "You")
                     const status = getTripStatus(trip)
+                    const hasExpenses = trip.expenses && trip.expenses.length > 0
                     
                     return (
                       <Card
                         key={trip.id}
                         className={`minimal-card cursor-pointer transition-all duration-200 ${
-                          trip.isActive ? "ring-2 ring-primary/30 bg-primary/5" : "hover:bg-card/80"
+                          hasExpenses ? "ring-2 ring-primary/30 bg-primary/5" : "hover:bg-card/80"
                         }`}
                         onClick={() => handleTripSelect(trip.id)}
                       >
@@ -961,7 +1042,7 @@ export default function HomePage() {
                             <div className="flex-1">
                               <div className="flex items-center space-x-2 mb-2">
                                 <h3 className="text-lg font-medium">{trip.name}</h3>
-                                {trip.isActive && (
+                                {hasExpenses && (
                                   <div className="flex items-center space-x-1">
                                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                                     <span className="text-xs text-green-400 font-medium">ACTIVE</span>
@@ -1013,7 +1094,7 @@ export default function HomePage() {
                                   {trip.expenses.length} expense{trip.expenses.length > 1 ? 's' : ''}
                                 </span>
                               )}
-                              {!trip.isActive && (
+                              {!hasExpenses && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -1114,7 +1195,10 @@ export default function HomePage() {
         members={tripMembers}
         isOpen={isMembersModalOpen}
         onClose={() => setIsMembersModalOpen(false)}
-        canEdit={false} // For now, we'll keep it read-only
+        canEdit={true}
+        onRemoveMember={handleRemoveMember}
+        hasExpenses={(activeTrip?.expenses?.length ?? 0) > 0}
+        expenseCount={activeTrip?.expenses?.length ?? 0}
       />
     </div>
   )

@@ -1,0 +1,31 @@
+# SnapTab Development Todos
+
+## In Progress
+- (No active development tasks)
+
+## Pending Features
+- 📝 **Manual Trip Completion**: Add manual trip completion feature - allow users to mark trips as 'done/completed' manually
+- 📊 **Trip Analytics**: Add basic analytics/insights for completed trips
+- 🔗 **Trip Sharing**: Easy trip code sharing via links or QR codes
+- 📱 **Push Notifications**: Notify members when expenses are added or trip is updated
+- 💰 **Settlement Optimization**: Suggest optimal payment flows to minimize transactions
+- 📄 **Export Functionality**: Export trip expenses to PDF/CSV
+
+## Completed
+- ✅ **Trip Active Status Logic**: Update trip active logic - trips only become active when first expense is added
+- ✅ **Member Removal Safety**: Implement expense-based member removal restrictions - only allow removal when trip has 0 expenses
+- ✅ **Member Removal with Database Integration**: Remove members from trips with database updates
+- ✅ **Stacked Avatar Display**: Beautiful overlapping member avatars
+- ✅ **3-Column Balance Layout**: Clean trip summary card design
+- ✅ **Onboarding Flow**: Complete animated onboarding experience
+- ✅ **Database Integration**: Full Neon PostgreSQL database system
+- ✅ **Receipt Scanning**: AI-powered receipt processing with OpenAI
+- ✅ **Item-Level Splitting**: Split expenses by individual receipt items
+
+## Future Considerations
+- 🌍 **Multi-Currency Support**: Handle expenses in different currencies with conversion
+- 🔐 **Enhanced Security**: Add trip passwords or invite-only access
+- 📸 **Receipt Gallery**: View all receipt images for a trip
+- 📅 **Trip Templates**: Save and reuse trip configurations
+- 🏷️ **Custom Categories**: User-defined expense categories
+- 📈 **Expense Trends**: Track spending patterns over time 

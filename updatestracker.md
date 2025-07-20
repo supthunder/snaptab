@@ -2400,3 +2400,299 @@ if (tripCode) {
 🛡️ **Robust Fallbacks**: Handles edge cases and network failures gracefully  
 
 ---
+
+## Update #37: Stacked Member Avatars with Enhanced Outlines
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Removed Avatar Spacing**: Eliminated `space-x-2` gaps between member avatars for compact display
+- **Stacked Overlap Effect**: Implemented -12px negative margins so avatars overlap each other
+- **Enhanced Visual Outlines**: Added white borders and shadow rings for better avatar separation
+- **Space-Saving Design**: Compact member display takes up less horizontal space on mobile
+- **Improved Visual Hierarchy**: Better organized layout with proper spacing for edit buttons
+
+### Visual Improvements:
+- **Stacked Layout**: Avatars now overlap each other instead of being spaced apart
+- **White Borders**: Clean 2px white borders around all avatars for definition
+- **Shadow Effects**: Added subtle shadows and ring outlines for depth
+- **Consistent Design**: Maintained same styling for +X count indicators and buttons
+- **Mobile Optimized**: More efficient use of limited mobile screen space
+
+### Technical Implementation:
+- **Negative Margins**: `marginLeft: index > 0 ? '-12px' : '0'` for overlap effect
+- **Enhanced Borders**: `border-2 border-white shadow-md ring-1 ring-black/10`
+- **Grouped Layout**: Wrapped avatars in flex container for proper stacking
+- **Preserved Functionality**: Maintained click handlers and modal integration
+
+### Files Modified:
+- `components/ui/members-list.tsx` - Complete redesign for stacked avatar display
+
+### User Experience:
+- **Space Efficient**: Takes up less horizontal space while showing same information
+- **Visual Appeal**: Cleaner, more modern appearance matching design trends
+- **Better Recognition**: Enhanced outlines make individual avatars more distinguishable
+- **Consistent Interaction**: All click and hover behaviors preserved
+
+## Update #38: Clean Member Display Layout
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Removed Member Count Text**: Eliminated redundant "4 members" text from balance card
+- **Right-Aligned Avatar Container**: Moved MembersList component to proper right alignment
+- **Cleaner Layout**: Simplified balance card footer with just total and avatar display
+- **Improved Spacing**: Removed unnecessary wrapper div and spacing elements
+
+### Visual Improvements:
+- **Cleaner Design**: Less visual clutter in balance card footer
+- **Better Focus**: Member avatars now prominently displayed on the right
+- **Simplified Layout**: Direct placement without extra wrapper containers
+- **Consistent Alignment**: Proper justify-between layout with total on left, avatars on right
+
+### Files Modified:
+- `app/page.tsx` - Simplified balance card member display layout
+
+---
+
+## Update #39: Redesigned Trip Balance Card - Clean 3-Column Layout
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **3-Column Grid Layout**: Organized trip information into evenly spaced columns
+- **Balanced Information Display**: Your balance, total spent, and members each get equal space
+- **Improved Typography**: Smaller, cleaner labels with appropriate font weights
+- **Better Visual Hierarchy**: Clear separation of different data points
+- **Compact Design**: More efficient use of card space while maintaining readability
+
+### Layout Structure:
+- **Column 1**: Your balance (what you owe/are owed)
+- **Column 2**: Total spent (trip's total expenses)
+- **Column 3**: Members (avatar pills with edit functionality)
+
+### Visual Improvements:
+- **Even Spacing**: `grid-cols-3 gap-4` ensures perfect balance
+- **Consistent Sizing**: All text elements properly sized relative to importance
+- **Centered Alignment**: Each column center-aligned for clean appearance
+- **Reduced Font Sizes**: More compact without losing readability
+- **Better Labels**: Clear, concise labels for each metric
+
+### Technical Implementation:
+- **CSS Grid**: `grid grid-cols-3 gap-4 items-center` for responsive layout
+- **Semantic Structure**: Each data point wrapped in descriptive containers
+- **Maintained Functionality**: All interactive elements (member list, modal) preserved
+- **Responsive Design**: Layout works across different screen sizes
+
+### Files Modified:
+- `app/page.tsx` - Complete balance card redesign with 3-column grid layout
+
+### User Experience:
+- **Cleaner Design**: More organized and easier to scan
+- **Better Information Density**: Shows more data in less space
+- **Maintained Interactions**: Member avatar functionality fully preserved
+- **Visual Balance**: Each piece of information gets appropriate visual weight
+
+---
+
+## Update #40: Member Removal Functionality with Database Integration
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Enhanced Members Modal**: Added functional remove buttons for trip members
+- **Database API Endpoint**: Created `/api/trips/[code]/members` DELETE endpoint for member removal
+- **Database Function**: Added `removeUserFromTrip()` function in neon-db-new.ts
+- **Safety Features**: Users cannot remove themselves, confirmation dialog prevents accidents
+- **Real-Time Updates**: Local state updates immediately after successful removal
+
+### New Features:
+- **Remove Member Buttons**: Red buttons appear for all members except current user
+- **Confirmation Dialog**: Confirms removal with member name before proceeding
+- **Database Integration**: Sets `is_active = false` in trip_members table (preserves history)
+- **State Management**: Updates both tripMembers and activeTrip state after removal
+- **Error Handling**: Comprehensive error handling with user feedback
+
+### User Experience:
+- **"You" Indicator**: Current user sees "You" label instead of remove button
+- **Clear Confirmation**: "Are you sure you want to remove [Name] from this trip?"
+- **Success Feedback**: "[Name] has been removed from the trip" confirmation
+- **Visual Updates**: Member disappears from avatar list immediately
+- **Error Messages**: Clear error messages if removal fails
+
+### Technical Implementation:
+- **API Endpoint**: `DELETE /api/trips/[code]/members` with userId in request body
+- **Database Function**: `removeUserFromTrip(tripCode, userId)` sets member inactive
+- **Frontend Logic**: `handleRemoveMember()` with confirmation, API call, and state updates
+- **Modal Enhancement**: Conditional rendering based on current user vs other members
+
+### Security Features:
+- **Self-Protection**: Users cannot accidentally remove themselves
+- **Trip Code Validation**: Ensures removal happens on correct trip
+- **User ID Verification**: Validates user exists before removal
+- **Confirmation Required**: No accidental removals with confirmation dialog
+
+### Files Modified:
+- `app/api/trips/[code]/members/route.ts` - New API endpoint for member removal
+- `lib/neon-db-new.ts` - Added removeUserFromTrip database function  
+- `app/page.tsx` - Added handleRemoveMember function and enabled modal editing
+- `components/ui/members-list.tsx` - Enhanced modal with conditional remove buttons
+
+### Database Changes:
+- **Soft Delete**: Members marked `is_active = false` instead of hard deletion
+- **History Preservation**: Maintains expense and member history for reporting
+- **Clean Removal**: Removed members no longer appear in active member lists
+- **Reactivation Support**: Same function can reactivate if member rejoins
+
+---
+
+## Update #41: Smart Member Removal Restrictions - Data Integrity Protection
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Expense-Based Restrictions**: Members can only be removed from trips with 0 expenses
+- **Visual Safety Indicators**: Warning message and disabled buttons when expenses exist
+- **Data Integrity Protection**: Prevents removal of members involved in expense splitting
+- **Smart UI Feedback**: Clear explanation of why removal is not allowed
+- **Double Safety Check**: Both frontend and backend validation
+
+### Safety Features:
+- **Warning Banner**: Shows when trip has expenses with clear explanation
+- **Disabled Remove Buttons**: Remove buttons are greyed out and non-functional
+- **Confirmation Prevention**: Backend safety check prevents API calls
+- **Clear Messaging**: "Cannot remove members - This trip has X expenses"
+
+### User Experience:
+- **Visual Feedback**: Yellow warning banner explains restriction
+- **Disabled State**: Remove buttons clearly indicate they're not available
+- **Helpful Context**: Shows exact number of expenses causing the restriction
+- **Data Protection**: Users understand why the restriction exists
+
+### Technical Implementation:
+- **Props Enhancement**: Added `hasExpenses` and `expenseCount` to MembersModal
+- **Conditional Rendering**: Remove buttons disabled when `hasExpenses = true`
+- **Backend Safety**: `handleRemoveMember` validates expense count before API call
+- **State-Based Logic**: Uses `activeTrip.expenses.length` for real-time validation
+
+### Business Logic:
+- **Zero Expenses**: Full removal functionality available
+- **Has Expenses**: All removal options disabled with explanation
+- **Future-Proof**: Protects against complex expense splitting scenarios
+- **Data Consistency**: Maintains referential integrity in expense records
+
+### Files Modified:
+- `components/ui/members-list.tsx` - Enhanced modal with expense-based restrictions
+- `app/page.tsx` - Added expense validation and safety checks
+- `todo.md` - Created development roadmap and feature tracking
+
+### Files Added:
+- `todo.md` - Development todo list with current and future features
+
+---
+
+## Update #42: Expense-Based Trip Active Status Logic
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Smart Active Status**: Trips only show as "ACTIVE" when they have expenses/receipts
+- **Zero Expenses = Inactive**: New trips without expenses show as "upcoming" instead of "active"
+- **Dynamic Status Updates**: Adding first expense automatically makes trip active
+- **Consistent Logic**: Updated all display areas (home, profile, trip cards) with same logic
+- **Database Independence**: Logic based on expense count, not database `is_active` field
+
+### Core Logic Change:
+```typescript
+// Before: Based on database field
+isActive: tripData.trip.is_active || false
+
+// After: Based on expense count  
+isActive: (tripData.expenses && tripData.expenses.length > 0) || false
+```
+
+### Status Determination:
+- **Active**: Trip has 1+ expenses/receipts
+- **Upcoming**: Trip has 0 expenses (newly created)
+- **Completed**: Trip has end date in the past
+
+### UI Updates:
+- **Green "ACTIVE" Badge**: Only shows when trip has expenses
+- **Trip Card Styling**: Special ring and background only for trips with expenses
+- **Select Button**: Only appears for trips without expenses (inactive ones)
+- **Profile Tab**: Consistent status display across all trip cards
+
+### Business Logic:
+- **New Trips**: Created as "upcoming" until first expense added
+- **First Expense**: Automatically makes trip "active"
+- **Data Integrity**: Active status always reflects actual trip usage
+- **User Clarity**: Visual feedback matches actual trip state
+
+### Files Modified:
+- `app/page.tsx` - Updated all trip active status logic to be expense-based
+- `todo.md` - Marked trip active status feature as completed
+
+### User Experience Benefits:
+- **Clear Visual Feedback**: Active status now means the trip is actually being used
+- **Intuitive Logic**: Empty trips don't show as active, which makes more sense
+- **Automatic Updates**: Adding expenses automatically updates status without manual intervention
+- **Consistent Display**: Same logic applied everywhere trips are shown
+
+---
+
+## Update #43: Trip Code Display & Title Centering Fix
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Changes Made:
+- **Trip Code Display**: Added "Trip #578" identifier in top right of home page header
+- **Perfect Title Centering**: Fixed trip title positioning to be truly centered
+- **State Management**: Added `currentTripCode` state to track active trip code
+- **Dynamic Loading**: Trip code updates automatically when switching trips
+- **Database Integration**: Only shows for database trips with 3-digit codes
+- **Visual Balance**: Adjusted positioning to prevent centering issues
+
+### Implementation:
+```jsx
+// Trip code in top right corner
+{activeTab === 'home' && currentTripCode && (
+  <div className="absolute top-6 right-6 z-10" style={{paddingTop: 'env(safe-area-inset-top)'}}>
+    <div className="text-sm text-muted-foreground">
+      Trip #{currentTripCode}
+    </div>
+  </div>
+)}
+
+// Perfectly centered title
+<div className="flex justify-center items-center mb-8 w-full">
+  <div className="flex-1 flex justify-center">
+    <h1 className="text-2xl font-medium text-foreground">{activeTrip.name}</h1>
+  </div>
+</div>
+```
+
+### State Updates:
+- **On Database Load**: `setCurrentTripCode(activeTrip.trip_code.toString())`
+- **On Trip Switch**: Code updates automatically when switching trips
+- **LocalStorage Trips**: No code displayed (legacy format doesn't have codes)
+- **Consistent Display**: Always shows current active trip's 3-digit identifier
+
+### UI/UX Features:
+- **Visual Consistency**: Matches profile page logout button positioning
+- **Subtle Styling**: `text-muted-foreground` for non-intrusive display
+- **Context Awareness**: Helps users identify which trip they're viewing
+- **Trip Sharing**: Makes it easier to reference trip codes when sharing
+
+### Files Modified:
+- `app/page.tsx` - Added trip code state and header display
+- `updatestracker.md` - Documented trip code display feature
+
+### Benefits:
+- **Trip Identification**: Users can easily see which trip they're currently viewing
+- **Perfect Centering**: Trip title is now truly centered regardless of other elements
+- **Visual Balance**: Clean, professional layout with no visual off-centering
+- **Sharing Support**: Trip code visible for easy sharing with friends
+- **Visual Context**: Provides additional context in the UI
+- **Database Trips**: Only shows for trips with proper 3-digit codes
+
+---
