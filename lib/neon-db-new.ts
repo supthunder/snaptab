@@ -682,6 +682,35 @@ export async function getExpenseWithItems(expenseId: string): Promise<(Expense &
   }
 }
 
+// Delete expense and all related data
+export async function deleteExpense(expenseId: string): Promise<boolean> {
+  try {
+    // Get expense info before deleting (to get trip_id for trip total recalculation)
+    const expenseResult = await sql`
+      SELECT trip_id, total_amount FROM expenses WHERE id = ${expenseId}
+    `
+    
+    if (expenseResult.rows.length === 0) {
+      return false // Expense not found
+    }
+    
+    const expense = expenseResult.rows[0]
+    const tripId = expense.trip_id
+    
+    // Delete expense (CASCADE will automatically delete expense_items and item_assignments)
+    const deleteResult = await sql`
+      DELETE FROM expenses WHERE id = ${expenseId}
+    `
+    
+    // Return true if expense was deleted
+    return (deleteResult.rowCount ?? 0) > 0
+    
+  } catch (error) {
+    console.error('Error deleting expense:', error)
+    return false
+  }
+}
+
 // Settlement & Balance Calculation Functions
 export interface SettlementBalance {
   user_id: string

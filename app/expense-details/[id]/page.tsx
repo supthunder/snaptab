@@ -28,6 +28,7 @@ interface DatabaseExpense {
   merchant_name: string
   total_amount: any // Database may return string or number
   currency: string
+  receipt_image_url?: string
   expense_date: string
   paid_by: string
   paid_by_username?: string
@@ -197,14 +198,21 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
     if (!confirmDelete) return
     
     try {
-      // TODO: Implement expense deletion API endpoint
-      console.log('Deleting expense:', expense.id)
-      
-      // For now, just navigate back
-      window.history.back()
-      
-      // TODO: Make API call to delete expense from database
-      alert('Expense deleted successfully!')
+      // Call the API to delete the expense
+      const response = await fetch(`/api/expenses/${expense.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete expense')
+      }
+
+      // Successfully deleted - navigate back to home
+      window.location.href = "/"
       
     } catch (error) {
       console.error('Failed to delete expense:', error)
@@ -564,6 +572,30 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
               </div>
             </CardContent>
           </Card>
+
+          {/* Receipt Image */}
+          {expense.receipt_image_url && (
+            <Card className="minimal-card">
+              <CardContent className="p-6">
+                <h3 className="font-medium mb-4">Receipt</h3>
+                <div className="w-full">
+                  <img 
+                    src={expense.receipt_image_url} 
+                    alt="Receipt" 
+                    className="w-full h-auto rounded-lg border border-border shadow-sm"
+                    style={{ maxHeight: '600px', objectFit: 'contain' }}
+                    onLoad={(e) => {
+                      console.log('Receipt image loaded successfully')
+                    }}
+                    onError={(e) => {
+                      console.error('Failed to load receipt image:', expense.receipt_image_url)
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { put } from '@vercel/blob'
 
 // Mock response for testing when API quota is exceeded
 const mockReceiptResponse = {
@@ -88,11 +89,46 @@ export async function POST(request: NextRequest) {
 
     console.log('File received:', file.name, file.type, file.size)
 
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      console.error('File must be an image')
+      return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
+    }
+
+    // Validate file size (10MB limit for receipts)
+    if (file.size > 10 * 1024 * 1024) {
+      console.error('File size too large')
+      return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 })
+    }
+
+    // Store receipt image in Vercel Blob
+    console.log('Storing receipt image in blob storage...')
+    let receiptImageUrl: string | null = null
+    
+    try {
+      // Generate unique filename
+      const timestamp = Date.now()
+      const extension = file.name.split('.').pop() || 'jpg'
+      const filename = `receipts/${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`
+
+      // Upload to Vercel Blob
+      const blob = await put(filename, file, {
+        access: 'public',
+      })
+      
+      receiptImageUrl = blob.url
+      console.log('Receipt image stored successfully:', receiptImageUrl)
+    } catch (blobError) {
+      console.error('Failed to store receipt image:', blobError)
+      // Continue processing even if blob storage fails
+    }
+
     // Check if OpenAI API key is available
     if (!process.env.OPENAI_API_KEY) {
       console.error('No OpenAI API key found, using mock response')
       return NextResponse.json({
         ...mockReceiptResponse,
+        receiptImageUrl,
         _note: "This is a mock response because OpenAI API key is not configured."
       })
     }
@@ -109,6 +145,7 @@ export async function POST(request: NextRequest) {
       console.error('Failed to initialize OpenAI client:', initError)
       return NextResponse.json({
         ...mockReceiptResponse,
+        receiptImageUrl,
         _note: "This is a mock response because OpenAI client initialization failed."
       })
     }
@@ -247,7 +284,14 @@ export async function POST(request: NextRequest) {
       try {
         const receiptData = parseOpenAIResponse(content)
         console.log('Successfully parsed receipt data:', receiptData)
-        return NextResponse.json(receiptData)
+        
+        // Add receipt image URL to response
+        const responseData = {
+          ...receiptData,
+          receiptImageUrl
+        }
+        
+        return NextResponse.json(responseData)
       } catch (parseError) {
         console.error('Failed to parse OpenAI response:', content)
         console.error('Parse error:', parseError)
@@ -259,7 +303,14 @@ export async function POST(request: NextRequest) {
           if (jsonMatch) {
             const extractedJson = parseOpenAIResponse(jsonMatch[0])
             console.log('Successfully extracted JSON from response:', extractedJson)
-            return NextResponse.json(extractedJson)
+            
+            // Add receipt image URL to extracted response
+            const responseData = {
+              ...extractedJson,
+              receiptImageUrl
+            }
+            
+            return NextResponse.json(responseData)
           }
         } catch (secondParseError) {
           console.error('Second parse attempt failed:', secondParseError)
@@ -280,6 +331,7 @@ export async function POST(request: NextRequest) {
         console.log('OpenAI API timeout, using mock response')
         return NextResponse.json({
           ...mockReceiptResponse,
+          receiptImageUrl,
           _note: "This is a mock response due to OpenAI API timeout. The request took too long."
         })
       }
@@ -291,6 +343,7 @@ export async function POST(request: NextRequest) {
         // Return mock response for testing
         return NextResponse.json({
           ...mockReceiptResponse,
+          receiptImageUrl,
           _note: "This is a mock response due to API quota limits. In production, this would be real AI-extracted data."
         })
       }
@@ -299,6 +352,7 @@ export async function POST(request: NextRequest) {
       console.log('OpenAI API error, using mock response')
       return NextResponse.json({
         ...mockReceiptResponse,
+        receiptImageUrl,
         _note: `This is a mock response due to OpenAI API error: ${openaiError.message || 'Unknown error'}`
       })
     }

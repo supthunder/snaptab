@@ -23,6 +23,7 @@ export default function AddExpensePage() {
   })
 
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([])
+  const [receiptImageUrl, setReceiptImageUrl] = useState<string | null>(null)
   const [splitMode, setSplitMode] = useState<'even' | 'items'>('even')
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [itemAssignments, setItemAssignments] = useState<ItemAssignment[]>([])
@@ -98,6 +99,7 @@ export default function AddExpensePage() {
     const summary = urlParams.get("summary")
     const emoji = urlParams.get("emoji")
     const itemsParam = urlParams.get("items")
+    const receiptImageUrlParam = urlParams.get("receiptImageUrl")
 
     if (amount || merchant || date) {
       setFormData((prev) => ({
@@ -120,6 +122,11 @@ export default function AddExpensePage() {
       } catch (error) {
         console.error('Failed to parse items:', error)
       }
+    }
+
+    // Set receipt image URL if available
+    if (receiptImageUrlParam) {
+      setReceiptImageUrl(receiptImageUrlParam)
     }
   }, [])
 
@@ -277,6 +284,7 @@ export default function AddExpensePage() {
           merchant_name: formData.description,
           total_amount: parseFloat(formData.amount),
           currency: activeTrip.currency,
+          receipt_image_url: receiptImageUrl,
           expense_date: formData.date,
           paid_by_username: username,
           split_with_usernames: selectedMembers,

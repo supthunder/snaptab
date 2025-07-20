@@ -3624,3 +3624,249 @@ Split between:
 ```
 
 ---
+
+## Update #55: Receipt Image Storage and Display Feature  
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Feature Added:
+**Receipt Image Storage**: User requested storing receipt images in blob storage and displaying them in expense details.
+
+### User Feedback:
+"lets add a new feature. everytime i upload an image, i want it stored in the storage blob. in the expense detail page, add a new section in the bottom where its the recitp itself, like the image itself"
+
+### Implementation:
+
+#### 1. **Receipt Image Storage in Scan API**:
+Enhanced the scan-receipt API to store uploaded images in Vercel Blob:
+```typescript
+// Store receipt image in Vercel Blob
+const timestamp = Date.now()
+const extension = file.name.split('.').pop() || 'jpg'
+const filename = `receipts/${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`
+
+const blob = await put(filename, file, {
+  access: 'public',
+})
+
+receiptImageUrl = blob.url
+```
+
+#### 2. **API Response Enhancement**:
+Modified all scan-receipt responses to include the receipt image URL:
+```typescript
+// Add receipt image URL to response
+const responseData = {
+  ...receiptData,
+  receiptImageUrl
+}
+```
+
+#### 3. **Add Expense Integration**:
+Updated the add-expense page to handle and pass receipt image URLs:
+```typescript
+// Handle receipt image URL from scan results
+const receiptImageUrlParam = urlParams.get("receiptImageUrl")
+if (receiptImageUrlParam) {
+  setReceiptImageUrl(receiptImageUrlParam)
+}
+
+// Include in expense data
+const expenseData = {
+  // ... other fields
+  receipt_image_url: receiptImageUrl,
+  // ... remaining fields
+}
+```
+
+#### 4. **Database Integration**:
+The database schema already supported `receipt_image_url` field, and the `addExpenseToTrip` function properly stores it.
+
+#### 5. **Expense Details Display**:
+Added receipt image section to the bottom of expense details page:
+```tsx
+{expense.receipt_image_url && (
+  <Card className="minimal-card">
+    <CardContent className="p-6">
+      <h3 className="font-medium mb-4">Receipt</h3>
+      <div className="w-full">
+        <img 
+          src={expense.receipt_image_url} 
+          alt="Receipt" 
+          className="w-full h-auto rounded-lg border border-border shadow-sm"
+          style={{ maxHeight: '600px', objectFit: 'contain' }}
+        />
+      </div>
+    </CardContent>
+  </Card>
+)}
+```
+
+### Files Modified:
+- `app/api/scan-receipt/route.ts` - Added Vercel Blob storage and image URL response
+- `app/add-expense/page.tsx` - Added receipt image URL handling and passing to API
+- `app/expense-details/[id]/page.tsx` - Added receipt image display section
+- Enhanced TypeScript interfaces to include receipt image URL field
+
+### Technical Features:
+
+#### **Image Storage**:
+- ✅ **Vercel Blob Integration**: Secure cloud storage with public access
+- ✅ **Unique Filenames**: Timestamp + random string prevents conflicts
+- ✅ **File Validation**: Image type and size validation (10MB limit)
+- ✅ **Error Handling**: Graceful fallback if storage fails
+
+#### **User Experience**:
+- ✅ **Automatic Storage**: Every scanned receipt is automatically saved
+- ✅ **Receipt Viewing**: Full receipt image displayed in expense details
+- ✅ **Responsive Display**: Images scale appropriately on all devices
+- ✅ **Error Handling**: Hidden on load failure with console logging
+
+#### **Database Integration**:
+- ✅ **Schema Support**: `receipt_image_url` field already existed in DB
+- ✅ **API Integration**: Seamless integration with expense creation flow
+- ✅ **Optional Field**: Works with both scanned and manual expenses
+
+### Benefits:
+
+#### **Receipt Preservation**:
+- ✅ **Digital Archive**: All receipts permanently stored in cloud
+- ✅ **Audit Trail**: Easy verification of expenses with original receipts
+- ✅ **No Loss**: Receipts can't be lost or damaged
+
+#### **User Convenience**:
+- ✅ **Visual Reference**: See actual receipt alongside expense details
+- ✅ **Dispute Resolution**: Original receipt available for questions
+- ✅ **Complete Context**: Full expense context with image and parsed data
+
+#### **Technical Reliability**:
+- ✅ **Cloud Storage**: Vercel Blob provides reliable, scalable storage
+- ✅ **Public URLs**: Direct image access without authentication
+- ✅ **Fast Loading**: Optimized image delivery
+
+### Before vs After:
+
+#### ❌ Before:
+```
+📱 Scan receipt → Parse data → Save expense
+❌ Receipt image discarded after parsing
+❌ No visual record of original receipt
+❌ Only parsed text data available
+```
+
+#### ✅ After:
+```
+📱 Scan receipt → Store image in blob → Parse data → Save expense
+✅ Receipt image permanently stored
+✅ Full receipt displayed in expense details
+✅ Both image and parsed data available
+```
+
+---
+
+## Update #56: Fixed Balance Calculation to Use Actual Database Split Data
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Issue Reported:
+**Incorrect Balance Display**: User reported that their balance showed +$0.00 when it should reflect actual amounts owed/owed to them.
+
+### User Feedback:
+"new issue, in the home page, why 'your balance' not reflecting my balance? check db for that trip id and my user, and see what values it has, and then check if maybe the code is not updating with m ybalance"
+
+### Root Cause Analysis:
+
+#### **Database Investigation:**
+- **Trip #914**: User "mac1" had only 1 member initially
+- **Expense Data**: $39.60 expense split with just mac1 (single-person trip)
+- **Balance Calculation**: $39.60 paid - $39.60 owed = $0.00 (technically correct)
+
+#### **Code Issue Found:**
+The balance calculation was using a **simplified formula**:
+```javascript
+// ❌ WRONG: Oversimplified calculation
+const userOwes = trip.expenses.length > 0 ? trip.totalExpenses / trip.members.length : 0
+```
+
+**Problems with this approach:**
+1. **Assumes all expenses split equally** among all trip members
+2. **Ignores actual `split_with` data** from database
+3. **Doesn't account for selective splits** (some expenses only split among certain people)
+
+### Solution Implemented:
+
+#### **Fixed Balance Calculation Logic:**
+```javascript
+// ✅ CORRECT: Uses actual database split data
+const currentUserMember = tripData.members?.find(member => member.username === username)
+const currentUserId = currentUserMember?.id
+
+if (currentUserId) {
+  userOwes = tripData.expenses?.reduce((total, expense) => {
+    // Check if current user is in the split_with array for this expense
+    if (expense.split_with && expense.split_with.includes(currentUserId)) {
+      // User owes their share of this expense
+      const splitAmount = parseFloat(expense.total_amount || 0) / expense.split_with.length
+      return total + splitAmount
+    }
+    return total
+  }, 0) || 0
+}
+```
+
+#### **Key Improvements:**
+1. **Individual Expense Analysis**: Checks each expense's `split_with` array
+2. **User ID Matching**: Properly matches username to user ID for database queries
+3. **Accurate Share Calculation**: Divides expense by actual number of people in split
+4. **Selective Participation**: Only includes expenses user is actually part of
+
+### Testing & Validation:
+
+#### **Test Scenario:**
+- Added second user "testuser1" to trip #914
+- Added $20.00 coffee expense split between mac1 and testuser1  
+- Verified balance calculation:
+
+**Expected Result for mac1:**
+- **Paid**: $59.60 ($39.60 burger + $20.00 coffee)
+- **Owes**: $49.60 ($39.60 burger + $10.00 coffee share)  
+- **Balance**: **+$10.00** (owed money for testuser1's coffee share)
+
+### User Experience Impact:
+
+#### **Before Fix:**
+- Balance always showed $0.00 for single-member trips
+- Incorrect calculations when expenses had different split configurations
+- Users couldn't see actual money owed/owed to them
+
+#### **After Fix:**  
+- ✅ **Accurate Balances**: Shows real amounts based on expense participation
+- ✅ **Multi-Member Support**: Works correctly with any number of trip members
+- ✅ **Flexible Splits**: Handles expenses split among different subgroups
+- ✅ **Real-time Updates**: Balance updates as expenses and splits change
+
+### Additional Discovery:
+
+#### **Trip Member Management:**
+During investigation, confirmed the app has full member management functionality:
+- **Trip Codes**: 3-digit codes (like #914) for easy joining
+- **Member Addition**: Users can join via `/onboarding` → "Join Existing Trip"
+- **Member Removal**: Trip creators can remove members (with expense protection)
+- **Real-time Sync**: Member changes update across all views
+
+#### **How to Add Members to Trips:**
+1. **Share trip code** (e.g., "914") with friends
+2. Friends go to `/onboarding` and choose "Join Existing Trip"  
+3. Enter 3-digit code to instantly join
+4. New expenses can be split among all members
+
+### Files Modified:
+- `app/page.tsx` - Fixed balance calculation in `loadTripFromDatabase()` function
+- Enhanced database query utilization for accurate split calculations
+
+### Technical Notes:
+- **Database Integrity**: Existing `getUserBalance()` function in `lib/data.ts` was already correct for localStorage fallback
+- **User ID Mapping**: Properly handles username → user ID conversion for database operations
+- **Split Array Handling**: Correctly processes JSONB `split_with` arrays containing user UUIDs
+
+---

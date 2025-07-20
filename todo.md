@@ -15,6 +15,8 @@
 - 📄 **Export Functionality**: Export trip expenses to PDF/CSV
 
 ## Completed
+- ✅ **Balance Calculation Fix**: Fixed home page balance to use actual database split data instead of simplified member division
+- ✅ **Receipt Image Storage & Display**: Added complete receipt image storage in Vercel Blob with display in expense details
 - ✅ **Username-Based Display**: Switched entire app to use usernames instead of display names for uniqueness and consistency
 - ✅ **Database Split Mode Fix**: Fixed expense details to properly show splits from database - handles both even splits and item-level assignments correctly
 - ✅ **Visual Item Assignment Display**: Enhanced expense details to show item assignments grouped by person with visual pill badges, matching add-expense page
