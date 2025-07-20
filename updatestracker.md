@@ -5,6 +5,37 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #61: Enhanced Expense Details Page  
+**Date**: 2025-01-20  
+**Status**: ✅ Complete
+
+### Changes Made:
+#### **UI Cleanup:**
+- **Removed "Expense Details" title**: Cleaned up header to reduce clutter - now just shows trip name and back button
+- **Cleaner header design**: More spacious, focused layout without redundant title
+
+#### **Enhanced Edit Functionality:**
+- **Added split mode editing**: When clicking "Edit", users can now modify split method (Split Evenly vs Split by Items)
+- **Interactive member selection**: Can toggle which members are included in the split
+- **Real-time split calculations**: Shows amount per person as selections change  
+- **Visual feedback**: Checkboxes and amount previews for selected members
+- **Split method toggle**: Same UI as add expense page with calculator and user icons
+
+#### **Split Mode Features:**
+- **Even Split Mode**: Select/deselect members with live cost calculation per person
+- **Items Split Mode**: Shows receipt items (full editing coming soon, placeholder for now)
+- **Consistent UI**: Matches add expense page functionality and design
+- **Responsive calculations**: Updates split amounts in real-time as members are toggled
+
+### Technical Implementation:
+- Added split mode state management (`splitMode`, `selectedMembers`, `receiptItems`)
+- Imported necessary icons (`Calculator`, `Users`, `Check`)
+- Added split mode change handlers and member toggle functions
+- Implemented real-time split amount calculations
+
+### Files Modified:
+- `app/expense-details/[id]/page.tsx` - Enhanced with split editing functionality
+
 ## Update #60: Fixed Date Display & Merchant Name Casing  
 **Date**: 2025-01-20  
 **Status**: ✅ Complete

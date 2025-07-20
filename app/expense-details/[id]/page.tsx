@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, Edit2, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, Edit2, Save, Trash2, Calculator, Users, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -74,6 +74,11 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
     paidBy: '',
     date: ''
   })
+  const [splitMode, setSplitMode] = useState<'even' | 'items'>('even')
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([])
+  const [tripMembers, setTripMembers] = useState<string[]>([])
+  const [receiptItems, setReceiptItems] = useState<any[]>([])
+  const [itemAssignments, setItemAssignments] = useState<any[]>([])
 
   useEffect(() => {
     // First get the params
@@ -99,6 +104,11 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
             paidBy: fetchedExpense.paid_by_username || fetchedExpense.paid_by,
             date: fetchedExpense.expense_date
           })
+          
+          // Set split mode and members
+          setSplitMode(fetchedExpense.split_mode || 'even')
+          setSelectedMembers(fetchedExpense.split_with_users?.map((u: any) => u.username) || [])
+          setReceiptItems(fetchedExpense.items || [])
 
           // Load trip data using the trip code from localStorage
           const tripCode = localStorage.getItem('snapTab_currentTripCode')
@@ -121,6 +131,20 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
       setIsLoading(false)
     })
   }, [params])
+
+  const handleSplitModeChange = (mode: 'even' | 'items') => {
+    setSplitMode(mode)
+  }
+
+  const handleMemberToggle = (member: string) => {
+    setSelectedMembers(prev => 
+      prev.includes(member) 
+        ? prev.filter(m => m !== member)
+        : [...prev, member]
+    )
+  }
+
+  const splitAmount = selectedMembers.length > 0 ? parseFloat(editForm.amount || '0') / selectedMembers.length : 0
 
   const formatTimeAgo = (dateString: string) => {
     const now = new Date()
@@ -241,7 +265,6 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
             <Button variant="ghost" size="icon" className="mr-4" onClick={() => window.history.back()}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-medium">Expense Details</h1>
           </div>
         </header>
         
@@ -269,7 +292,6 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-xl font-medium">Expense Details</h1>
               <p className="text-sm text-muted-foreground">{trip?.name || 'Loading...'}</p>
             </div>
           </div>
@@ -401,6 +423,114 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Split Mode Edit - Only show when editing */}
+          {isEditing && (
+            <>
+              {/* Split Method Toggle */}
+              {receiptItems.length > 0 && (
+                <Card className="minimal-card">
+                  <CardContent className="p-6">
+                    <h3 className="font-medium mb-4">Split Method</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        type="button"
+                        variant={splitMode === 'even' ? 'default' : 'outline'}
+                        className="h-12 rounded-xl flex items-center justify-center space-x-2"
+                        onClick={() => handleSplitModeChange('even')}
+                      >
+                        <Calculator className="h-4 w-4" />
+                        <span>Split Evenly</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={splitMode === 'items' ? 'default' : 'outline'}
+                        className="h-12 rounded-xl flex items-center justify-center space-x-2"
+                        onClick={() => handleSplitModeChange('items')}
+                      >
+                        <Users className="h-4 w-4" />
+                        <span>Split by Items</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Split Between - Even Mode */}
+              {splitMode === 'even' && trip && (
+                <Card className="minimal-card">
+                  <CardContent className="p-6">
+                    <h3 className="font-medium mb-4">Split between</h3>
+                    <div className="space-y-3">
+                      {expense.split_with_users?.map((user: any, index: number) => (
+                        <div
+                          key={`${user.username}-${index}`}
+                          className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-colors ${
+                            selectedMembers.includes(user.username)
+                              ? "bg-primary/10 border border-primary/20"
+                              : "bg-background border border-border"
+                          }`}
+                          onClick={() => handleMemberToggle(user.username)}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                selectedMembers.includes(user.username) ? "border-primary bg-primary" : "border-muted-foreground"
+                              }`}
+                            >
+                              {selectedMembers.includes(user.username) && <Check className="h-3 w-3 text-primary-foreground" />}
+                            </div>
+                            <span className="font-medium">{user.username}</span>
+                          </div>
+                          {selectedMembers.includes(user.username) && editForm.amount && (
+                            <span className="text-primary font-medium">{trip.currency} {splitAmount.toFixed(2)}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {editForm.amount && (
+                      <div className="mt-4 p-4 bg-background rounded-xl border border-border">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-muted-foreground">Total amount</span>
+                          <span className="font-medium">{trip.currency} {parseFloat(editForm.amount).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Split {selectedMembers.length} ways</span>
+                          <span className="font-medium text-primary">{trip.currency} {splitAmount.toFixed(2)} each</span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Split by Items Mode */}
+              {splitMode === 'items' && receiptItems.length > 0 && (
+                <Card className="minimal-card">
+                  <CardContent className="p-6">
+                    <h3 className="font-medium mb-4">Split by Items</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Individual item assignment editing coming soon. For now, use "Split Evenly" mode.
+                    </p>
+                    <div className="space-y-3">
+                      {receiptItems.map((item: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                          <div>
+                            <span className="font-medium">{item.name}</span>
+                            {item.quantity > 1 && (
+                              <span className="text-sm text-muted-foreground ml-2">×{item.quantity}</span>
+                            )}
+                          </div>
+                          <span className="text-primary font-medium">{trip?.currency} {Number(item.price || 0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
 
           {/* Item Assignments (if available) */}
