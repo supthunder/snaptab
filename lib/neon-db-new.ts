@@ -605,15 +605,44 @@ export async function unassignItemFromUser(expenseItemId: string, username: stri
   }
 }
 
-export async function getExpenseWithItems(expenseId: string): Promise<(Expense & { items: (ExpenseItem & { assignments: User[] })[] }) | null> {
+export async function getExpenseWithItems(expenseId: string): Promise<(Expense & { items: (ExpenseItem & { assignments: User[] })[]; paid_by_username?: string; paid_by_display_name?: string; split_with_users?: User[] }) | null> {
   try {
+    // Get expense with paid_by user info
     const expenseResult = await sql`
-      SELECT * FROM expenses WHERE id = ${expenseId}
+      SELECT 
+        e.*,
+        u.username as paid_by_username,
+        u.display_name as paid_by_display_name
+      FROM expenses e
+      JOIN users u ON e.paid_by = u.id
+      WHERE e.id = ${expenseId}
     `
     
     if (expenseResult.rows.length === 0) return null
     
-    const expense = expenseResult.rows[0] as Expense
+    const expense = expenseResult.rows[0] as Expense & { paid_by_username: string; paid_by_display_name: string }
+
+    // Get split_with users info
+    let splitWithUsers: User[] = []
+    if (expense.split_with && expense.split_with.length > 0) {
+      // Fetch user details for each user ID in split_with
+      for (const userId of expense.split_with) {
+        const userResult = await sql`
+          SELECT id, username, display_name, avatar_url, created_at, updated_at
+          FROM users 
+          WHERE id = ${userId}
+        `
+        if (userResult.rows.length > 0) {
+          splitWithUsers.push(userResult.rows[0] as User)
+        }
+      }
+      // Sort by display name
+      splitWithUsers.sort((a, b) => {
+        const nameA = a.display_name || a.username
+        const nameB = b.display_name || b.username
+        return nameA.localeCompare(nameB)
+      })
+    }
 
     const itemsResult = await sql`
       SELECT 
@@ -644,7 +673,8 @@ export async function getExpenseWithItems(expenseId: string): Promise<(Expense &
 
     return {
       ...expense,
-      items
+      items,
+      split_with_users: splitWithUsers
     }
   } catch (error) {
     console.error('Error fetching expense with items:', error)

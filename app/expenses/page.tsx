@@ -44,7 +44,7 @@ export default function ExpensesPage() {
           const trip: Trip = {
             id: tripData.trip.id,
             name: tripData.trip.name,
-            members: tripData.members?.map((member: any) => member.display_name || member.username) || [],
+            members: tripData.members?.map((member: any) => member.username) || [],
             totalExpenses: tripData.expenses?.reduce((sum: number, expense: any) => sum + parseFloat(expense.total_amount || 0), 0) || 0,
             currency: tripData.trip.currency || 'USD',
             startDate: undefined,

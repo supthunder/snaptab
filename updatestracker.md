@@ -3077,3 +3077,550 @@ const handleRefresh = async () => {
 - **Quick access**: Still one tap to create new trip
 
 ---
+
+## Update #49: Fix Database Amount Type Error
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Issue Fixed:
+**TypeError when adding expenses**: `expense.total_amount.toFixed is not a function` occurred when viewing expense details after adding a new expense.
+
+### Root Cause:
+Database was returning amount fields (`total_amount`, `tax_amount`, `tip_amount`) as strings, but the code was calling `.toFixed()` method directly, which only exists on numbers.
+
+### Error Details:
+```
+TypeError: expense.total_amount.toFixed is not a function
+at ExpenseDetailsPage (expense-details/[id]/page.tsx:477:74)
+```
+
+### Solution Applied:
+```jsx
+// ❌ Before: Assuming amounts are numbers
+{expense.total_amount.toFixed(2)}
+{expense.tax_amount.toFixed(2)}
+{(expense.total_amount / expense.split_with.length).toFixed(2)}
+
+// ✅ After: Convert to numbers first
+{Number(expense.total_amount || 0).toFixed(2)}
+{Number(expense.tax_amount || 0).toFixed(2)}
+{(Number(expense.total_amount || 0) / expense.split_with.length).toFixed(2)}
+```
+
+### Changes Made:
+- **Safe Number Conversion**: Wrapped all amount fields with `Number()` before calling `.toFixed()`
+- **Fallback Values**: Added `|| 0` fallback for null/undefined amounts
+- **Arithmetic Operations**: Fixed division operations that required numeric values
+- **Comparison Operations**: Fixed `> 0` comparisons with proper number conversion
+- **Interface Update**: Changed amount field types to `any` to handle database string/number variance
+
+### Files Modified:
+- `app/expense-details/[id]/page.tsx` - Fixed all amount field usage with proper number conversion
+
+### Technical Benefits:
+- **Robust Error Handling**: No more runtime errors when viewing expenses
+- **Database Compatibility**: Works regardless of whether DB returns strings or numbers
+- **Type Safety**: Proper number conversion ensures mathematical operations work correctly
+- **User Experience**: Expense details page now loads without crashes
+
+### Locations Fixed:
+1. **Main Amount Display**: Total amount in header
+2. **Tax Display**: Tax amount in breakdown section
+3. **Tip Display**: Tip amount in breakdown section  
+4. **Split Calculation**: Per-person amount calculation
+5. **Conditional Checks**: Amount > 0 comparisons
+6. **Item Price Display**: Individual receipt item prices in expense details
+7. **Item Split Calculation**: Per-person costs for shared items in expense details
+8. **Add Expense Item Prices**: Item price display in add-expense page
+9. **Assignment Totals**: Cost calculations in expense assignment interface
+
+---
+
+## Additional Fix: Item Price Type Errors
+**Status**: ✅ Complete
+
+### Issue:
+Similar TypeError occurred with `item.price.toFixed is not a function` when viewing expense details with receipt items.
+
+### Root Cause:
+Receipt item prices were also being returned as strings from the database, causing the same `.toFixed()` error.
+
+### Files Fixed:
+- `app/expense-details/[id]/page.tsx` - Fixed item price displays
+- `app/add-expense/page.tsx` - Fixed item prices in expense creation flow
+
+### Changes Made:
+```jsx
+// ❌ Before: Direct toFixed on string values
+{item.price.toFixed(2)}
+{(item.price / item.assignments.length).toFixed(2)}
+{totalCost.toFixed(2)}
+{assignment.cost.toFixed(2)}
+
+// ✅ After: Safe number conversion
+{Number(item.price || 0).toFixed(2)}
+{(Number(item.price || 0) / item.assignments.length).toFixed(2)}
+{Number(totalCost || 0).toFixed(2)}
+{Number(assignment.cost || 0).toFixed(2)}
+```
+
+---
+
+## Update #50: Database Duplicate Cleanup & React Key Fix
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Issues Fixed:
+**React Key Duplication Errors**: Console warnings about duplicate keys for the same user ("alwin") appearing multiple times in member lists.
+
+### Root Cause:
+Duplicate entries in the `trip_members` database table caused the same username to appear multiple times, violating React's requirement for unique keys.
+
+### Error Details:
+```
+Encountered two children with the same key, `alwin`. Keys should be unique...
+```
+
+### Solution Applied:
+
+#### 1. Database Cleanup API:
+Created `/api/cleanup-duplicates` endpoint to automatically remove duplicate trip members.
+
+**Logic:**
+- Identifies duplicate `(trip_id, user_id)` combinations
+- Keeps only the earliest `joined_at` record for each user per trip
+- Removes all other duplicates safely
+- Provides verification and detailed reporting
+
+#### 2. React Key Safety Fix:
+Updated React components to use index-based keys as fallback.
+
+```jsx
+// ❌ Before: Using username as key (can duplicate)
+{members.map((member) => (
+  <option key={member} value={member}>{member}</option>
+))}
+
+// ✅ After: Using username + index (always unique)
+{members.map((member, index) => (
+  <option key={`${member}-${index}`} value={member}>{member}</option>
+))}
+```
+
+### Files Modified:
+- `app/api/cleanup-duplicates/route.ts` - Database cleanup endpoint
+- `app/add-expense/page.tsx` - Fixed React keys in member selection dropdowns and lists
+
+### How to Use:
+Run the cleanup API by making a POST request:
+```bash
+curl -X POST http://localhost:3000/api/cleanup-duplicates
+```
+
+Or visit the endpoint in your browser (POST requests only).
+
+### Results:
+- **Database Integrity**: Removes duplicate member entries while preserving the earliest join records
+- **React Stability**: Eliminates key duplication warnings in console
+- **User Experience**: Members no longer appear multiple times in dropdowns/lists
+- **Future Prevention**: Index-based keys prevent future duplicate key issues
+
+---
+
+## Update #51: Fix User Display Names in Expense Details
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Issue Fixed:
+**UUID Display Instead of Names**: Expense details page was showing user UUIDs instead of user display names in "Paid by" and "Split between" sections.
+
+### Root Cause:
+The `getExpenseWithItems` database function was only fetching basic expense data without joining the users table to get display names. The frontend was receiving raw user UUIDs and displaying them directly.
+
+### Error Example:
+```
+Paid by: 64559c60-3de9-45b5-a5d2-e9c9c29d7855
+Split between: 
+- 08ede392-0f88-461b-a565-55d1833a293d
+- 64559c60-3de9-45b5-a5d2-e9c9c29d7855
+```
+
+### Solution Applied:
+
+#### 1. Enhanced Database Function:
+Updated `getExpenseWithItems()` in `lib/neon-db-new.ts` to join with users table and fetch display names.
+
+**Before:**
+```sql
+SELECT * FROM expenses WHERE id = ?
+```
+
+**After:**
+```sql
+SELECT 
+  e.*,
+  u.username as paid_by_username,
+  u.display_name as paid_by_display_name
+FROM expenses e
+JOIN users u ON e.paid_by = u.id
+WHERE e.id = ?
+```
+
+#### 2. Split Members Resolution:
+Added logic to resolve `split_with` user IDs to actual user objects with display names.
+
+```typescript
+// Fetch user details for each user ID in split_with
+for (const userId of expense.split_with) {
+  const userResult = await sql`
+    SELECT id, username, display_name, avatar_url, created_at, updated_at
+    FROM users WHERE id = ${userId}
+  `
+  if (userResult.rows.length > 0) {
+    splitWithUsers.push(userResult.rows[0] as User)
+  }
+}
+```
+
+#### 3. Frontend Display Updates:
+Updated expense details page to use proper display names.
+
+```jsx
+// ❌ Before: Showing UUIDs
+<span>Paid by {expense.paid_by}</span>
+{expense.split_with.map(person => <span>{person}</span>)}
+
+// ✅ After: Showing display names
+<span>Paid by {expense.paid_by_display_name || expense.paid_by_username || expense.paid_by}</span>
+{expense.split_with_users.map(user => 
+  <span>{user.display_name || user.username}</span>
+)}
+```
+
+### Files Modified:
+- `lib/neon-db-new.ts` - Enhanced `getExpenseWithItems()` function
+- `app/expense-details/[id]/page.tsx` - Updated display logic and TypeScript interfaces
+
+### Technical Benefits:
+- **Proper User Display**: Shows actual names instead of UUIDs
+- **Fallback Chain**: `display_name → username → user_id` for maximum reliability
+- **Type Safety**: Updated interfaces to reflect new data structure
+- **Performance**: Minimal additional queries while maintaining data integrity
+
+### User Experience:
+- **Clear Attribution**: Users can see who paid for expenses and who they're split with
+- **Professional Display**: Clean, readable expense details instead of technical UUIDs
+- **Consistent Naming**: Uses display names consistently across the application
+
+---
+
+## Update #52: Visual Item Assignment Display in Expense Details
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Enhancement Added:
+**Visual Item Assignment Display**: Expense details now show item assignments grouped by person with visual pill badges, matching the add-expense page experience.
+
+### User Request:
+User wanted the expense details page to show "who is paying for what" with the same visual indicators as the add-expense page, and requested grouping by person for cleaner organization.
+
+### Before vs After:
+
+#### ❌ Before: Plain Text List
+```
+Items (11)
+├─ Burger - Assigned to: John, Alice  
+├─ Fries - Assigned to: John
+├─ Soda - Assigned to: Alice
+└─ Onion Rings - Assigned to: Bob
+```
+
+#### ✅ After: Visual Grouped Display
+```
+Item Assignments
+
+┌─ John ────────────────────────┐
+│ 3 items • USD12.50           │
+│ [Burger USD5.00] [Fries USD2.50] [Burger USD5.00] │
+└──────────────────────────────┘
+
+┌─ Alice ───────────────────────┐  
+│ 2 items • USD4.00            │
+│ [Burger USD2.50] [Soda USD1.50] │
+└──────────────────────────────┘
+```
+
+### Features Implemented:
+
+#### 1. **Grouped by Person**:
+- Each person gets their own section showing their assigned items
+- Person name with summary: "2 items • USD4.50"
+- Clean visual separation between people
+
+#### 2. **Item Pills/Badges**:
+- Small colored badges for each item: `Onion Rings USD3.00`
+- Visual consistency with add-expense page
+- Easy to scan and understand
+
+#### 3. **Visual Indicators**:
+- **Blue badges**: Individual items (assigned to one person only)  
+- **Orange badges**: Shared items (split between multiple people)
+- **👥 emoji**: Shows when item is shared between multiple people
+- **Cost per person**: Shows individual cost when items are split
+
+#### 4. **Smart Cost Calculation**:
+- Shared items show cost per person (e.g., $10 item split 2 ways = $5.00 each)
+- Individual items show full cost
+- Person totals accurately reflect their responsibility
+
+#### 5. **Handle Edge Cases**:
+- **Unassigned Items**: Shows under "Unassigned" section if no assignments exist
+- **Empty Assignments**: Gracefully handles items without assignments
+- **Cost Precision**: Proper decimal formatting for split costs
+
+### Files Modified:
+- `app/expense-details/[id]/page.tsx` - Replaced plain item list with visual grouped assignment display
+
+### Technical Implementation:
+```tsx
+// Group items by assignees
+const assignmentsByPerson: Record<string, Array<{item: any, cost: number, shared: boolean}>> = {}
+
+expense.items.forEach((item: any) => {
+  if (item.assignments && item.assignments.length > 0) {
+    item.assignments.forEach((assignee: any) => {
+      const personName = assignee.display_name || assignee.username
+      const itemCost = Number(item.price || 0) / item.assignments.length
+      const isShared = item.assignments.length > 1
+      
+      if (!assignmentsByPerson[personName]) {
+        assignmentsByPerson[personName] = []
+      }
+      
+      assignmentsByPerson[personName].push({
+        item: { ...item, originalPrice: Number(item.price || 0) },
+        cost: itemCost,
+        shared: isShared
+      })
+    })
+  }
+})
+```
+
+### User Experience Benefits:
+- **Clear Attribution**: Instantly see who owes what and how much
+- **Visual Consistency**: Matches the familiar add-expense interface
+- **Better Organization**: Grouped by person instead of scattered item list
+- **Cost Transparency**: Shows both individual item costs and person totals
+- **Professional Presentation**: Clean, modern UI that's easy to understand
+
+### Design Consistency:
+- Same color scheme as add-expense page (blue/orange badges)
+- Consistent typography and spacing
+- Familiar visual patterns for improved UX
+- Responsive layout that works on all screen sizes
+
+---
+
+## Update #53: Fix Split Mode Display from Database  
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Issue Fixed:
+**Incorrect Split Display**: Expense details were showing all items as "Unassigned" instead of reflecting the actual split assignments from the database.
+
+### User Feedback:
+"yea but its not reflecting the split? get it from db also if i split evenly handle that by just showing a x way split with each user"
+
+### Root Cause:
+The expense details page wasn't properly checking the `split_mode` field from the database and was only looking for item-level assignments, ignoring even splits.
+
+### Solution Applied:
+
+#### 1. **Split Mode Detection**:
+Now properly checks `expense.split_mode` from database:
+- `'even'`: Split evenly among all users  
+- `'items'`: Use specific item assignments
+
+#### 2. **Even Split Display**:
+```jsx
+// For even split mode
+if (expense.split_mode === 'even') {
+  const splitUsers = expense.split_with_users || []
+  const numPeople = splitUsers.length
+  
+  splitUsers.forEach((user) => {
+    expense.items.forEach((item) => {
+      const itemCost = Number(item.price) / numPeople
+      // Assign equal share to each user
+    })
+  })
+}
+```
+
+#### 3. **Visual Improvements**:
+- **Dynamic Header**: "Split Evenly" vs "Item Assignments"
+- **Split Description**: "3-way split • Each person pays an equal share of all items"
+- **Proper Cost Calculation**: Each person pays their fair share
+
+#### 4. **Database Integration**:
+Uses the `split_with_users` array populated by the enhanced `getExpenseWithItems()` function to show actual user names instead of IDs.
+
+### Before vs After:
+
+#### ❌ Before: Everything "Unassigned"
+```
+Item Assignments
+┌─ Unassigned ──────────────────┐
+│ 11 items • USD39.60          │
+│ [All items showing as unassigned] │
+└──────────────────────────────┘
+```
+
+#### ✅ After: Proper Split Display
+
+**Even Split:**
+```
+Split Evenly
+3-way split • Each person pays an equal share of all items
+
+┌─ John ────────────────────────┐
+│ 11 items • USD13.20          │  
+│ [Burger USD1.67] [Fries USD0.83] ... │
+└──────────────────────────────┘
+
+┌─ Alice ───────────────────────┐
+│ 11 items • USD13.20          │
+│ [Same items, equal shares]    │
+└──────────────────────────────┘
+```
+
+**Item Assignments:**
+```
+Item Assignments
+
+┌─ John ────────────────────────┐
+│ 5 items • USD15.50           │
+│ [Burger USD5.00] [Fries USD2.50] ... │
+└──────────────────────────────┘
+
+┌─ Alice ───────────────────────┐
+│ 3 items • USD8.00            │
+│ [Specific assigned items]     │
+└──────────────────────────────┘
+```
+
+### Technical Implementation:
+- **Split Mode Check**: `expense.split_mode === 'even'` vs `'items'`
+- **Even Distribution**: `itemCost = price / numPeople`
+- **Database Integration**: Uses `split_with_users` for proper names
+- **Visual Indicators**: Orange badges for shared items (even split), blue for individual
+
+### Files Modified:
+- `app/expense-details/[id]/page.tsx` - Added proper split mode handling and database integration
+
+### User Experience:
+- ✅ **Accurate Representation**: Shows actual splits from database
+- ✅ **Clear Messaging**: "3-way split" tells users exactly what's happening
+- ✅ **Fair Cost Display**: Each person sees their exact responsibility
+- ✅ **Consistent UI**: Matches add-expense page visual patterns
+
+---
+
+## Update #54: Switch to Username-Based Display for Uniqueness  
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Issue Fixed:
+**Display Name Inconsistency**: User requested switching from display names to usernames for uniqueness and consistency throughout the app.
+
+### User Feedback:
+"ok instead of name on the bill it should be. username so that way its unique same with adding a bill split by username not name"
+
+### Root Cause:
+The app was inconsistently using display names as fallbacks to usernames, which could cause issues when multiple users have similar display names, and made it harder to ensure uniqueness.
+
+### Solution Applied:
+
+#### 1. **Expense Details Page**:
+Updated to show usernames throughout:
+```jsx
+// ❌ Before: Using display names with fallbacks
+const personName = user.display_name || user.username
+<span>Paid by {expense.paid_by_display_name || expense.paid_by_username}</span>
+
+// ✅ After: Using usernames for uniqueness
+const personName = user.username  
+<span>Paid by {expense.paid_by_username || expense.paid_by}</span>
+```
+
+#### 2. **Trip Member Loading**:
+Updated all pages to load usernames instead of display names:
+```jsx
+// ❌ Before: Mixed display name/username loading
+members: tripData.members?.map(member => member.display_name || member.username)
+
+// ✅ After: Consistent username loading  
+members: tripData.members?.map(member => member.username)
+```
+
+#### 3. **UI Components**:
+Updated members list and avatars to show usernames:
+```jsx
+// ❌ Before: Display names with username fallback
+<p>{member.display_name || member.username}</p>
+<p>@{member.username}</p>
+
+// ✅ After: Username-first approach
+<p>{member.username}</p>
+<p>Member since {joinDate}</p>
+```
+
+#### 4. **Database Consistency**:
+All expense splitting and assignment operations now use usernames consistently for identifying users.
+
+### Files Modified:
+- `app/expense-details/[id]/page.tsx` - Show usernames in split displays and paid by sections
+- `app/page.tsx` - Load trip members as usernames, update member removal logic
+- `app/expenses/page.tsx` - Load trip members as usernames
+- `app/add-expense/page.tsx` - Use usernames for splitting
+- `components/ui/members-list.tsx` - Display usernames in member lists and avatars
+
+### Benefits:
+
+#### **Uniqueness & Consistency**:
+- ✅ **Guaranteed Uniqueness**: Usernames are unique, display names might not be
+- ✅ **Consistent Experience**: Same identifier used everywhere
+- ✅ **No Confusion**: Users see the same name format across all screens
+
+#### **Technical Reliability**:
+- ✅ **Database Integrity**: All operations use the same user identifier
+- ✅ **Split Accuracy**: No ambiguity about who items are assigned to
+- ✅ **Easier Debugging**: Single source of truth for user identification
+
+#### **User Experience**:
+- ✅ **Clear Attribution**: Always know exactly who is who
+- ✅ **Predictable**: Username shown is always the same everywhere
+- ✅ **Professional**: Clean, consistent naming convention
+
+### Before vs After:
+
+#### ❌ Before: Mixed Display
+```
+Paid by: John Smith
+Split between: 
+- John Smith  
+- Alice J.
+- coooker
+```
+
+#### ✅ After: Username Consistency  
+```
+Paid by: coooker
+Split between:
+- coooker
+- alice_j  
+- johnsmith
+```
+
+---

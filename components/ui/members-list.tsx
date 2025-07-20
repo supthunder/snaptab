@@ -9,6 +9,7 @@ interface Member {
   username: string
   display_name?: string
   avatar_url?: string
+  created_at?: string
 }
 
 interface MembersListProps {
@@ -91,7 +92,7 @@ export function MembersList({
               <Avatar className="h-10 w-10 border-2 border-background shadow-sm ring-1 ring-border">
                 <AvatarImage
                   src={member.avatar_url}
-                  alt={member.display_name || member.username}
+                  alt={member.username}
                   className="object-cover"
                 />
                 <AvatarFallback 
@@ -101,7 +102,7 @@ export function MembersList({
                       : `${userColor.bg} ${userColor.text}`
                   }`}
                 >
-                  {getInitials(member.display_name || member.username)}
+                  {getInitials(member.username)}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -246,7 +247,7 @@ export function MembersModal({
                     <Avatar className="h-10 w-10">
                       <AvatarImage
                         src={member.avatar_url}
-                        alt={member.display_name || member.username}
+                        alt={member.username}
                       />
                       <AvatarFallback 
                         className={`font-medium ${
@@ -255,12 +256,12 @@ export function MembersModal({
                             : `${userColor.bg} ${userColor.text}`
                         }`}
                       >
-                        {getInitials(member.display_name || member.username)}
+                        {getInitials(member.username)}
                       </AvatarFallback>
                     </Avatar>
                   <div>
-                    <p className="font-medium">{member.display_name || member.username}</p>
-                    <p className="text-sm text-muted-foreground">@{member.username}</p>
+                    <p className="font-medium">{member.username}</p>
+                    <p className="text-sm text-muted-foreground">Member since {new Date(member.created_at || Date.now()).toLocaleDateString()}</p>
                   </div>
                 </div>
                 {canEdit && onRemoveMember && member.username !== localStorage.getItem('snapTab_username') && !hasExpenses && (

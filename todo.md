@@ -15,6 +15,12 @@
 - 📄 **Export Functionality**: Export trip expenses to PDF/CSV
 
 ## Completed
+- ✅ **Username-Based Display**: Switched entire app to use usernames instead of display names for uniqueness and consistency
+- ✅ **Database Split Mode Fix**: Fixed expense details to properly show splits from database - handles both even splits and item-level assignments correctly
+- ✅ **Visual Item Assignment Display**: Enhanced expense details to show item assignments grouped by person with visual pill badges, matching add-expense page
+- ✅ **User Display Names Fix**: Fixed expense details showing UUIDs instead of user display names in "Paid by" and "Split between" sections
+- ✅ **Database Duplicate Cleanup**: Fixed React key duplication errors by removing duplicate trip members and improving React key handling
+- ✅ **Database Amount Type Fix**: Fixed TypeError when viewing expense details - properly convert string amounts and item prices to numbers
 - ✅ **Clean Profile UI**: Replaced large "Create New Trip" button with compact + icon next to header
 - ✅ **Smart Profile Caching**: Intelligent caching to prevent excessive API calls on profile tab
 - ✅ **Pull-to-Refresh for PWA**: Native mobile app gesture with animated feedback for page refresh

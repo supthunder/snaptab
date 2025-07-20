@@ -26,18 +26,25 @@ interface DatabaseExpense {
   name: string
   description: string
   merchant_name: string
-  total_amount: number
+  total_amount: any // Database may return string or number
   currency: string
   expense_date: string
   paid_by: string
-  paid_by_username: string
+  paid_by_username?: string
+  paid_by_display_name?: string
   split_with: string[]
+  split_with_users?: Array<{
+    id: string
+    username: string
+    display_name?: string
+    avatar_url?: string
+  }>
   split_mode: 'even' | 'items'
   category: string
   summary: string
   emoji: string
-  tax_amount: number
-  tip_amount: number
+  tax_amount: any // Database may return string or number
+  tip_amount: any // Database may return string or number
   confidence: number
   created_at: string
   updated_at: string
@@ -297,7 +304,7 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                 
                 <p className="text-muted-foreground text-sm mb-2">Total Amount</p>
                 <p className="text-4xl font-light text-primary mb-2">
-                  {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{expense.total_amount.toFixed(2)}
+                  {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{Number(expense.total_amount || 0).toFixed(2)}
                 </p>
                 <div className="flex justify-center items-center gap-4 text-sm text-muted-foreground">
                   <span>Paid by {expense.paid_by_username || expense.paid_by}</span>
@@ -317,18 +324,22 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
               </div>
               
               {/* Split Details */}
-              {expense.split_with && expense.split_with.length > 0 && (
+              {(expense.split_with_users && expense.split_with_users.length > 0) || (expense.split_with && expense.split_with.length > 0) && (
                 <div className="text-center p-3 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-2">Split between:</p>
                   <div className="flex flex-wrap gap-2 justify-center">
-                    {expense.split_with.map((person, index) => (
+                    {expense.split_with_users ? expense.split_with_users.map((user, index) => (
+                      <span key={index} className="px-2 py-1 bg-primary/10 text-primary rounded text-sm">
+                        {user.username}
+                      </span>
+                    )) : expense.split_with.map((person, index) => (
                       <span key={index} className="px-2 py-1 bg-primary/10 text-primary rounded text-sm">
                         {person}
                       </span>
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{(expense.total_amount / expense.split_with.length).toFixed(2)} each
+                    {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{(Number(expense.total_amount || 0) / (expense.split_with_users?.length || expense.split_with.length)).toFixed(2)} each
                   </p>
                 </div>
               )}
@@ -384,37 +395,124 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
             </Card>
           )}
 
-          {/* Item Details (if available) */}
+          {/* Item Assignments (if available) */}
           {expense.items && expense.items.length > 0 && (
             <Card className="minimal-card">
               <CardContent className="p-6">
-                <h3 className="font-medium mb-4">Items ({expense.items.length})</h3>
-                <div className="space-y-3">
-                  {expense.items.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center py-3 border-b border-border last:border-0">
-                      <div className="flex-1">
-                        <div className="font-medium">{item.name}</div>
-                        {item.quantity && (
-                          <div className="text-sm text-muted-foreground">Quantity: {item.quantity}</div>
-                        )}
-                        {item.assignments && item.assignments.length > 0 && (
-                          <div className="text-sm text-muted-foreground mt-1">
-                            Assigned to: {item.assignments.map((a: any) => a.display_name || a.username).join(', ')}
+                <h3 className="font-medium mb-4">
+                  {expense.split_mode === 'even' ? 'Split Evenly' : 'Item Assignments'}
+                </h3>
+                <div className="space-y-4">
+                  {(() => {
+                    const assignmentsByPerson: Record<string, Array<{item: any, cost: number, shared: boolean}>> = {}
+                    
+                    if (expense.split_mode === 'even') {
+                      // Even split: divide all items equally among split_with users
+                      const splitUsers = expense.split_with_users || []
+                      const numPeople = splitUsers.length
+                      
+                      if (numPeople > 0) {
+                        splitUsers.forEach((user: any) => {
+                          const personName = user.username
+                          assignmentsByPerson[personName] = []
+                          
+                          expense.items.forEach((item: any) => {
+                            const itemCost = Number(item.price || 0) / numPeople
+                            assignmentsByPerson[personName].push({
+                              item: { ...item, originalPrice: Number(item.price || 0) },
+                              cost: itemCost,
+                              shared: numPeople > 1
+                            })
+                          })
+                        })
+                      }
+                    } else {
+                      // Items mode: use actual item assignments from database
+                                              expense.items.forEach((item: any) => {
+                          if (item.assignments && item.assignments.length > 0) {
+                            item.assignments.forEach((assignee: any) => {
+                              const personName = assignee.username
+                              const itemCost = Number(item.price || 0) / item.assignments.length
+                              const isShared = item.assignments.length > 1
+                              
+                              if (!assignmentsByPerson[personName]) {
+                                assignmentsByPerson[personName] = []
+                              }
+                              
+                              assignmentsByPerson[personName].push({
+                                item: { ...item, originalPrice: Number(item.price || 0) },
+                                cost: itemCost,
+                                shared: isShared
+                              })
+                            })
+                          } else {
+                            // Unassigned items in items mode
+                            if (!assignmentsByPerson['Unassigned']) {
+                              assignmentsByPerson['Unassigned'] = []
+                            }
+                            assignmentsByPerson['Unassigned'].push({
+                              item: { ...item, originalPrice: Number(item.price || 0) },
+                              cost: Number(item.price || 0),
+                              shared: false
+                            })
+                          }
+                        })
+                    }
+
+                    // Show split mode description for even split
+                    const splitDescription = expense.split_mode === 'even' && expense.split_with_users 
+                      ? `${expense.split_with_users.length}-way split` 
+                      : null
+
+                    return (
+                      <>
+                        {splitDescription && (
+                          <div className="text-sm text-muted-foreground mb-4 p-3 bg-muted/50 rounded-lg text-center">
+                            {splitDescription} • Each person pays an equal share of all items
                           </div>
                         )}
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">
-                          {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{item.price.toFixed(2)}
-                        </div>
-                        {item.assignments && item.assignments.length > 1 && (
-                          <div className="text-xs text-muted-foreground">
-                            {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{(item.price / item.assignments.length).toFixed(2)} each
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                        
+                        {Object.entries(assignmentsByPerson).map(([personName, assignments]) => {
+                          const totalCost = assignments.reduce((sum, assignment) => sum + assignment.cost, 0)
+                          
+                          return (
+                            <div 
+                              key={personName}
+                              className="p-4 rounded-xl border border-border bg-background"
+                            >
+                              <div className="flex items-center justify-between mb-3">
+                                <div>
+                                  <span className="font-medium">{personName}</span>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {assignments.length} item{assignments.length > 1 ? 's' : ''} • {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{totalCost.toFixed(2)}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Item pills */}
+                              <div className="flex flex-wrap gap-1">
+                                {assignments.map((assignment, index) => (
+                                  <span
+                                    key={index}
+                                    className={`inline-flex items-center px-2 py-1 rounded text-xs ${
+                                      assignment.shared 
+                                        ? "bg-orange-100 text-orange-700 border border-orange-200" 
+                                        : "bg-blue-100 text-blue-700 border border-blue-200"
+                                    }`}
+                                  >
+                                    {assignment.item.name} {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{assignment.cost.toFixed(2)}
+                                    {assignment.shared && (
+                                      <span className="ml-1 text-orange-500">👥</span>
+                                    )}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </>
+                    )
+                  })()}
                 </div>
               </CardContent>
             </Card>
@@ -438,17 +536,17 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                   </div>
                 )}
                 
-                {expense.tax_amount && expense.tax_amount > 0 && (
+                {expense.tax_amount && Number(expense.tax_amount) > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Tax</span>
-                    <span className="font-medium">{getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{expense.tax_amount.toFixed(2)}</span>
+                    <span className="font-medium">{getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{Number(expense.tax_amount || 0).toFixed(2)}</span>
                   </div>
                 )}
                 
-                {expense.tip_amount && expense.tip_amount > 0 && (
+                {expense.tip_amount && Number(expense.tip_amount) > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Tip</span>
-                    <span className="font-medium">{getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{expense.tip_amount.toFixed(2)}</span>
+                    <span className="font-medium">{getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{Number(expense.tip_amount || 0).toFixed(2)}</span>
                   </div>
                 )}
                 

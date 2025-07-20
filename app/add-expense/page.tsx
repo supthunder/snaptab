@@ -54,7 +54,7 @@ export default function AddExpensePage() {
           const trip: Trip = {
             id: tripData.trip.id,
             name: tripData.trip.name,
-            members: tripData.members?.map((member: any) => member.display_name || member.username) || [],
+            members: tripData.members?.map((member: any) => member.username) || [],
             totalExpenses: tripData.expenses?.reduce((sum: number, expense: any) => sum + expense.total_amount, 0) || 0,
             currency: tripData.trip.currency || 'USD',
             startDate: undefined,
@@ -443,11 +443,11 @@ export default function AddExpensePage() {
                           </div>
                           <div className="text-right">
                             <span className={`font-medium ${isAssigned ? "text-muted-foreground" : "text-primary"}`}>
-                              {activeTrip.currency} {item.price.toFixed(2)}
+                              {activeTrip.currency} {Number(item.price || 0).toFixed(2)}
                             </span>
                             {isAssigned && assignment && assignment.assignedTo.length > 1 && (
                               <div className="text-xs text-muted-foreground">
-                                {activeTrip.currency} {(item.price / assignment.assignedTo.length).toFixed(2)} each
+                                {activeTrip.currency} {(Number(item.price || 0) / assignment.assignedTo.length).toFixed(2)} each
                               </div>
                             )}
                           </div>
@@ -494,7 +494,7 @@ export default function AddExpensePage() {
                               <span className="font-medium">{member}</span>
                               {assignments.length > 0 && (
                                 <div className="text-xs text-muted-foreground mt-1">
-                                  {assignments.length} item{assignments.length > 1 ? 's' : ''} • {activeTrip.currency}{totalCost.toFixed(2)}
+                                  {assignments.length} item{assignments.length > 1 ? 's' : ''} • {activeTrip.currency}{Number(totalCost || 0).toFixed(2)}
                                 </div>
                               )}
                             </div>
@@ -514,7 +514,7 @@ export default function AddExpensePage() {
                                       : "bg-blue-100 text-blue-700 border border-blue-200"
                                   }`}
                                 >
-                                  {assignment.item.name} {activeTrip.currency}{assignment.cost.toFixed(2)}
+                                  {assignment.item.name} {activeTrip.currency}{Number(assignment.cost || 0).toFixed(2)}
                                   {assignment.shared && (
                                     <Users className="h-3 w-3 ml-1" />
                                   )}
@@ -663,8 +663,8 @@ export default function AddExpensePage() {
                   className="mt-2 w-full bg-background border border-border rounded-xl h-12 px-4"
                   required
                 >
-                  {activeTrip.members.map((member) => (
-                    <option key={member} value={member}>
+                  {activeTrip.members.map((member, index) => (
+                    <option key={`${member}-${index}`} value={member}>
                       {member}
                     </option>
                   ))}
@@ -708,9 +708,9 @@ export default function AddExpensePage() {
               <CardContent className="p-6">
                 <h3 className="font-medium mb-4">Split between</h3>
                 <div className="space-y-3">
-                  {activeTrip.members.map((member) => (
+                  {activeTrip.members.map((member, index) => (
                     <div
-                      key={member}
+                      key={`${member}-${index}`}
                       className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-colors ${
                         selectedMembers.includes(member)
                           ? "bg-primary/10 border border-primary/20"

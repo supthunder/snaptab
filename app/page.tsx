@@ -191,7 +191,7 @@ export default function HomePage() {
       const trip: Trip = {
         id: tripData.trip.id,
         name: tripData.trip.name,
-        members: tripData.members?.map((member: any) => member.display_name || member.username) || [],
+        members: tripData.members?.map((member: any) => member.username) || [],
         totalExpenses: tripData.expenses?.reduce((sum: number, expense: any) => sum + parseFloat(expense.total_amount || 0), 0) || 0,
         currency: tripData.trip.currency || 'USD',
         startDate: undefined,
@@ -303,7 +303,7 @@ export default function HomePage() {
               return {
                 id: trip.id,
                 name: trip.name,
-                members: tripDetails.members?.map((member: any) => member.display_name || member.username) || [],
+                members: tripDetails.members?.map((member: any) => member.username) || [],
                 totalExpenses,
                 currency: trip.currency,
                 startDate: undefined,
@@ -686,7 +686,7 @@ export default function HomePage() {
     
     // Find the member to show confirmation with their name
     const member = tripMembers.find(m => m.id === memberId)
-    const memberName = member?.display_name || member?.username || 'this member'
+          const memberName = member?.username || 'this member'
     
     // Confirm removal
     const confirmed = window.confirm(`Are you sure you want to remove ${memberName} from this trip? This cannot be undone.`)
@@ -718,7 +718,7 @@ export default function HomePage() {
             ...prev,
             members: prev.members.filter(name => {
               const memberToRemove = tripMembers.find(m => m.id === memberId)
-              return name !== (memberToRemove?.display_name || memberToRemove?.username)
+              return name !== memberToRemove?.username
             })
           } : null)
         }
@@ -939,7 +939,7 @@ export default function HomePage() {
                   <span className={userBalance < 0 ? "text-red-400" : "text-green-400"}>
                     {userBalance < 0 ? "" : "+"}
                     {getCurrencySymbol(activeTrip.currency)}
-                    {Math.abs(userBalance).toFixed(2)}
+                    {Math.abs(Number(userBalance || 0)).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -947,7 +947,7 @@ export default function HomePage() {
               {/* Bottom Row: Total + Members + Edit */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-foreground text-lg">Total: {getCurrencySymbol(activeTrip.currency)}{activeTrip.totalExpenses.toFixed(2)}</p>
+                  <p className="text-foreground text-lg">Total: {getCurrencySymbol(activeTrip.currency)}{Number(activeTrip.totalExpenses || 0).toFixed(2)}</p>
                 </div>
 
                 <MembersList 
@@ -1011,7 +1011,7 @@ export default function HomePage() {
                         
                         <div className="text-right">
                           <p className="text-xl font-medium">
-                            {getCurrencySymbol(activeTrip.currency)}{expense.amount.toFixed(2)}
+                            {getCurrencySymbol(activeTrip.currency)}{Number(expense.amount || 0).toFixed(2)}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             Split {expense.splitWith.length} ways
@@ -1174,14 +1174,14 @@ export default function HomePage() {
                                 <div>
                                   <p className="text-muted-foreground">Total Spent</p>
                                   <p className="font-medium">
-                                    {getCurrencySymbol(trip.currency)}{trip.totalExpenses.toFixed(2)}
+                                    {getCurrencySymbol(trip.currency)}{Number(trip.totalExpenses || 0).toFixed(2)}
                                   </p>
                                 </div>
                                 <div>
                                   <p className="text-muted-foreground">Your Balance</p>
                                   <p className={`font-medium ${userBalance < 0 ? "text-red-400" : "text-green-400"}`}>
                                     {userBalance < 0 ? "-" : "+"}
-                                    {getCurrencySymbol(trip.currency)}{Math.abs(userBalance).toFixed(2)}
+                                    {getCurrencySymbol(trip.currency)}{Math.abs(Number(userBalance || 0)).toFixed(2)}
                                   </p>
                                 </div>
                               </div>
