@@ -3870,3 +3870,171 @@ During investigation, confirmed the app has full member management functionality
 - **Split Array Handling**: Correctly processes JSONB `split_with` arrays containing user UUIDs
 
 ---
+
+## Update #57: Implemented Expense Deletion Functionality
+**Date**: 2025-01-12  
+**Status**: ✅ Complete
+
+### Issue Reported:
+**Non-Functional Delete Button**: User reported that clicking the delete button on expense details page didn't actually delete expenses from the database or home page.
+
+### User Feedback:
+"another thing when i click on the bill, and click delete its not deleting from the home page?"
+
+### Root Cause:
+The delete functionality was incomplete - it had placeholder TODOs instead of actual implementation:
+```javascript
+// ❌ BEFORE: Non-functional placeholder
+const deleteExpense = async () => {
+  // TODO: Implement expense deletion API endpoint
+  console.log('Deleting expense:', expense.id)
+  
+  // For now, just navigate back
+  window.history.back()
+  
+  // TODO: Make API call to delete expense from database
+  alert('Expense deleted successfully!')
+}
+```
+
+### Solution Implemented:
+
+#### 1. **Database Layer Enhancement**:
+Added `deleteExpense()` function in `lib/neon-db-new.ts`:
+```typescript
+export async function deleteExpense(expenseId: string): Promise<boolean> {
+  try {
+    // Get expense info before deleting (for validation)
+    const expenseResult = await sql`
+      SELECT trip_id, total_amount FROM expenses WHERE id = ${expenseId}
+    `
+    
+    if (expenseResult.rows.length === 0) {
+      return false // Expense not found
+    }
+    
+    // Delete expense (CASCADE automatically deletes related data)
+    const deleteResult = await sql`
+      DELETE FROM expenses WHERE id = ${expenseId}
+    `
+    
+    return (deleteResult.rowCount ?? 0) > 0
+  } catch (error) {
+    console.error('Error deleting expense:', error)
+    return false
+  }
+}
+```
+
+#### 2. **API Endpoint Creation**:
+Added DELETE method to `/api/expenses/[id]/route.ts`:
+```typescript
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    
+    if (!id) {
+      return NextResponse.json({ error: 'Expense ID is required' }, { status: 400 })
+    }
+
+    const success = await deleteExpense(id)
+    
+    if (!success) {
+      return NextResponse.json({ error: 'Expense not found or failed to delete' }, { status: 404 })
+    }
+
+    return NextResponse.json({ success: true, message: 'Expense deleted successfully' })
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to delete expense' }, { status: 500 })
+  }
+}
+```
+
+#### 3. **Frontend Integration**:
+Updated expense details page delete function:
+```typescript
+const deleteExpense = async () => {
+  if (!expense) return
+  
+  const confirmDelete = window.confirm('Are you sure you want to delete this expense? This action cannot be undone.')
+  if (!confirmDelete) return
+  
+  try {
+    // Call the API to delete the expense
+    const response = await fetch(`/api/expenses/${expense.id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to delete expense')
+    }
+
+    // Successfully deleted - navigate back to home
+    window.location.href = "/"
+    
+  } catch (error) {
+    console.error('Failed to delete expense:', error)
+    alert('Failed to delete expense. Please try again.')
+  }
+}
+```
+
+### Testing & Validation:
+
+#### **API Testing:**
+- ✅ **DELETE Endpoint**: `curl -X DELETE /api/expenses/[id]` returns success
+- ✅ **Database Verification**: Expense count decreases after deletion  
+- ✅ **CASCADE Behavior**: Related `expense_items` and `item_assignments` automatically deleted
+
+#### **User Flow Testing:**
+1. **Navigate to expense details** ✅
+2. **Click Delete button** ✅  
+3. **Confirm deletion in dialog** ✅
+4. **API call executes successfully** ✅
+5. **Navigate back to home page** ✅
+6. **Expense no longer appears in list** ✅
+
+### Key Features:
+
+#### **Database Integrity**:
+- ✅ **CASCADE Deletion**: Automatically removes expense items and assignments  
+- ✅ **Transaction Safety**: Atomic deletion prevents partial states
+- ✅ **Validation**: Checks expense exists before attempting deletion
+- ✅ **Error Handling**: Returns clear success/failure status
+
+#### **User Experience**:
+- ✅ **Confirmation Dialog**: Prevents accidental deletions
+- ✅ **Success Navigation**: Returns to home page after deletion
+- ✅ **Error Feedback**: Clear error messages if deletion fails  
+- ✅ **Real-time Updates**: Expense immediately disappears from lists
+
+#### **API Design**:
+- ✅ **RESTful Endpoint**: Proper HTTP DELETE method
+- ✅ **Parameter Validation**: Validates expense ID presence
+- ✅ **Response Codes**: 200 success, 400/404 errors, 500 server errors
+- ✅ **JSON Responses**: Consistent API response format
+
+### Files Modified:
+- `lib/neon-db-new.ts` - Added `deleteExpense()` database function
+- `app/api/expenses/[id]/route.ts` - Added DELETE endpoint
+- `app/expense-details/[id]/page.tsx` - Updated delete functionality with API integration
+
+### User Impact:
+
+#### **Before Fix:**
+- Delete button showed fake success message  
+- Expenses remained in database and on home page
+- Users couldn't remove mistaken/duplicate expenses
+- Broken core functionality
+
+#### **After Fix:**
+- ✅ **Complete Deletion**: Expenses removed from database and UI
+- ✅ **Cascade Cleanup**: All related data (items, assignments) removed
+- ✅ **Instant Feedback**: Immediate navigation after successful deletion
+- ✅ **Error Recovery**: Clear error messages if something goes wrong
+
+**Delete functionality now works perfectly across the entire application!** 🎉
+
+---

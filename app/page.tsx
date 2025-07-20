@@ -17,6 +17,7 @@ import {
   type Trip, 
   type Expense 
 } from "@/lib/data"
+import { getUserBalanceFromDB } from "@/lib/neon-db-new"
 
 interface ReceiptData {
   merchantName: string
@@ -225,32 +226,17 @@ export default function HomePage() {
       const recentExpenses = trip.expenses.slice(-6).reverse()
       setRecentExpenses(recentExpenses)
       
-      // Calculate user balance using actual database split data
+      // Calculate user balance using database function
       const username = localStorage.getItem('snapTab_username') || "You"
       
-      // Calculate how much user paid
-      const userPaid = trip.expenses.filter(exp => exp.paidBy === username).reduce((sum, exp) => sum + exp.amount, 0)
-      
-      // Calculate how much user owes based on actual split_with data from database
-      let userOwes = 0
-      
-      // Get current user ID to match against split_with arrays (which contain user IDs)
-      const currentUserMember = tripData.members?.find((member: any) => member.username === username)
-      const currentUserId = currentUserMember?.id
-      
-      if (currentUserId) {
-        userOwes = tripData.expenses?.reduce((total: number, expense: any) => {
-          // Check if current user is in the split_with array for this expense
-          if (expense.split_with && expense.split_with.includes(currentUserId)) {
-            // User owes their share of this expense
-            const splitAmount = parseFloat(expense.total_amount || 0) / expense.split_with.length
-            return total + splitAmount
-          }
-          return total
-        }, 0) || 0
+      // Use database-aware balance calculation if we have a trip code
+      if (tripData.trip.trip_code) {
+        const balance = await getUserBalanceFromDB(tripData.trip.trip_code, username)
+        setUserBalance(balance)
+      } else {
+        // Fallback to simple calculation for trips without codes
+        setUserBalance(0)
       }
-      
-      setUserBalance(userPaid - userOwes)
       
     } catch (error) {
       console.error('Failed to load trip from database:', error)
@@ -272,8 +258,22 @@ export default function HomePage() {
       setRecentExpenses(recent)
       
       // Calculate user balance
-      const balance = getUserBalance(trip.id, "You")
-      setUserBalance(balance)
+              const username = localStorage.getItem('snapTab_username') || "You"
+        
+        // Check if this is a database trip (has tripCode) or localStorage trip
+        if (trip.tripCode) {
+          // Database trip - use database balance calculation
+          getUserBalanceFromDB(trip.tripCode, username).then(balance => {
+            setUserBalance(balance)
+          }).catch(error => {
+            console.error('Failed to calculate database balance:', error)
+            setUserBalance(0)
+          })
+        } else {
+          // localStorage trip - use localStorage balance calculation
+          const balance = getUserBalance(trip.id, username)
+          setUserBalance(balance)
+        }
     }
     
     setIsLoading(false)

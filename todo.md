@@ -15,6 +15,7 @@
 - 📄 **Export Functionality**: Export trip expenses to PDF/CSV
 
 ## Completed
+- ✅ **Expense Deletion**: Implemented complete expense deletion with database integration, API endpoint, and frontend functionality  
 - ✅ **Balance Calculation Fix**: Fixed home page balance to use actual database split data instead of simplified member division
 - ✅ **Receipt Image Storage & Display**: Added complete receipt image storage in Vercel Blob with display in expense details
 - ✅ **Username-Based Display**: Switched entire app to use usernames instead of display names for uniqueness and consistency

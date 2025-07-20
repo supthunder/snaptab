@@ -711,6 +711,58 @@ export async function deleteExpense(expenseId: string): Promise<boolean> {
   }
 }
 
+// Calculate user balance for database-based trips
+export async function getUserBalanceFromDB(tripCode: number, username: string): Promise<number> {
+  try {
+    // Get user ID from username
+    const user = await getUserByUsername(username)
+    if (!user) return 0
+
+    // Get all expenses for this trip
+    const expenses = await getTripExpenses(tripCode)
+    let balance = 0
+
+    for (const expense of expenses) {
+      // Amount user paid
+      if (expense.paid_by_user.username === username) {
+        balance += parseFloat(expense.total_amount.toString())
+      }
+
+      // Amount user owes
+      if (expense.split_mode === 'items') {
+        // Item-based splitting: sum up individual item assignments
+        let userOwedAmount = 0
+        
+        // Get expense with full item assignment data
+        const fullExpense = await getExpenseWithItems(expense.id)
+        
+        if (fullExpense) {
+          for (const item of fullExpense.items || []) {
+            for (const assignment of item.assignments || []) {
+              if (assignment.username === username) {
+                userOwedAmount += parseFloat(item.price.toString())
+              }
+            }
+          }
+        }
+        
+        balance -= userOwedAmount
+      } else {
+        // Even splitting: divide by number of people in split_with
+        if (expense.split_with && expense.split_with.includes(user.id)) {
+          const splitAmount = parseFloat(expense.total_amount.toString()) / expense.split_with.length
+          balance -= splitAmount
+        }
+      }
+    }
+
+    return balance
+  } catch (error) {
+    console.error('Error calculating user balance from DB:', error)
+    return 0
+  }
+}
+
 // Settlement & Balance Calculation Functions
 export interface SettlementBalance {
   user_id: string
