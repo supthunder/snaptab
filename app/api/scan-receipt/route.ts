@@ -4,7 +4,7 @@ import { put } from '@vercel/blob'
 
 // Mock response for testing when API quota is exceeded
 const mockReceiptResponse = {
-  merchantName: "Tokyo Ramen House",
+  merchantName: "TOKYO RAMEN HOUSE",
   total: 89.50,
   currency: "USD",
   transactionDate: "2024-01-15",
@@ -63,7 +63,14 @@ function parseOpenAIResponse(content: string) {
   cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1')
   
   // Parse the cleaned JSON
-  return JSON.parse(cleanContent.trim())
+  const parsed = JSON.parse(cleanContent.trim())
+  
+  // Convert merchantName to ALL CAPS for consistency
+  if (parsed.merchantName) {
+    parsed.merchantName = parsed.merchantName.toUpperCase()
+  }
+  
+  return parsed
 }
 
 export async function GET(request: NextRequest) {
@@ -163,10 +170,11 @@ export async function POST(request: NextRequest) {
       You are analyzing a receipt image for a travel expense tracking app. Extract the following information in JSON format:
       
       {
-        "merchantName": "Name of the business/restaurant",
+        "merchantName": "Name of the business/restaurant (max 24 characters, abbreviate intelligently if needed)",
         "total": "Total amount as a number (no currency symbol)",
         "currency": "Currency code (USD, EUR, etc.)",
         "transactionDate": "Date in YYYY-MM-DD format",
+        "transactionTime": "Time in HH:MM format (24-hour) if visible on receipt, or null if not found",
         "category": "Category from the travel expense options below",
         "summary": "1-2 word summary of the expense (e.g. 'Tacos', 'Hotel', 'Flight', 'Coffee')",
         "emoji": "Single emoji that best represents this expense",
@@ -201,6 +209,19 @@ export async function POST(request: NextRequest) {
       - "business" - Office supplies, coworking, business services
       - "miscellaneous" - Other expenses that don't fit above categories
       
+      MERCHANT NAME GUIDELINES:
+      - CRITICAL: Keep merchant name to 24 characters maximum
+      - Abbreviate intelligently if needed (e.g. "The Great Amazing Burger Shack" → "Amazing Burger Shack")
+      - Remove unnecessary words like "The", "LLC", "Inc", "Restaurant" 
+      - Preserve the most recognizable/important part of the name
+      - Examples: "McDonald's Restaurant" → "McDonald's", "The Coffee Bean & Tea Leaf" → "Coffee Bean & Tea"
+
+      TIME EXTRACTION:
+      - Look for transaction time on the receipt (often near date)
+      - Return in 24-hour format (e.g. "13:15" for 1:15 PM)
+      - If time is not clearly visible or readable, return null
+      - Common locations: header, footer, or near total amount
+
       SUMMARY GUIDELINES:
       - Keep to 1-2 words maximum
       - Be specific and descriptive (e.g. "Burrito" not "Food", "Uber" not "Transport")

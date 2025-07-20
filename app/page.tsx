@@ -17,13 +17,13 @@ import {
   type Trip, 
   type Expense 
 } from "@/lib/data"
-import { getUserBalanceFromDB } from "@/lib/neon-db-new"
 
 interface ReceiptData {
   merchantName: string
   total: number
   currency: string
   transactionDate: string
+  transactionTime?: string
   category?: string
   summary?: string
   emoji?: string
@@ -35,6 +35,7 @@ interface ReceiptData {
   tax?: number
   tip?: number
   confidence: number
+  receiptImageUrl?: string
 }
 
 export default function HomePage() {
@@ -203,6 +204,7 @@ export default function HomePage() {
           id: expense.id,
           tripId: expense.trip_id,
           description: expense.name,
+          merchantName: expense.merchant_name,
           amount: parseFloat(expense.total_amount || 0),
           date: expense.expense_date,
           paidBy: expense.paid_by_username || "You",
@@ -222,17 +224,31 @@ export default function HomePage() {
       // Set trip members for the members list component
       setTripMembers(tripData.members || [])
       
-      // Get recent expenses
-      const recentExpenses = trip.expenses.slice(-6).reverse()
+      // Get recent expenses - sort by created date descending (newest first)
+      const sortedExpenses = trip.expenses.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      const recentExpenses = sortedExpenses.slice(0, 6) // Take first 6 (newest)
       setRecentExpenses(recentExpenses)
       
-      // Calculate user balance using database function
+      // Calculate user balance using API endpoint
       const username = localStorage.getItem('snapTab_username') || "You"
       
       // Use database-aware balance calculation if we have a trip code
       if (tripData.trip.trip_code) {
-        const balance = await getUserBalanceFromDB(tripData.trip.trip_code, username)
-        setUserBalance(balance)
+        try {
+          const balanceResponse = await fetch(`/api/trips/${tripData.trip.trip_code}/balance?username=${encodeURIComponent(username)}`)
+          if (balanceResponse.ok) {
+            const balanceData = await balanceResponse.json()
+            setUserBalance(balanceData.balance)
+          } else {
+            throw new Error('Failed to fetch balance from API')
+          }
+        } catch (error) {
+          console.error('API balance calculation failed, using fallback:', error)
+          // Fallback to simple calculation
+          const userPaid = trip.expenses.filter(exp => exp.paidBy === username).reduce((sum, exp) => sum + exp.amount, 0)
+          const userOwes = trip.expenses.length > 0 ? (trip.totalExpenses / (tripData.members?.length || 1)) : 0
+          setUserBalance(userPaid - userOwes)
+        }
       } else {
         // Fallback to simple calculation for trips without codes
         setUserBalance(0)
@@ -253,8 +269,10 @@ export default function HomePage() {
     if (trip) {
       setActiveTrip(trip)
       
-      // Get recent expenses for this trip
-      const recent = getRecentExpenses(trip.id, 6)
+      // Get recent expenses for this trip - sorted by newest first
+      const allExpenses = getRecentExpenses(trip.id, 1000) // Get all expenses first
+      const sortedExpenses = allExpenses.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      const recent = sortedExpenses.slice(0, 6) // Take first 6 (newest)
       setRecentExpenses(recent)
       
       // Calculate user balance
@@ -262,13 +280,18 @@ export default function HomePage() {
         
         // Check if this is a database trip (has tripCode) or localStorage trip
         if (trip.tripCode) {
-          // Database trip - use database balance calculation
-          getUserBalanceFromDB(trip.tripCode, username).then(balance => {
-            setUserBalance(balance)
-          }).catch(error => {
-            console.error('Failed to calculate database balance:', error)
-            setUserBalance(0)
-          })
+          // Database trip - use API balance calculation with fallback
+          fetch(`/api/trips/${trip.tripCode}/balance?username=${encodeURIComponent(username)}`)
+            .then(response => response.json())
+            .then(data => {
+              setUserBalance(data.balance)
+            })
+            .catch(error => {
+              console.error('Failed to calculate API balance, using localStorage fallback:', error)
+              // Fallback to localStorage calculation
+              const balance = getUserBalance(trip.id, username)
+              setUserBalance(balance)
+            })
         } else {
           // localStorage trip - use localStorage balance calculation
           const balance = getUserBalance(trip.id, username)
@@ -585,6 +608,11 @@ export default function HomePage() {
         params.set('emoji', scannedData.emoji)
       }
       
+      // Add receipt image URL if available  
+      if (scannedData.receiptImageUrl) {
+        params.set('receiptImageUrl', scannedData.receiptImageUrl)
+      }
+      
       // Add items data if available
       if (scannedData.items && scannedData.items.length > 0) {
         params.set('items', JSON.stringify(scannedData.items))
@@ -617,6 +645,37 @@ export default function HomePage() {
     if (diffInDays < 7) return `${diffInDays} days ago`
     
     return expenseDate.toLocaleDateString()
+  }
+
+  const formatReceiptTime = (expenseDate: string, createdAt: string) => {
+    const now = new Date()
+    const creationDate = new Date(createdAt)
+    
+    // Calculate days difference based on when it was SCANNED (createdAt), not receipt date
+    const daysDiff = Math.floor((now.getTime() - creationDate.getTime()) / (1000 * 60 * 60 * 24))
+    
+    // Get time string (for when it was scanned)
+    const timeString = creationDate.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    }).toLowerCase()
+    
+    if (daysDiff === 0) {
+      // Today - show "today • 1:15pm"
+      return `today • ${timeString}`
+    } else if (daysDiff <= 7) {
+      // Within a week - show day name and time "monday • 1:15pm"
+      const dayName = creationDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+      return `${dayName} • ${timeString}`
+    } else {
+      // Beyond a week - show date (no year) and time "7/11 • 1:15pm"
+      const dateString = creationDate.toLocaleDateString('en-US', { 
+        month: 'numeric', 
+        day: 'numeric'
+      })
+      return `${dateString} • ${timeString}`
+    }
   }
 
   const getCurrencySymbol = (currency: string) => {
@@ -1023,10 +1082,10 @@ export default function HomePage() {
                       <div className="flex justify-between items-center">
                         <div className="flex-1">
                           <h3 className="font-medium text-foreground text-lg mb-1">
-                            {expense.summary || expense.description}
+                            {(expense as any).merchantName || expense.summary || expense.description}
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            {expense.paidBy} • {formatTimeAgo(expense.createdAt)}
+                            {expense.paidBy} • {formatReceiptTime(expense.date, expense.createdAt)}
                           </p>
                         </div>
                         

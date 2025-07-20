@@ -39,6 +39,7 @@
 - ✅ **Item-Level Splitting**: Split expenses by individual receipt items
 
 ## Future Considerations
+- 🎨 **Dynamic Open Graph Invites**: Generate dynamic invite images with trip ID prominently displayed and background matching trip theme (e.g., "Caribbean Trip" gets tropical background, "NYC Weekend" gets city skyline) for beautiful trip sharing on social media
 - 🌍 **Multi-Currency Support**: Handle expenses in different currencies with conversion
 - 🔐 **Enhanced Security**: Add trip passwords or invite-only access
 - 📸 **Receipt Gallery**: View all receipt images for a trip

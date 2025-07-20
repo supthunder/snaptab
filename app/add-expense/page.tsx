@@ -105,7 +105,7 @@ export default function AddExpensePage() {
       setFormData((prev) => ({
         ...prev,
         amount: amount || prev.amount,
-        description: merchant || prev.description,
+        description: merchant || prev.description, // Use merchant name as description
         date: date || prev.date,
         category: category || prev.category,
         summary: summary || prev.summary,
@@ -281,7 +281,7 @@ export default function AddExpensePage() {
         const expenseData = {
           name: formData.description,
           description: formData.description,
-          merchant_name: formData.description,
+          merchant_name: formData.description, // This will store the merchant name from the receipt
           total_amount: parseFloat(formData.amount),
           currency: activeTrip.currency,
           receipt_image_url: receiptImageUrl,
