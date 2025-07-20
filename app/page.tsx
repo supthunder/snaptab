@@ -50,11 +50,13 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'home' | 'camera' | 'profile'>('home')
   const [trips, setTrips] = useState<Trip[]>([])
   const [isTripsLoading, setIsTripsLoading] = useState(false)
+  const [tripsLoaded, setTripsLoaded] = useState(false) // Track if trips have been loaded
   const [userProfile, setUserProfile] = useState<{
     username: string
     displayName: string
     avatarUrl?: string
   } | null>(null)
+  const [profileLoaded, setProfileLoaded] = useState(false) // Track if profile has been loaded
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const profileInputRef = useRef<HTMLInputElement>(null)
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false)
@@ -77,10 +79,12 @@ export default function HomePage() {
         await loadUserTripsAndSetActive()
       }
       
-      // Reload user profile if on profile tab
+      // Force reload user profile and trips if on profile tab
       if (activeTab === 'profile') {
-        await loadUserTrips()
-        await loadUserProfile()
+        setTripsLoaded(false) // Force reload
+        setProfileLoaded(false) // Force reload
+        await loadUserTrips(true) // Pass true to force refresh
+        await loadUserProfile(true) // Pass true to force refresh
       }
     } catch (error) {
       console.error('Refresh failed:', error)
@@ -254,15 +258,19 @@ export default function HomePage() {
     setIsLoading(false)
   }
 
-  // Load trips when profile tab is active
+  // Load trips when profile tab is active - only if not already loaded
   useEffect(() => {
     if (activeTab === 'profile') {
-      loadUserTrips()
-      loadUserProfile()
+      if (!tripsLoaded) {
+        loadUserTrips()
+      }
+      if (!profileLoaded) {
+        loadUserProfile()
+      }
     }
-  }, [activeTab])
+  }, [activeTab, tripsLoaded, profileLoaded])
 
-  const loadUserTrips = async () => {
+  const loadUserTrips = async (forceRefresh = false) => {
     setIsTripsLoading(true)
     try {
       const username = localStorage.getItem('snapTab_username')
@@ -278,22 +286,84 @@ export default function HomePage() {
       if (response.ok) {
         const data = await response.json()
         
-        // Convert database trips to our Trip interface
-        const dbTrips = data.trips.map((trip: any) => ({
-          id: trip.id,
-          name: trip.name,
-          members: [], // We'll need member info if we want to show it
-          totalExpenses: 0, // We'll need to calculate this
-          currency: trip.currency,
-          startDate: undefined,
-          endDate: undefined,
-          isActive: false, // Will be determined by expense count when we have full trip data
-          createdAt: trip.created_at,
-          expenses: [],
-          tripCode: trip.trip_code // Include trip code for database trips
+        // Fetch full details for each trip including members and expenses
+        const dbTripsWithDetails = await Promise.all(data.trips.map(async (trip: any) => {
+          try {
+            const tripResponse = await fetch(`/api/trips/${trip.trip_code}`)
+            if (tripResponse.ok) {
+              const tripDetails = await tripResponse.json()
+              
+              // Calculate total expenses
+              const totalExpenses = tripDetails.expenses?.reduce((sum: number, expense: any) => 
+                sum + parseFloat(expense.total_amount || 0), 0) || 0
+              
+              // Check if trip has expenses (active status)
+              const hasExpenses = tripDetails.expenses && tripDetails.expenses.length > 0
+              
+              return {
+                id: trip.id,
+                name: trip.name,
+                members: tripDetails.members?.map((member: any) => member.display_name || member.username) || [],
+                totalExpenses,
+                currency: trip.currency,
+                startDate: undefined,
+                endDate: undefined,
+                isActive: hasExpenses,
+                createdAt: trip.created_at,
+                expenses: tripDetails.expenses?.map((expense: any) => ({
+                  id: expense.id,
+                  tripId: expense.trip_id,
+                  description: expense.name,
+                  amount: parseFloat(expense.total_amount || 0),
+                  date: expense.expense_date,
+                  paidBy: expense.paid_by_username || "You",
+                  splitWith: expense.split_with || [],
+                  category: expense.category,
+                  summary: expense.summary,
+                  emoji: expense.emoji,
+                  createdAt: expense.created_at,
+                  items: expense.items || [],
+                  itemAssignments: expense.item_assignments || [],
+                  splitMode: expense.split_mode || 'even'
+                })) || [],
+                tripCode: trip.trip_code
+              }
+            } else {
+              // Fallback to basic trip info if detailed fetch fails
+              return {
+                id: trip.id,
+                name: trip.name,
+                members: [],
+                totalExpenses: 0,
+                currency: trip.currency,
+                startDate: undefined,
+                endDate: undefined,
+                isActive: false,
+                createdAt: trip.created_at,
+                expenses: [],
+                tripCode: trip.trip_code
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching details for trip ${trip.trip_code}:`, error)
+            // Return basic trip info on error
+            return {
+              id: trip.id,
+              name: trip.name,
+              members: [],
+              totalExpenses: 0,
+              currency: trip.currency,
+              startDate: undefined,
+              endDate: undefined,
+              isActive: false,
+              createdAt: trip.created_at,
+              expenses: [],
+              tripCode: trip.trip_code
+            }
+          }
         }))
         
-        setTrips(dbTrips)
+        setTrips(dbTripsWithDetails)
       } else {
         // Database query failed, fallback to localStorage
         console.warn('Failed to load trips from database, using localStorage fallback')
@@ -307,10 +377,11 @@ export default function HomePage() {
       setTrips(localTrips)
     } finally {
       setIsTripsLoading(false)
+      setTripsLoaded(true) // Mark as loaded
     }
   }
 
-  const loadUserProfile = async () => {
+  const loadUserProfile = async (forceRefresh = false) => {
     try {
       const username = localStorage.getItem('snapTab_username')
       const displayName = localStorage.getItem('snapTab_displayName')
@@ -343,6 +414,9 @@ export default function HomePage() {
           displayName: displayName || username
         })
       }
+      
+      // Mark as loaded
+      setProfileLoaded(true)
     } catch (error) {
       console.error('Error loading user profile:', error)
     }
@@ -1026,7 +1100,17 @@ export default function HomePage() {
 
             {/* Your Trips Section */}
             <div>
-              <h2 className="text-lg font-medium mb-4">Your Trips</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium">Your Trips</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => (window.location.href = "/create-trip")}
+                  className="h-8 w-8 p-0 rounded-full hover:bg-primary/10"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               
               {isTripsLoading ? (
                 <Card className="minimal-card">
@@ -1141,17 +1225,6 @@ export default function HomePage() {
                   })}
                 </div>
               )}
-              
-              {/* Add New Trip Button */}
-              <div className="mt-6">
-                <Button
-                  onClick={() => (window.location.href = "/create-trip")}
-                  className="w-full h-12 bg-gradient-to-r from-primary via-primary to-primary/80 hover:from-primary/95 hover:via-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Create New Trip
-                </Button>
-              </div>
             </div>
           </div>
         )}

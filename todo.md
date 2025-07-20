@@ -15,6 +15,8 @@
 - 📄 **Export Functionality**: Export trip expenses to PDF/CSV
 
 ## Completed
+- ✅ **Clean Profile UI**: Replaced large "Create New Trip" button with compact + icon next to header
+- ✅ **Smart Profile Caching**: Intelligent caching to prevent excessive API calls on profile tab
 - ✅ **Pull-to-Refresh for PWA**: Native mobile app gesture with animated feedback for page refresh
 - ✅ **Random Solid Color Avatars**: Beautiful consistent colors for users without profile pictures
 - ✅ **Trip Active Status Logic**: Update trip active logic - trips only become active when first expense is added
