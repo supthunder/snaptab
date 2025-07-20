@@ -3,6 +3,9 @@
 ## In Progress
 - (No active development tasks)
 
+## Latest Milestone ✅
+- **passkey3 Branch Merged to Main** (2025-01-12) - Successfully merged all recent features including stacked avatars, member removal, trip code display, and expense-based active status logic
+
 ## Pending Features
 - 📝 **Manual Trip Completion**: Add manual trip completion feature - allow users to mark trips as 'done/completed' manually
 - 📊 **Trip Analytics**: Add basic analytics/insights for completed trips
@@ -12,6 +15,8 @@
 - 📄 **Export Functionality**: Export trip expenses to PDF/CSV
 
 ## Completed
+- ✅ **Pull-to-Refresh for PWA**: Native mobile app gesture with animated feedback for page refresh
+- ✅ **Random Solid Color Avatars**: Beautiful consistent colors for users without profile pictures
 - ✅ **Trip Active Status Logic**: Update trip active logic - trips only become active when first expense is added
 - ✅ **Member Removal Safety**: Implement expense-based member removal restrictions - only allow removal when trip has 0 expenses
 - ✅ **Member Removal with Database Integration**: Remove members from trips with database updates

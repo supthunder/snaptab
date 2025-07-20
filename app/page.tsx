@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle, Home, User, Users, Calendar } from "lucide-react"
 import { MembersList, MembersModal } from "@/components/ui/members-list"
+import { PullToRefresh } from "@/components/ui/pull-to-refresh"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -64,6 +65,27 @@ export default function HomePage() {
     avatar_url?: string
   }>>([])
   const [currentTripCode, setCurrentTripCode] = useState<string | null>(null)
+
+  // Refresh function for pull-to-refresh
+  const handleRefresh = async () => {
+    try {
+      // Reload current trip data
+      const tripCode = localStorage.getItem('snapTab_currentTripCode')
+      if (tripCode) {
+        await loadTripFromDatabase(tripCode)
+      } else {
+        await loadUserTripsAndSetActive()
+      }
+      
+      // Reload user profile if on profile tab
+      if (activeTab === 'profile') {
+        await loadUserTrips()
+        await loadUserProfile()
+      }
+    } catch (error) {
+      console.error('Refresh failed:', error)
+    }
+  }
 
   // Check for first-time user and redirect to onboarding
   useEffect(() => {
@@ -655,36 +677,39 @@ export default function HomePage() {
 
   if (!activeTrip) {
     return (
-      <div className="flex flex-col h-screen bg-background">
-        <header className="p-6 pt-16 safe-area-top">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-medium text-foreground">Welcome</h1>
-            <p className="text-muted-foreground text-sm">No active trip</p>
-          </div>
-        </header>
-        
-        <main className="flex-1 flex items-center justify-center px-6">
-          <Card className="minimal-card w-full max-w-sm">
-            <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground mb-4">You don't have an active trip yet.</p>
-              <div className="space-y-3">
-                <Button onClick={() => window.location.href = "/create-trip"} className="w-full">
-                  Create New Trip
-                </Button>
-                <Button onClick={() => window.location.href = "/trips"} variant="secondary" className="w-full">
-                  View Saved Trips
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
+      <PullToRefresh onRefresh={handleRefresh}>
+        <div className="flex flex-col h-screen bg-background">
+          <header className="p-6 pt-16 safe-area-top">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-medium text-foreground">Welcome</h1>
+              <p className="text-muted-foreground text-sm">No active trip</p>
+            </div>
+          </header>
+          
+          <main className="flex-1 flex items-center justify-center px-6">
+            <Card className="minimal-card w-full max-w-sm">
+              <CardContent className="p-6 text-center">
+                <p className="text-muted-foreground mb-4">You don't have an active trip yet.</p>
+                <div className="space-y-3">
+                  <Button onClick={() => window.location.href = "/create-trip"} className="w-full">
+                    Create New Trip
+                  </Button>
+                  <Button onClick={() => window.location.href = "/trips"} variant="secondary" className="w-full">
+                    View Saved Trips
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      </PullToRefresh>
     )
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-     {/* Full-screen loading overlay */}
+    <PullToRefresh onRefresh={handleRefresh}>
+      <div className="flex flex-col h-screen bg-background">
+       {/* Full-screen loading overlay */}
       {isScanning && (
         <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
           {/* Terminal Background - Full Screen */}
@@ -1201,5 +1226,6 @@ export default function HomePage() {
         expenseCount={activeTrip?.expenses?.length ?? 0}
       />
     </div>
+    </PullToRefresh>
   )
 }

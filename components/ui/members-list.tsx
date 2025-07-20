@@ -40,31 +40,73 @@ export function MembersList({
       .slice(0, 2)
   }
 
+  // Generate consistent color for user based on their ID/username
+  const getUserColor = (userId: string, username: string) => {
+    const colors = [
+      { bg: "bg-red-500", text: "text-white" },
+      { bg: "bg-blue-500", text: "text-white" },
+      { bg: "bg-green-500", text: "text-white" },
+      { bg: "bg-purple-500", text: "text-white" },
+      { bg: "bg-pink-500", text: "text-white" },
+      { bg: "bg-indigo-500", text: "text-white" },
+      { bg: "bg-orange-500", text: "text-white" },
+      { bg: "bg-teal-500", text: "text-white" },
+      { bg: "bg-cyan-500", text: "text-white" },
+      { bg: "bg-emerald-500", text: "text-white" },
+      { bg: "bg-violet-500", text: "text-white" },
+      { bg: "bg-rose-500", text: "text-white" },
+    ]
+
+    // Simple hash function to get consistent color
+    const hashString = (str: string) => {
+      let hash = 0
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i)
+        hash = ((hash << 5) - hash) + char
+        hash = hash & hash // Convert to 32-bit integer
+      }
+      return Math.abs(hash)
+    }
+
+    const hash = hashString(userId + username)
+    const colorIndex = hash % colors.length
+    return colors[colorIndex]
+  }
+
   return (
     <div className={`inline-flex items-center bg-card rounded-full p-1 shadow-sm border border-border ${className}`}>
       {/* Member Avatars - Stacked with better overlap */}
       <div className="flex items-center">
-        {visibleMembers.map((member, index) => (
-          <div
-            key={member.id}
-            className="relative"
-            style={{
-              marginLeft: index > 0 ? "-12px" : "0",
-              zIndex: visibleMembers.length - index,
-            }}
-          >
-            <Avatar className="h-10 w-10 border-2 border-background shadow-sm ring-1 ring-border">
-              <AvatarImage
-                src={member.avatar_url}
-                alt={member.display_name || member.username}
-                className="object-cover"
-              />
-              <AvatarFallback className="text-sm bg-primary/10 text-primary font-medium">
-                {getInitials(member.display_name || member.username)}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        ))}
+        {visibleMembers.map((member, index) => {
+          const userColor = getUserColor(member.id, member.username)
+          return (
+            <div
+              key={member.id}
+              className="relative"
+              style={{
+                marginLeft: index > 0 ? "-12px" : "0",
+                zIndex: visibleMembers.length - index,
+              }}
+            >
+              <Avatar className="h-10 w-10 border-2 border-background shadow-sm ring-1 ring-border">
+                <AvatarImage
+                  src={member.avatar_url}
+                  alt={member.display_name || member.username}
+                  className="object-cover"
+                />
+                <AvatarFallback 
+                  className={`text-sm font-medium ${
+                    member.avatar_url 
+                      ? "bg-primary/10 text-primary" 
+                      : `${userColor.bg} ${userColor.text}`
+                  }`}
+                >
+                  {getInitials(member.display_name || member.username)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          )
+        })}
 
         {/* Hidden Members Count */}
         {hiddenCount > 0 && (
@@ -140,6 +182,39 @@ export function MembersModal({
       .slice(0, 2)
   }
 
+  // Generate consistent color for user based on their ID/username
+  const getUserColor = (userId: string, username: string) => {
+    const colors = [
+      { bg: "bg-red-500", text: "text-white" },
+      { bg: "bg-blue-500", text: "text-white" },
+      { bg: "bg-green-500", text: "text-white" },
+      { bg: "bg-purple-500", text: "text-white" },
+      { bg: "bg-pink-500", text: "text-white" },
+      { bg: "bg-indigo-500", text: "text-white" },
+      { bg: "bg-orange-500", text: "text-white" },
+      { bg: "bg-teal-500", text: "text-white" },
+      { bg: "bg-cyan-500", text: "text-white" },
+      { bg: "bg-emerald-500", text: "text-white" },
+      { bg: "bg-violet-500", text: "text-white" },
+      { bg: "bg-rose-500", text: "text-white" },
+    ]
+
+    // Simple hash function to get consistent color
+    const hashString = (str: string) => {
+      let hash = 0
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i)
+        hash = ((hash << 5) - hash) + char
+        hash = hash & hash // Convert to 32-bit integer
+      }
+      return Math.abs(hash)
+    }
+
+    const hash = hashString(userId + username)
+    const colorIndex = hash % colors.length
+    return colors[colorIndex]
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-md">
@@ -163,18 +238,26 @@ export function MembersModal({
           )}
 
           <div className="space-y-3">
-            {members.map((member) => (
-              <div key={member.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage
-                      src={member.avatar_url}
-                      alt={member.display_name || member.username}
-                    />
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {getInitials(member.display_name || member.username)}
-                    </AvatarFallback>
-                  </Avatar>
+            {members.map((member) => {
+              const userColor = getUserColor(member.id, member.username)
+              return (
+                <div key={member.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage
+                        src={member.avatar_url}
+                        alt={member.display_name || member.username}
+                      />
+                      <AvatarFallback 
+                        className={`font-medium ${
+                          member.avatar_url 
+                            ? "bg-primary/10 text-primary" 
+                            : `${userColor.bg} ${userColor.text}`
+                        }`}
+                      >
+                        {getInitials(member.display_name || member.username)}
+                      </AvatarFallback>
+                    </Avatar>
                   <div>
                     <p className="font-medium">{member.display_name || member.username}</p>
                     <p className="text-sm text-muted-foreground">@{member.username}</p>
@@ -204,7 +287,8 @@ export function MembersModal({
                   <span className="text-xs text-muted-foreground px-3 py-2">You</span>
                 )}
               </div>
-            ))}
+                )
+            })}
           </div>
 
           {canEdit && onAddMember && (
