@@ -623,9 +623,9 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                                   <span className="font-medium">{personName}</span>
                                   <div className="text-xs text-muted-foreground mt-1">
                                     {assignments.length} item{assignments.length > 1 ? 's' : ''} • {getCurrencySymbol(expense.currency || trip?.currency || 'USD')}{totalCost.toFixed(2)}
-                                  </div>
-                                </div>
-                              </div>
+                      </div>
+                        </div>
+                          </div>
                               
                               {/* Item pills */}
                               <div className="flex flex-wrap gap-1">
@@ -644,8 +644,8 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                                     )}
                                   </span>
                                 ))}
-                              </div>
-                            </div>
+                      </div>
+                    </div>
                           )
                         })}
                       </>

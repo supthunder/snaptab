@@ -5,6 +5,171 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #66: One-Click Copy Invite Link  
+**Date**: 2025-01-20  
+**Status**: ✅ Complete
+
+### Changes Made:
+#### **Streamlined Share Flow:**
+- **One-click action**: Combined generate and copy into single "Copy Invite Link" button
+- **Instant feedback**: Button shows "Generating & Copying..." → "Copied Invite Link!" states
+- **Smart UX**: No more two-step process - users get instant results
+- **Visual improvements**: Added copy icon and better state management
+
+#### **Enhanced User Experience:**
+- **Faster sharing**: Generate + copy happens in one click instead of two separate actions
+- **Better feedback**: Clear visual indicators for each state (loading, success)
+- **Persistent URL display**: Generated URL still shows below button for reference
+- **Consistent branding**: Maintains "Invite Link" terminology throughout
+
+#### **Technical Implementation:**
+- **Combined function**: `generateAndCopyShareUrl()` handles both generation and clipboard copy
+- **State management**: Proper loading and success states with automatic reset
+- **Error handling**: Maintains robust error handling for both API calls and clipboard access
+- **UI optimization**: Removed redundant copy button, streamlined interface
+
+### User Flow Improvement:
+**Before**: Click "Invite Link" → Wait → Click Copy Button → Done  
+**After**: Click "Copy Invite Link" → Done (URL copied automatically)
+
+### Files Modified:
+- `components/onboarding/trip-card-step.tsx` - Combined share functions and updated UI
+
+## Update #65: Consistent Share Link Terminology  
+**Date**: 2025-01-20  
+**Status**: ✅ Complete
+
+### Changes Made:
+#### **Streamlined Sharing UI Language:**
+- **Updated section title**: Changed "Share Trip Link" to "Share Invite Link" for consistency
+- **Unified terminology**: Title now matches the "Invite Link" button text
+- **Cleaner messaging**: More direct and action-oriented language
+
+#### **User Experience Benefit:**
+- **Visual consistency**: Header and button use consistent "Invite" terminology
+- **Reduced cognitive load**: Users see one consistent message instead of mixed terms
+- **Clearer call-to-action**: "Share Invite Link" is more specific than generic "Share Trip Link"
+
+### Technical Changes:
+- Updated `components/onboarding/trip-card-step.tsx` section header text
+- Maintained all existing functionality while improving language clarity
+- No impact on sharing functionality or backend systems
+
+### Files Modified:
+- `components/onboarding/trip-card-step.tsx` - Updated section title text
+
+## Update #64: Enhanced OG Images with Blurred Background  
+**Date**: 2025-01-20  
+**Status**: ✅ Complete
+
+### Changes Made:
+#### **Beautiful Blurred Background Images:**
+- **Google Places integration**: OG images now use the actual Google Places photos as background
+- **Blur effect**: Applied `filter: 'blur(8px)'` to background images for elegant depth
+- **Smart scaling**: Background images scaled by 110% to avoid blur edge artifacts
+- **Dark overlay**: Added `rgba(30, 27, 75, 0.6)` overlay for optimal text readability
+- **Layered composition**: Proper z-index stacking with background, overlay, and text layers
+
+#### **Professional OG Image Structure:**
+- **Absolute positioning**: Background image covers entire canvas with perfect fit
+- **Relative content positioning**: Text content floats above background with `zIndex: 10`
+- **Fallback gradient**: Beautiful gradient background when no Google Places image available
+- **Improved contrast**: Enhanced text visibility over any background type
+
+#### **Technical Implementation:**
+- **External image loading**: Uses `fetch` to load Google Places photos dynamically
+- **CSS filters support**: Leverages Vercel OG's CSS filter capabilities for blur effect
+- **Object-fit cover**: Ensures background images fill canvas perfectly without distortion
+- **Transform scaling**: Prevents blur edge artifacts with `transform: 'scale(1.1)'`
+
+### User Experience Impact:
+- **Rich iMessage previews**: Trip cards now show actual destination photos in blurred background
+- **Professional appearance**: Much more polished and travel-app appropriate visuals
+- **Brand consistency**: Maintains SnapTab branding while showcasing destination beauty
+- **Social engagement**: More appealing share links likely to increase click-through rates
+
+### Technical Changes:
+- Updated `app/api/trip-card-image/route.tsx` with layered background approach
+- Replaced CSS background-image with absolute positioned `<img>` elements
+- Added blur filter and scaling transforms for professional effect
+- Maintained fallback gradient for trips without Google Places images
+
+## Update #63: Simplified Trip Card Design  
+**Date**: 2025-01-20  
+**Status**: ✅ Complete
+
+### Changes Made:
+#### **Cleaner Trip Card Design:**
+- **Removed "Copy Code" button**: Simplified trip card to show only essential information
+- **Larger place name text**: Increased from `text-lg` to `text-2xl md:text-3xl` for better visibility
+- **Even bigger trip code**: Increased from `text-6xl md:text-7xl` to `text-8xl md:text-9xl` for maximum impact
+- **Cleaner layout**: Removed copy functionality and button clutter
+- **Better spacing**: Increased margins and padding for more breathing room
+
+#### **Updated Generated Images:**
+- **Consistent design**: Trip card images now match the simplified app design
+- **Larger text sizes**: Place name (36px) and trip code (120px) in generated images
+- **Removed copy button**: Generated images are clean with just place name and code
+- **Better proportions**: Wider underline (140px) for visual balance
+
+#### **Removed Unused Code:**
+- **Cleaned up imports**: Removed unused `Copy`, `Check` icons and `useState` import
+- **Removed copy handlers**: Eliminated copy-to-clipboard functionality 
+- **Streamlined component**: Simpler, focused trip card component
+
+### Technical Changes:
+- Updated `components/ui/trip-card.tsx` with simplified design and larger text
+- Updated `app/api/trip-card-image/route.tsx` to match new design in generated images
+- Removed copy functionality and associated state management
+- Improved text hierarchy and visual emphasis
+
+### User Experience Impact:
+- **Cleaner visual design**: Less clutter, more focus on trip code
+- **Better readability**: Much larger text makes codes easier to read from distance
+- **Simplified interaction**: No copy button confusion, just visual display
+- **Consistent branding**: Generated share images match app design perfectly
+
+## Update #62: Enhanced Onboarding & Trip Card Image Sharing  
+**Date**: 2025-01-20  
+**Status**: ✅ Complete
+
+### Changes Made:
+#### **Onboarding Page Cleanup:**
+- **Removed "Share this code" text**: Cleaned up trip card by removing redundant instruction text
+- **Updated button text**: Changed "Generate Shareable Link" to "Invite Link" for clearer messaging
+- **Cleaner visual hierarchy**: Trip card now shows just location name and code without extra clutter
+
+#### **Trip Card Image Generation for iMessage:**
+- **New API endpoint**: Created `/api/trip-card-image` that generates beautiful trip card images
+- **Automatic image generation**: Share links now automatically create and save trip card images to Vercel Blob
+- **Perfect for iMessage**: Generated images (600x400) optimized for social media and messaging app previews
+- **Matches visual design**: Images replicate the exact look of trip cards (location background, large code, styling)
+- **Blob storage integration**: Images saved to `trip-cards/{code}-{timestamp}.png` for persistence
+
+#### **Enhanced Share Experience:**
+- **Better social previews**: When sharing `snaptab.cash/857abcde` links, recipients see the actual trip card image
+- **iMessage rich previews**: Trip cards now show up as beautiful rich previews in messaging apps
+- **Consistent branding**: Generated images match the app's visual design perfectly
+- **Location backgrounds**: Images include the same location photos used in the app
+
+### Technical Implementation:
+- Created `app/api/trip-card-image/route.tsx` using Next.js ImageResponse
+- Updated `app/api/share-trip/route.ts` to use trip card images instead of generic OG images
+- Images generated at 600x400 resolution for optimal mobile display
+- Automatic fallback to gradient backgrounds when location images aren't available
+- Public blob storage with proper content-type headers
+
+### Files Modified:
+- `components/ui/trip-card.tsx` - Removed "Share this code" text
+- `components/onboarding/trip-card-step.tsx` - Changed button text to "Invite Link"
+- `app/api/trip-card-image/route.tsx` - New trip card image generation API
+- `app/api/share-trip/route.ts` - Updated to generate trip card images for sharing
+
+### User Experience Impact:
+- **Cleaner onboarding**: Less visual clutter on trip creation success page
+- **Better sharing**: Invite links now show beautiful trip card previews in all messaging apps
+- **Professional appearance**: Trip invites look polished and branded in social media/messaging
+
 ## Update #61: Enhanced Expense Details Page  
 **Date**: 2025-01-20  
 **Status**: ✅ Complete

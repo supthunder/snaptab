@@ -21,7 +21,7 @@ export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) 
     onNext()
   }
 
-  const generateShareUrl = async () => {
+  const generateAndCopyShareUrl = async () => {
     if (!data.tripCode || isGeneratingShare) return
 
     setIsGeneratingShare(true)
@@ -41,6 +41,11 @@ export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) 
         const result = await response.json()
         const fullUrl = `${window.location.origin}${result.shareUrl}`
         setShareUrl(fullUrl)
+        
+        // Immediately copy to clipboard
+        await navigator.clipboard.writeText(fullUrl)
+        setShareUrlCopied(true)
+        setTimeout(() => setShareUrlCopied(false), 2000)
       } else {
         console.error('Failed to generate share URL')
       }
@@ -48,18 +53,6 @@ export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) 
       console.error('Error generating share URL:', error)
     } finally {
       setIsGeneratingShare(false)
-    }
-  }
-
-  const copyShareUrl = async () => {
-    if (!shareUrl) return
-    
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setShareUrlCopied(true)
-      setTimeout(() => setShareUrlCopied(false), 2000)
-    } catch (error) {
-      console.error('Failed to copy share URL:', error)
     }
   }
 
@@ -136,30 +129,34 @@ export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) 
           >
             <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
               <Share2 className="w-5 h-5" />
-              Share Trip Link
+              Share Invite Link
             </h3>
             
-            {!shareUrl ? (
-              <Button
-                onClick={generateShareUrl}
-                disabled={isGeneratingShare}
-                variant="outline"
-                className="w-full bg-transparent border-white/30 text-white hover:bg-white/10"
-              >
-                {isGeneratingShare ? 'Generating Link...' : 'Generate Shareable Link'}
-              </Button>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 bg-white/20 rounded-lg p-2">
-                  <span className="text-white text-sm font-mono flex-1 truncate">{shareUrl}</span>
-                  <Button
-                    onClick={copyShareUrl}
-                    size="sm"
-                    variant="ghost"
-                    className="text-white hover:bg-white/20 p-1 h-8 w-8"
-                  >
-                    {shareUrlCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  </Button>
+            <Button
+              onClick={generateAndCopyShareUrl}
+              disabled={isGeneratingShare}
+              variant="outline"
+              className="w-full bg-transparent border-white/30 text-white hover:bg-white/10 flex items-center gap-2"
+            >
+              {isGeneratingShare ? (
+                <>Generating & Copying...</>
+              ) : shareUrlCopied ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Copied Invite Link!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  Copy Invite Link
+                </>
+              )}
+            </Button>
+            
+            {shareUrl && (
+              <div className="mt-3 space-y-2">
+                <div className="bg-white/20 rounded-lg p-2">
+                  <span className="text-white text-xs font-mono truncate block">{shareUrl}</span>
                 </div>
                 <p className="text-white/80 text-xs">
                   Send this link to friends so they can join with one tap!

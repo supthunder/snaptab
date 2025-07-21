@@ -23,28 +23,28 @@ export async function POST(request: NextRequest) {
     const suffix = generateRandomSuffix()
     const shareCode = `${tripCode}${suffix}`
 
-    // Generate OG image using our OG API
+    // Generate trip card image for better iMessage/social previews
     let ogImageUrl = null
     try {
-      const ogResponse = await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/og-image`, {
+      const tripCardResponse = await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/trip-card-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tripCode,
           placeName,
-          backgroundImageUrl: backgroundImageUrl && backgroundImageUrl.startsWith('http') ? backgroundImageUrl : null,
-          username
+          backgroundImageUrl: backgroundImageUrl && backgroundImageUrl.startsWith('http') ? backgroundImageUrl : null
         })
       })
 
-      if (ogResponse.ok) {
-        const ogData = await ogResponse.json()
-        ogImageUrl = ogData.imageUrl
+      if (tripCardResponse.ok) {
+        const tripCardData = await tripCardResponse.json()
+        ogImageUrl = tripCardData.imageUrl
+        console.log('✅ Trip card image generated:', ogImageUrl)
       } else {
-        console.error('OG image generation failed:', await ogResponse.text())
+        console.error('Trip card image generation failed:', await tripCardResponse.text())
       }
     } catch (error) {
-      console.error('Error generating OG image:', error)
+      console.error('Error generating trip card image:', error)
     }
 
     // Store share data in database
