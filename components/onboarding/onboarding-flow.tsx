@@ -19,6 +19,7 @@ export interface OnboardingData {
   currency?: string
   tripCode?: string
   tripId?: string
+  tripStatus?: string
   isJoining?: boolean
 }
 

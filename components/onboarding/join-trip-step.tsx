@@ -69,11 +69,14 @@ export function JoinTripStep({ onNext, data, updateData }: JoinTripStepProps) {
         throw new Error(errorData.error || 'Failed to join trip')
       }
 
+      // Update with complete trip data including status
       updateData({ 
         tripCode: tripCode,
-        tripName: tripData.name,
-        currency: tripData.currency,
-        tripId: tripData.id
+        tripName: tripData.trip?.name || tripData.name || `Trip ${tripCode}`,
+        currency: tripData.trip?.currency || tripData.currency || 'USD',
+        tripId: tripData.trip?.id || tripData.id,
+        tripStatus: tripData.trip?.is_active ? 'Active' : 'Upcoming',
+        isJoining: true
       })
       
       onNext()

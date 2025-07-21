@@ -5,9 +5,10 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
+
+
+import { LocationAutocomplete } from "@/components/ui/location-autocomplete"
+import { Loader2, Calendar } from "lucide-react"
 import type { OnboardingData } from "./onboarding-flow"
 
 interface CreateTripStepProps {
@@ -18,7 +19,10 @@ interface CreateTripStepProps {
 
 export function CreateTripStep({ onNext, data, updateData }: CreateTripStepProps) {
   const [tripName, setTripName] = useState(data.tripName || "")
-  const [currency, setCurrency] = useState(data.currency || "USD")
+
+  const [location, setLocation] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
   const [isValid, setIsValid] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +67,7 @@ export function CreateTripStep({ onNext, data, updateData }: CreateTripStepProps
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: tripName,
-          currency: currency,
+          currency: 'USD',
           username: data.username
         })
       })
@@ -76,10 +80,11 @@ export function CreateTripStep({ onNext, data, updateData }: CreateTripStepProps
       const tripData = await tripResponse.json()
       
       updateData({ 
-        tripName, 
-        currency, 
+        tripName: tripName, 
+        currency: 'USD', 
         tripCode: tripData.tripCode,
-        tripId: tripData.tripId 
+        tripId: tripData.trip?.id,
+        tripStatus: 'Active'
       })
       
       onNext()
@@ -138,43 +143,57 @@ export function CreateTripStep({ onNext, data, updateData }: CreateTripStepProps
             />
           </motion.div>
 
+
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.8 }}
+            transition={{ duration: 0.6, delay: 1.0 }}
           >
-            <Label htmlFor="currency" className="text-white mb-2 block">
-              💰 Base Currency
+            <Label htmlFor="location" className="text-white mb-2 block">
+              📍 Location (Optional)
             </Label>
-            <Select value={currency} onValueChange={setCurrency}>
-              <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-700">
-                {currencies.map((curr) => (
-                  <SelectItem key={curr.value} value={curr.value} className="text-white hover:bg-gray-700">
-                    {curr.flag} {curr.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <LocationAutocomplete
+              value={location}
+              onChange={setLocation}
+              placeholder="e.g., Banff, Canada"
+              className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
+            />
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 1 }}
+            transition={{ duration: 0.6, delay: 1.2 }}
           >
-            <Card className="bg-gray-800 border-gray-700">
-              <CardContent className="p-4">
-                <h3 className="text-white font-semibold mb-2">Trip Preview</h3>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-400 mb-1">###</div>
-                  <p className="text-gray-400 text-sm">Your friends will use this code to join</p>
-                </div>
-              </CardContent>
-            </Card>
+            <Label htmlFor="dates" className="text-white mb-2 block">
+              📅 Trip Dates (Optional)
+            </Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="pl-9 bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="Start date"
+                />
+              </div>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="pl-9 bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="End date"
+                />
+              </div>
+            </div>
           </motion.div>
+
+
 
           {error && (
             <motion.div
@@ -189,7 +208,7 @@ export function CreateTripStep({ onNext, data, updateData }: CreateTripStepProps
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 1.2 }}
+            transition={{ duration: 0.6, delay: 1.4 }}
           >
             <Button
               onClick={handleCreateTrip}

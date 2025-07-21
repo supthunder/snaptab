@@ -137,7 +137,9 @@ export function SuccessStep({ data, onComplete }: SuccessStepProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Status:</span>
-                  <span className="text-green-400">{data.isJoining ? 'Joined' : 'Created'}</span>
+                  <span className={`${data.tripStatus === 'Active' ? 'text-green-400' : 'text-blue-400'}`}>
+                    {data.tripStatus || (data.isJoining ? 'Active' : 'Created')}
+                  </span>
                 </div>
               </div>
             </CardContent>

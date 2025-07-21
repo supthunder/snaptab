@@ -856,8 +856,8 @@ export default function HomePage() {
               <CardContent className="p-6 text-center">
                 <p className="text-muted-foreground mb-4">You don't have an active trip yet.</p>
                 <div className="space-y-3">
-                  <Button onClick={() => window.location.href = "/create-trip"} className="w-full">
-                    Create New Trip
+                                  <Button onClick={() => window.location.href = "/add-trip"} className="w-full">
+                  Add New Trip
                   </Button>
                   <Button onClick={() => window.location.href = "/trips"} variant="secondary" className="w-full">
                     View Saved Trips
@@ -1196,7 +1196,7 @@ export default function HomePage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => (window.location.href = "/create-trip")}
+                  onClick={() => (window.location.href = "/add-trip")}
                   className="h-8 w-8 p-0 rounded-full hover:bg-primary/10"
                 >
                   <Plus className="h-4 w-4" />
@@ -1217,7 +1217,7 @@ export default function HomePage() {
                       <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-lg font-medium mb-2">No trips yet</h3>
                       <p className="text-muted-foreground mb-6">
-                        Create your first trip to start tracking expenses with friends
+                        Create or join a trip to start tracking expenses with friends
                       </p>
                     </div>
                   </CardContent>
