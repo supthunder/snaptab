@@ -73,18 +73,17 @@ export default function HomePage() {
   // Refresh function for pull-to-refresh
   const handleRefresh = async () => {
     try {
-      // Reload current trip data
+      // Reload current trip data without showing loading overlay
       const tripCode = localStorage.getItem('snapTab_currentTripCode')
       if (tripCode) {
-        await loadTripFromDatabase(tripCode)
+        await loadTripFromDatabase(tripCode, true) // Pass true to skip loading overlay
       } else {
-        await loadUserTripsAndSetActive()
+        await loadUserTripsAndSetActive(true) // Pass true to skip loading overlay
       }
       
-      // Force reload user profile and trips if on profile tab
+      // Refresh user profile and trips data without resetting loading states
       if (activeTab === 'profile') {
-        setTripsLoaded(false) // Force reload
-        setProfileLoaded(false) // Force reload
+        // Refresh data in background without showing loading indicators
         await loadUserTrips(true) // Pass true to force refresh
         await loadUserProfile(true) // Pass true to force refresh
       }
@@ -128,9 +127,11 @@ export default function HomePage() {
     checkOnboarding()
   }, [])
 
-  const loadUserTripsAndSetActive = async () => {
+  const loadUserTripsAndSetActive = async (skipLoadingIndicator = false) => {
     try {
-      setIsLoading(true)
+      if (!skipLoadingIndicator) {
+        setIsLoading(true)
+      }
       const username = localStorage.getItem('snapTab_username')
       if (!username) {
         console.warn('No username found, falling back to localStorage')
@@ -164,7 +165,7 @@ export default function HomePage() {
         
         // Load full trip data and user profile in parallel
         await Promise.all([
-          loadTripFromDatabase(activeTrip.trip_code.toString()),
+          loadTripFromDatabase(activeTrip.trip_code.toString(), skipLoadingIndicator),
           loadUserProfile()
         ])
       } else {
@@ -177,9 +178,11 @@ export default function HomePage() {
     }
   }
 
-  const loadTripFromDatabase = async (tripCode: string) => {
+  const loadTripFromDatabase = async (tripCode: string, skipLoadingIndicator = false) => {
     try {
-      setIsLoading(true)
+      if (!skipLoadingIndicator) {
+        setIsLoading(true)
+      }
       
       // Get trip data from database
       const response = await fetch(`/api/trips/${tripCode}`)
@@ -259,7 +262,9 @@ export default function HomePage() {
       // Fallback to localStorage
       loadFromLocalStorage()
     } finally {
-      setIsLoading(false)
+      if (!skipLoadingIndicator) {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -315,7 +320,10 @@ export default function HomePage() {
   }, [activeTab, tripsLoaded, profileLoaded])
 
   const loadUserTrips = async (forceRefresh = false) => {
-    setIsTripsLoading(true)
+    // Only show loading indicator if this is not a refresh (to prevent blinking)
+    if (!forceRefresh) {
+      setIsTripsLoading(true)
+    }
     try {
       const username = localStorage.getItem('snapTab_username')
       if (!username) {
@@ -420,7 +428,10 @@ export default function HomePage() {
       const localTrips = getTrips()
       setTrips(localTrips)
     } finally {
-      setIsTripsLoading(false)
+      // Only update loading state if we showed the loading indicator
+      if (!forceRefresh) {
+        setIsTripsLoading(false)
+      }
       setTripsLoaded(true) // Mark as loaded
     }
   }
