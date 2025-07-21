@@ -5,6 +5,30 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #67: Fix Vercel Deployment - Sync Lockfile  
+**Date**: 2025-01-20  
+**Status**: ✅ Complete
+
+### Issue Fixed:
+#### **Vercel Build Error:**
+- **Problem**: `ERR_PNPM_OUTDATED_LOCKFILE` - pnpm-lock.yaml out of sync with package.json
+- **Root cause**: `@vercel/blob` dependency added to package.json but lockfile not regenerated
+- **Impact**: Production deployments failing on Vercel with frozen-lockfile error
+
+#### **Resolution:**
+- **Regenerated lockfile**: Ran `pnpm install` to update pnpm-lock.yaml
+- **Committed changes**: Added updated lockfile to git and pushed to main branch
+- **Deployment fixed**: Vercel can now properly install dependencies during build
+- **Dependencies synced**: All package.json entries now properly reflected in lockfile
+
+#### **Technical Details:**
+- **Missing dependency**: `@vercel/blob` was not in original lockfile
+- **Lockfile format**: Updated from v6 to current pnpm version compatibility
+- **Peer dependency warnings**: Noted React 19 compatibility warnings for `vaul` package (non-blocking)
+
+### Files Modified:
+- `pnpm-lock.yaml` - Regenerated and updated to sync with package.json dependencies
+
 ## Update #66: One-Click Copy Invite Link  
 **Date**: 2025-01-20  
 **Status**: ✅ Complete
