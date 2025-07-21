@@ -1,8 +1,10 @@
 "use client"
+import { useState } from "react"
+import * as React from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Edit3, Plus } from "lucide-react"
+import { Edit3, Plus, Share2, Copy, Check } from "lucide-react"
 
 interface Member {
   id: string
@@ -172,6 +174,16 @@ export function MembersModal({
   hasExpenses = false,
   expenseCount = 0
 }: MembersModalProps) {
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [shareUrlCopied, setShareUrlCopied] = useState(false)
+
+  // Auto-generate share URL when modal opens
+  React.useEffect(() => {
+    if (isOpen && !shareUrl) {
+      generateShareUrl()
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const getInitials = (name: string) => {
@@ -216,15 +228,79 @@ export function MembersModal({
     return colors[colorIndex]
   }
 
+  const generateShareUrl = async () => {
+    const tripCode = localStorage.getItem('snapTab_currentTripCode')
+    const username = localStorage.getItem('snapTab_username')
+    
+    if (!tripCode) return
+
+    try {
+      const response = await fetch('/api/share-trip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tripCode: tripCode,
+          placeName: null,
+          backgroundImageUrl: null,
+          username: username
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        const fullUrl = `${window.location.origin}${result.shareUrl}`
+        setShareUrl(fullUrl)
+      } else {
+        console.error('Failed to generate share URL')
+      }
+    } catch (error) {
+      console.error('Error generating share URL:', error)
+    }
+  }
+
+  const copyShareUrl = async () => {
+    if (!shareUrl) return
+    
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setShareUrlCopied(true)
+      setTimeout(() => setShareUrlCopied(false), 2000)
+    } catch (error) {
+      console.error('Failed to copy share URL:', error)
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-md">
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium">Trip Members</h3>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              ×
-            </Button>
+            <div className="flex items-center space-x-2">
+              {shareUrl && (
+                <Button
+                  onClick={copyShareUrl}
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                                     {shareUrlCopied ? (
+                     <>
+                       <Check className="w-4 h-4 mr-1" />
+                       Copied!
+                     </>
+                   ) : (
+                     <>
+                       <Share2 className="w-4 h-4 mr-1" />
+                       Invite Link
+                     </>
+                   )}
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                ×
+              </Button>
+            </div>
           </div>
 
           {hasExpenses && (
@@ -291,6 +367,8 @@ export function MembersModal({
                 )
             })}
           </div>
+
+
 
           {canEdit && onAddMember && (
             <Button variant="outline" className="w-full mt-4 bg-transparent" onClick={onAddMember}>

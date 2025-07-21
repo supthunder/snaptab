@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { TripChoiceStep } from "@/components/onboarding/trip-choice-step"
 import { CreateTripStep } from "@/components/onboarding/create-trip-step"
 import { JoinTripStep } from "@/components/onboarding/join-trip-step"
-import { SuccessStep } from "@/components/onboarding/success-step"
+import { TripCardStep } from "@/components/onboarding/trip-card-step"
 import { ProgressBar } from "@/components/onboarding/progress-bar"
 import { OnboardingData } from "@/components/onboarding/onboarding-flow"
 import { ArrowLeft } from "lucide-react"
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 export default function AddTripPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [data, setData] = useState<OnboardingData>({})
-  const totalSteps = 3 // Trip Choice → Create/Join → Success
+  const totalSteps = 3 // Trip Choice → Create/Join → Trip Card (with instructions)
 
   // Get user data from localStorage
   const username = typeof window !== 'undefined' ? localStorage.getItem('snapTab_username') : null
@@ -76,7 +76,7 @@ export default function AddTripPage() {
           <CreateTripStep onNext={() => goToStep(3)} data={mergedData} updateData={updateData} />
         )
       case 3:
-        return <SuccessStep data={mergedData} onComplete={completeAddTrip} />
+        return <TripCardStep onNext={completeAddTrip} onSkipToHome={completeAddTrip} data={mergedData} />
       default:
         return (
           <TripChoiceStep

@@ -146,16 +146,8 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
         displayName: result.user.displayName 
       })
       
-      // For existing users, redirect to home page instead of continuing onboarding
-      setTimeout(() => {
-        // Store user data in localStorage for the main app
-        localStorage.setItem('snapTab_username', result.user.username)
-        localStorage.setItem('snapTab_displayName', result.user.displayName || result.user.username)
-        localStorage.setItem('snapTab_onboardingComplete', 'true')
-        
-        // Redirect to main app (existing user)
-        window.location.href = '/'
-      }, 1500)
+      // Continue with onboarding flow (allow existing users to create/join new trips)
+      setTimeout(() => onNext(), 1500)
 
     } catch (error: any) {
       console.error('Error signing in:', error)

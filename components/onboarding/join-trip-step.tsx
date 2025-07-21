@@ -69,6 +69,26 @@ export function JoinTripStep({ onNext, data, updateData }: JoinTripStepProps) {
         throw new Error(errorData.error || 'Failed to join trip')
       }
 
+      // Generate basic trip card for joined trips (no location image)
+      let tripCardData = null
+      try {
+        const cardResponse = await fetch('/api/trip-card', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tripCode: tripCode,
+            placeId: null, // No location for joined trips
+            placeName: tripData.trip?.name || tripData.name || null
+          })
+        })
+        
+        if (cardResponse.ok) {
+          tripCardData = await cardResponse.json()
+        }
+      } catch (cardError) {
+        console.error('Failed to generate trip card for joined trip:', cardError)
+      }
+
       // Update with complete trip data including status
       updateData({ 
         tripCode: tripCode,
@@ -76,7 +96,8 @@ export function JoinTripStep({ onNext, data, updateData }: JoinTripStepProps) {
         currency: tripData.trip?.currency || tripData.currency || 'USD',
         tripId: tripData.trip?.id || tripData.id,
         tripStatus: tripData.trip?.is_active ? 'Active' : 'Upcoming',
-        isJoining: true
+        isJoining: true,
+        tripCard: tripCardData
       })
       
       onNext()

@@ -7,6 +7,7 @@ import { PasskeyAuthStep } from "./passkey-auth-step"
 import { TripChoiceStep } from "./trip-choice-step"
 import { CreateTripStep } from "./create-trip-step"
 import { JoinTripStep } from "./join-trip-step"
+import { TripCardStep } from "./trip-card-step"
 import { SuccessStep } from "./success-step"
 import { ProgressBar } from "./progress-bar"
 import { ArrowLeft } from "lucide-react"
@@ -21,12 +22,25 @@ export interface OnboardingData {
   tripId?: string
   tripStatus?: string
   isJoining?: boolean
+  tripCard?: {
+    tripCode: string
+    placeName: string | null
+    backgroundImageUrl: string | null
+    generatedAt: string
+  } | null
+  selectedPlace?: {
+    place_id: string
+    description: string
+    main_text: string
+    secondary_text: string
+    types: string[]
+  } | null
 }
 
 export function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState(1)
   const [data, setData] = useState<OnboardingData>({})
-  const totalSteps = 6
+  const totalSteps = 7
 
   const updateData = (newData: Partial<OnboardingData>) => {
     setData((prev) => ({ ...prev, ...newData }))
@@ -67,6 +81,15 @@ export function OnboardingFlow() {
   }
 
   const renderStep = () => {
+    console.log('🚀 Current step:', currentStep, 'Data:', {
+      tripCode: data.tripCode,
+      tripCard: data.tripCard ? 'HAS_CARD' : 'NO_CARD',
+      isJoining: data.isJoining,
+      hasSelectedPlace: data.selectedPlace ? 'HAS_PLACE' : 'NO_PLACE'
+    })
+    
+
+    
     switch (currentStep) {
       case 1:
         return <WelcomeStep onNext={nextStep} />
@@ -86,6 +109,8 @@ export function OnboardingFlow() {
       case 5:
         return <JoinTripStep onNext={() => goToStep(6)} data={data} updateData={updateData} />
       case 6:
+        return <TripCardStep onNext={() => goToStep(7)} onSkipToHome={completeOnboarding} data={data} />
+      case 7:
         return <SuccessStep data={data} onComplete={completeOnboarding} />
       default:
         return <WelcomeStep onNext={nextStep} />

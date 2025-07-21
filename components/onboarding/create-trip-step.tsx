@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 
-import { LocationAutocomplete } from "@/components/ui/location-autocomplete"
+import { GooglePlacesAutocomplete } from "@/components/ui/google-places-autocomplete"
 import { Loader2, Calendar } from "lucide-react"
 import type { OnboardingData } from "./onboarding-flow"
 
@@ -21,6 +21,7 @@ export function CreateTripStep({ onNext, data, updateData }: CreateTripStepProps
   const [tripName, setTripName] = useState(data.tripName || "")
 
   const [location, setLocation] = useState("")
+  const [selectedPlace, setSelectedPlace] = useState<any>(null)
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [isValid, setIsValid] = useState(false)
@@ -79,13 +80,39 @@ export function CreateTripStep({ onNext, data, updateData }: CreateTripStepProps
 
       const tripData = await tripResponse.json()
       
+      // Generate trip card with location image
+      let tripCardData = null
+      if (selectedPlace) {
+        try {
+          const cardResponse = await fetch('/api/trip-card', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tripCode: tripData.tripCode,
+              placeId: selectedPlace.place_id,
+              placeName: selectedPlace.main_text
+            })
+          })
+          
+          if (cardResponse.ok) {
+            tripCardData = await cardResponse.json()
+          }
+        } catch (cardError) {
+          console.error('Failed to generate trip card:', cardError)
+        }
+      }
+
       updateData({ 
         tripName: tripName, 
         currency: 'USD', 
         tripCode: tripData.tripCode,
         tripId: tripData.trip?.id,
-        tripStatus: 'Active'
+        tripStatus: 'Active',
+        tripCard: tripCardData,
+        selectedPlace: selectedPlace
       })
+      
+
       
       onNext()
     } catch (error) {
@@ -153,9 +180,10 @@ export function CreateTripStep({ onNext, data, updateData }: CreateTripStepProps
             <Label htmlFor="location" className="text-white mb-2 block">
               📍 Location (Optional)
             </Label>
-            <LocationAutocomplete
+            <GooglePlacesAutocomplete
               value={location}
               onChange={setLocation}
+              onPlaceSelect={setSelectedPlace}
               placeholder="e.g., Banff, Canada"
               className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
             />
