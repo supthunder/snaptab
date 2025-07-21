@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { PasskeyAuthStep } from "@/components/onboarding/passkey-auth-step"
-import { JoinTripStep } from "@/components/onboarding/join-trip-step"
+import { AutoJoinTripStep } from "@/components/onboarding/auto-join-trip-step"
 import { TripCardStep } from "@/components/onboarding/trip-card-step"
 import { SuccessStep } from "@/components/onboarding/success-step"
 import { ProgressBar } from "@/components/onboarding/progress-bar"
@@ -129,7 +129,7 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
       case 2:
         return <PasskeyAuthStep onNext={nextStep} data={data} updateData={updateData} />
       case 3:
-        return <JoinTripStep onNext={() => goToStep(4)} data={data} updateData={updateData} />
+        return <AutoJoinTripStep onNext={() => goToStep(4)} data={data} updateData={updateData} tripCode={shareData.tripCode} />
       case 4:
         return <TripCardStep onNext={completeOnboarding} onSkipToHome={completeOnboarding} data={data} />
       default:
