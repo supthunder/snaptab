@@ -202,13 +202,29 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
       const { creationOptions, challenge } = await optionsResponse.json()
 
       // Step 2: Create credential using WebAuthn API
+      const userIdArray = new Uint8Array(creationOptions.user.id)
+      console.log('🔐 Creating WebAuthn credential with options:', {
+        ...creationOptions,
+        challenge: Array.from(new Uint8Array(creationOptions.challenge)),
+        user: {
+          ...creationOptions.user,
+          id: Array.from(userIdArray),
+          idLength: userIdArray.length
+        }
+      })
+
+      // Validate user ID length before creating credential
+      if (userIdArray.length === 0 || userIdArray.length > 64) {
+        throw new Error(`Invalid user ID length: ${userIdArray.length} bytes (must be 1-64 bytes)`)
+      }
+
       const credential = await navigator.credentials.create({
         publicKey: {
           ...creationOptions,
           challenge: new Uint8Array(creationOptions.challenge),
           user: {
             ...creationOptions.user,
-            id: new Uint8Array(creationOptions.user.id)
+            id: userIdArray
           }
         }
       }) as PublicKeyCredential

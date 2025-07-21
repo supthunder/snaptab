@@ -17,6 +17,11 @@ export function generateCredentialCreationOptions(
   challenge: Uint8Array,
   rpId: string = 'localhost'
 ) {
+  // Ensure userId is properly encoded and within WebAuthn limits
+  const userIdBytes = new TextEncoder().encode(userId)
+  if (userIdBytes.length === 0 || userIdBytes.length > 64) {
+    throw new Error(`Invalid user ID length: ${userIdBytes.length} bytes (must be 1-64 bytes)`)
+  }
 
   return {
     challenge: challenge,
@@ -25,7 +30,7 @@ export function generateCredentialCreationOptions(
       id: rpId
     },
     user: {
-      id: new TextEncoder().encode(userId),
+      id: userIdBytes,
       name: username,
       displayName: displayName
     },

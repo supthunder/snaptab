@@ -26,9 +26,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { username } = body
 
+    console.log('🔐 Passkey registration request for username:', username)
+
     if (!username) {
+      console.error('❌ Username is required')
       return NextResponse.json({ 
         error: 'Username is required' 
+      }, { status: 400 })
+    }
+
+    // Validate username format
+    if (typeof username !== 'string' || username.trim().length === 0) {
+      console.error('❌ Invalid username format:', username)
+      return NextResponse.json({ 
+        error: 'Invalid username format' 
       }, { status: 400 })
     }
 
@@ -37,20 +48,22 @@ export async function POST(request: NextRequest) {
     
     if (!user) {
       // Create new user
-      console.log(`Creating new user: ${username}`)
+      console.log(`🆕 Creating new user: ${username}`)
       user = await createUser(username, username) // username as display name
       if (!user) {
-        console.error(`Failed to create user: ${username}`)
+        console.error(`❌ Failed to create user: ${username}`)
         return NextResponse.json({ 
           error: 'Failed to create user' 
         }, { status: 500 })
       }
-      console.log(`Successfully created user:`, { id: user.id, username: user.username })
+      console.log(`✅ Successfully created user:`, { id: user.id, username: user.username })
+    } else {
+      console.log(`👤 Found existing user:`, { id: user.id, username: user.username })
     }
 
     // Validate user data for WebAuthn
     if (!user.username || user.username.length === 0) {
-      console.error('Invalid user data - username is empty')
+      console.error('❌ Invalid user data - username is empty')
       return NextResponse.json({ 
         error: 'Invalid user data' 
       }, { status: 500 })
@@ -62,22 +75,38 @@ export async function POST(request: NextRequest) {
     const rpId = getRpId(request)
     
     // Create WebAuthn user ID (must be 1-64 bytes)
-    const userIdBytes = new TextEncoder().encode(user.username)
+    console.log(`🔤 Processing username for WebAuthn user ID: "${user.username}"`)
+    console.log(`📏 Username length: ${user.username.length} characters`)
+    
+    let userIdBytes = new TextEncoder().encode(user.username)
+    console.log(`📊 Encoded user ID bytes length: ${userIdBytes.length}`)
+    console.log(`🔢 User ID bytes array:`, Array.from(userIdBytes))
+    
+    // If username is too long, use user database ID instead
+    if (userIdBytes.length > 64) {
+      console.log(`⚠️ Username too long (${userIdBytes.length} bytes), using user ID instead`)
+      userIdBytes = new TextEncoder().encode(user.id)
+      console.log(`🔄 Using user ID: "${user.id}" (${userIdBytes.length} bytes)`)
+    }
+    
+    // Final validation
     if (userIdBytes.length === 0 || userIdBytes.length > 64) {
-      console.error(`Invalid user ID length: ${userIdBytes.length} bytes for username: ${user.username}`)
+      console.error(`❌ Invalid user ID length: ${userIdBytes.length} bytes`)
       return NextResponse.json({ 
-        error: 'Username too long for WebAuthn' 
+        error: `Cannot create valid WebAuthn user ID: ${userIdBytes.length} bytes (must be 1-64 bytes)` 
       }, { status: 400 })
     }
     
+    console.log(`✅ Valid user ID length: ${userIdBytes.length} bytes`)
+    
     const creationOptions = {
-      challenge: challenge,
+      challenge: Array.from(challenge), // Convert to regular array for JSON serialization
       rp: {
         name: "SnapTab",
         id: rpId
       },
       user: {
-        id: userIdBytes,
+        id: Array.from(userIdBytes), // Convert to regular array for JSON serialization
         name: user.username,
         displayName: user.display_name || user.username
       },
@@ -94,17 +123,30 @@ export async function POST(request: NextRequest) {
       attestation: "direct"
     }
 
+    console.log('📋 Creation options prepared:', {
+      rpId,
+      userId: Array.from(userIdBytes),
+      userIdLength: userIdBytes.length,
+      username: user.username,
+      displayName: user.display_name || user.username
+    })
+
     // Store challenge in session/cache for verification
     // For now, we'll include it in the response (in production, use proper session management)
     
     return NextResponse.json({
       success: true,
       creationOptions,
-      challenge: Buffer.from(challenge).toString('base64url')
+      challenge: Buffer.from(challenge).toString('base64url'),
+      debug: {
+        userIdLength: userIdBytes.length,
+        userIdArray: Array.from(userIdBytes),
+        username: user.username
+      }
     })
 
   } catch (error) {
-    console.error('Error in passkey registration:', error)
+    console.error('❌ Error in passkey registration:', error)
     return NextResponse.json({ 
       error: 'Failed to generate passkey registration options',
       details: error instanceof Error ? error.message : 'Unknown error'
