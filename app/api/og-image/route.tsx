@@ -25,7 +25,11 @@ export async function POST(request: NextRequest) {
             alignItems: 'center',
             justifyContent: 'center',
             background: backgroundImageUrl 
-              ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${backgroundImageUrl})`
+              ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${
+                  backgroundImageUrl.startsWith('/') 
+                    ? `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}${backgroundImageUrl}`
+                    : backgroundImageUrl
+                })`
               : 'linear-gradient(45deg, #1e40af, #7c3aed, #1e40af)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',

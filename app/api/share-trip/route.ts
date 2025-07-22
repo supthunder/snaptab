@@ -19,7 +19,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Trip code is required' }, { status: 400 })
     }
 
-    // Generate random suffix for share code
+    // Check if a share link already exists for this trip code
+    const existingShare = await sql`
+      SELECT share_code, og_image_url, username, place_name, background_image_url
+      FROM trip_shares 
+      WHERE trip_code = ${tripCode}
+      LIMIT 1
+    `
+
+    if (existingShare.rows.length > 0) {
+      const existing = existingShare.rows[0]
+      console.log('♻️ Reusing existing share link for trip:', tripCode)
+      
+      return NextResponse.json({
+        shareCode: existing.share_code,
+        shareUrl: `/${existing.share_code}`,
+        ogImageUrl: existing.og_image_url,
+        tripCode,
+        placeName: existing.place_name,
+        username: existing.username,
+        isExisting: true
+      })
+    }
+
+    // Generate new share code only if none exists
     const suffix = generateRandomSuffix()
     const shareCode = `${tripCode}${suffix}`
 

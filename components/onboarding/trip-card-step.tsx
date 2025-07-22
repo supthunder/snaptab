@@ -13,7 +13,6 @@ interface TripCardStepProps {
 }
 
 export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) {
-  const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [isGeneratingShare, setIsGeneratingShare] = useState(false)
   const [shareUrlCopied, setShareUrlCopied] = useState(false)
   
@@ -40,9 +39,8 @@ export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) 
       if (response.ok) {
         const result = await response.json()
         const fullUrl = `${window.location.origin}${result.shareUrl}`
-        setShareUrl(fullUrl)
         
-        // Immediately copy to clipboard
+        // Copy to clipboard (no need to store URL)
         await navigator.clipboard.writeText(fullUrl)
         setShareUrlCopied(true)
         setTimeout(() => setShareUrlCopied(false), 2000)
@@ -153,16 +151,7 @@ export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) 
               )}
             </Button>
             
-            {shareUrl && (
-              <div className="mt-3 space-y-2">
-                <div className="bg-white/20 rounded-lg p-2">
-                  <span className="text-white text-xs font-mono truncate block">{shareUrl}</span>
-                </div>
-                <p className="text-white/80 text-xs">
-                  Send this link to friends so they can join with one tap!
-                </p>
-              </div>
-            )}
+
           </motion.div>
         </div>
       )}

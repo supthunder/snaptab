@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { Card } from "@/components/ui/card"
 
@@ -12,7 +13,8 @@ interface TripCardProps {
 }
 
 export function TripCard({ tripCode, placeName, backgroundImageUrl, className = "" }: TripCardProps) {
-
+  const [imageError, setImageError] = useState(false)
+  
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -22,14 +24,15 @@ export function TripCard({ tripCode, placeName, backgroundImageUrl, className = 
     >
       <Card className="relative w-full aspect-[4/3] overflow-hidden border-0 shadow-2xl">
         {/* Background Image */}
-        {backgroundImageUrl ? (
-          <div 
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ 
-              backgroundImage: `url(${backgroundImageUrl})`,
-              filter: 'blur(1px)'
-            }}
-          >
+        {backgroundImageUrl && !imageError ? (
+          <div className="absolute inset-0">
+            <img
+              src={backgroundImageUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover filter blur-sm"
+              onError={() => setImageError(true)}
+              onLoad={() => setImageError(false)}
+            />
             {/* Dark overlay for better text readability */}
             <div className="absolute inset-0 bg-black/40" />
           </div>

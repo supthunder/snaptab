@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    let photoUrl = null
+    let photoUrl = '/background.jpg' // Default fallback
 
     // If we have a place ID, try to get a photo
     if (placeId) {
@@ -35,7 +35,25 @@ export async function POST(request: NextRequest) {
             const photoReference = detailsData.result.photos[0].photo_reference
             
             // Generate Google Places Photo URL
-            photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&maxheight=600&photo_reference=${photoReference}&key=${apiKey}`
+            const googlePhotoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&maxheight=600&photo_reference=${photoReference}&key=${apiKey}`
+            
+            // Test if the photo URL actually works (check for 403 Forbidden, etc.)
+            try {
+              const photoTestResponse = await fetch(googlePhotoUrl, { method: 'HEAD' })
+              if (photoTestResponse.ok) {
+                photoUrl = googlePhotoUrl
+                console.log('✅ Google Places photo URL verified:', photoReference.substring(0, 20) + '...')
+              } else {
+                console.log('❌ Google Places photo failed with status:', photoTestResponse.status, 'falling back to default')
+                photoUrl = '/background.jpg'
+              }
+            } catch (photoTestError) {
+              console.log('❌ Google Places photo test failed:', photoTestError instanceof Error ? photoTestError.message : 'Unknown error', 'falling back to default')
+              photoUrl = '/background.jpg'
+            }
+          } else {
+            // No photos available from Google, use fallback
+            photoUrl = '/background.jpg'
           }
         }
       } catch (photoError) {

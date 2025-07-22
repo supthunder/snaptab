@@ -31,15 +31,94 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
     isJoining: true,
     tripName: `Trip ${shareData.tripCode}`,
   })
-  const totalSteps = 4 // Welcome → Auth → Join → Success
+  const totalSteps = 3 // Welcome → Auth → Success (Skip Join step)
 
   const updateData = (newData: Partial<OnboardingData>) => {
     setData((prev) => ({ ...prev, ...newData }))
   }
 
-  const nextStep = () => {
+  const nextStep = async () => {
+    if (currentStep === 2) {
+      // After auth step, automatically join the trip before going to success step
+      await autoJoinTrip()
+    }
+    
     if (currentStep < totalSteps) {
       setCurrentStep((prev) => prev + 1)
+    }
+  }
+
+  const autoJoinTrip = async () => {
+    try {
+      if (!data.username) {
+        console.error('No username available for auto-join')
+        return
+      }
+
+      // Create/get the user
+      await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: data.username,
+          displayName: data.displayName || data.username
+        })
+      })
+
+      // Get trip info
+      const tripResponse = await fetch(`/api/trips/${shareData.tripCode}`)
+      if (!tripResponse.ok) {
+        throw new Error('Trip not found')
+      }
+      const tripData = await tripResponse.json()
+
+      // Join the trip
+      const joinResponse = await fetch(`/api/trips/${shareData.tripCode}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: data.username })
+      })
+
+      if (!joinResponse.ok) {
+        const errorData = await joinResponse.json()
+        throw new Error(errorData.error || 'Failed to join trip')
+      }
+
+      // Generate trip card
+      let tripCardData = null
+      try {
+        const cardResponse = await fetch('/api/trip-card', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tripCode: shareData.tripCode,
+            placeId: null,
+            placeName: shareData.placeName || tripData.trip?.name || tripData.name
+          })
+        })
+        
+        if (cardResponse.ok) {
+          tripCardData = await cardResponse.json()
+        }
+      } catch (cardError) {
+        console.error('Failed to generate trip card:', cardError)
+      }
+
+      // Update data with trip info
+      updateData({ 
+        tripCode: shareData.tripCode,
+        tripName: shareData.placeName || tripData.trip?.name || tripData.name || `Trip ${shareData.tripCode}`,
+        currency: tripData.trip?.currency || tripData.currency || 'USD',
+        tripId: tripData.trip?.id || tripData.id,
+        tripStatus: tripData.trip?.is_active ? 'Active' : 'Upcoming',
+        isJoining: true,
+        tripCard: tripCardData
+      })
+
+      console.log('✅ Auto-joined trip successfully:', shareData.tripCode)
+    } catch (error) {
+      console.error('❌ Failed to auto-join trip:', error)
+      // Continue to next step even if join fails - user can join manually later
     }
   }
 
@@ -129,8 +208,8 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
       case 2:
         return <PasskeyAuthStep onNext={nextStep} data={data} updateData={updateData} />
       case 3:
-        return <JoinTripStep onNext={() => goToStep(4)} data={data} updateData={updateData} />
-      case 4:
+        // Skip JoinTripStep since we already have trip context from the share URL
+        // Go directly to success/trip card confirmation
         return <TripCardStep onNext={completeOnboarding} onSkipToHome={completeOnboarding} data={data} />
       default:
         return renderWelcomeStep()
