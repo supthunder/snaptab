@@ -64,7 +64,18 @@ export async function POST(request: NextRequest) {
     // Generate trip card image for better iMessage/social previews
     let ogImageUrl = null
     try {
-      const tripCardResponse = await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/trip-card-image`, {
+      // Get the base URL for internal API calls
+      const baseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : process.env.NEXTAUTH_URL 
+        ? process.env.NEXTAUTH_URL
+        : request.headers.get('origin') 
+        ? request.headers.get('origin')
+        : 'http://localhost:3000'
+      
+      console.log('🖼️ Generating trip card image with base URL:', baseUrl)
+      
+      const tripCardResponse = await fetch(`${baseUrl}/api/trip-card-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,10 +90,11 @@ export async function POST(request: NextRequest) {
         ogImageUrl = tripCardData.imageUrl
         console.log('✅ Trip card image generated:', ogImageUrl)
       } else {
-        console.error('Trip card image generation failed:', await tripCardResponse.text())
+        const errorText = await tripCardResponse.text()
+        console.error('❌ Trip card image generation failed:', tripCardResponse.status, errorText)
       }
     } catch (error) {
-      console.error('Error generating trip card image:', error)
+      console.error('❌ Error generating trip card image:', error)
     }
 
     // Store share data in database

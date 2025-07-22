@@ -180,10 +180,10 @@ export default function TripsPage() {
                             </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Your Balance</p>
-                            <p className={`font-medium ${userBalance < 0 ? "text-red-400" : "text-green-400"}`}>
-                              {userBalance < 0 ? "-" : "+"}
-                              {getCurrencySymbol(trip.currency)}{Math.abs(userBalance).toFixed(2)}
+                            <p className="text-muted-foreground">Balance to Pay</p>
+                            <p className={`font-medium ${userBalance < 0 ? "text-red-400" : "text-muted-foreground"}`}>
+                              {getCurrencySymbol(trip.currency)}
+                              {userBalance < 0 ? Math.abs(userBalance).toFixed(2) : "0.00"}
                             </p>
                           </div>
                         </div>

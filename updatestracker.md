@@ -5,6 +5,204 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #70: Fixed Share Link Open Graph Images  
+**Date**: 2025-01-21  
+**Status**: ✅ Complete
+
+### Issue Reported:
+**Missing Open Graph Images**: Share links like `https://snaptab.cash/9138dfzv` were not showing trip card images in social media previews and messaging apps.
+
+### User Feedback:
+> "another thing the inv link @https://snaptab.cash/9138dfzv does not show the image in the open graph
+> 
+> can you add that, its the same image as in the invite card etc"
+
+### Problem Analysis:
+#### **Issue Found:**
+The Open Graph meta tags were showing empty image content:
+```html
+<meta property="og:image" content="">
+<meta name="twitter:image" content="">
+```
+
+#### **Root Cause:**
+1. **Internal API Call Failure**: The `/api/share-trip` endpoint was failing to generate OG images due to incorrect URL construction
+2. **Environment Variable Issues**: `process.env.VERCEL_URL` was not properly configured for internal API calls
+3. **No Fallback Mechanism**: If image generation failed during share creation, there was no retry logic
+
+### Solution Implemented:
+
+#### **1. Fixed Internal API URL Generation**
+Enhanced the share-trip API with robust URL detection:
+```javascript
+// ❌ Before: Fragile URL construction
+const url = `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}`
+
+// ✅ After: Multiple fallback strategies  
+const baseUrl = process.env.VERCEL_URL 
+  ? `https://${process.env.VERCEL_URL}` 
+  : process.env.NEXTAUTH_URL 
+  ? process.env.NEXTAUTH_URL
+  : request.headers.get('origin') 
+  ? request.headers.get('origin')
+  : 'http://localhost:3000'
+```
+
+#### **2. Added Fallback OG Image Generation**
+Implemented on-the-fly image generation in the share page metadata:
+```javascript
+async function ensureOgImage(shareData) {
+  if (shareData.og_image_url) {
+    return shareData.og_image_url  // Use existing image
+  }
+  
+  // Generate new image if missing
+  const response = await fetch('/api/trip-card-image', { ... })
+  
+  // Save to database for future use
+  await sql`UPDATE trip_shares SET og_image_url = ${imageUrl}`
+}
+```
+
+#### **3. Enhanced Error Handling & Logging**
+Added comprehensive logging for debugging:
+- `🖼️ Generating trip card image with base URL`
+- `✅ Generated and saved OG image`  
+- `❌ Failed to generate OG image`
+
+### Technical Implementation:
+
+#### **Files Modified:**
+- `app/api/share-trip/route.ts` - Fixed internal API URL construction
+- `app/[shareCode]/page.tsx` - Added fallback OG image generation in metadata
+
+#### **URL Resolution Strategy:**
+1. **Primary**: `process.env.VERCEL_URL` (production Vercel deployment)
+2. **Secondary**: `process.env.NEXTAUTH_URL` (authentication URL)  
+3. **Tertiary**: `request.headers.get('origin')` (request origin)
+4. **Fallback**: `http://localhost:3000` (local development)
+
+#### **Image Dimensions Fixed:**
+- **Before**: Inconsistent dimensions (1200x630 vs 600x400)
+- **After**: Consistent 600x400 dimensions matching actual image generation
+
+### User Experience Impact:
+
+#### **Before Fix:**
+```html
+<meta property="og:image" content=""> <!-- Empty! -->
+<meta name="twitter:image" content=""> <!-- Empty! -->
+```
+- Share links appeared as plain text in iMessage, WhatsApp, Slack
+- No visual preview of trip destination or code  
+- Poor social media sharing experience
+
+#### **After Fix:**
+```html
+<meta property="og:image" content="https://blob.vercel-storage.com/.../trip-card.png">
+<meta name="twitter:image" content="https://blob.vercel-storage.com/.../trip-card.png">
+```
+- ✅ **Rich Previews**: Beautiful trip card images in all messaging apps
+- ✅ **Destination Photos**: Blurred destination backgrounds with trip codes  
+- ✅ **Professional Appearance**: Branded SnapTab trip cards
+- ✅ **Fallback Protection**: Images generate even if initial creation failed
+
+### Testing Scenarios:
+- **New Share Links**: OG image generated during creation
+- **Existing Share Links**: OG image generated on first metadata request  
+- **Failed Image Generation**: Graceful fallback without breaking share functionality
+- **Social Media**: Rich previews in iMessage, WhatsApp, Twitter, Facebook, Slack
+
+### Benefits:
+- **Increased Engagement**: Visual previews encourage link clicks
+- **Professional Branding**: Consistent SnapTab visual identity
+- **Better User Experience**: Clear trip identification before joining
+- **Viral Growth**: Attractive share previews promote organic sharing
+
+---
+
+## Update #69: Fixed Balance Display Logic - "Balance to Pay" Clarification  
+**Date**: 2025-01-21  
+**Status**: ✅ Complete
+
+### Issue Reported:
+**Confusing Balance Display**: Users reported that the balance display was confusing when showing both positive (owed money) and negative (owes money) amounts.
+
+### User Feedback:
+> "in this , it says 48 which is correct, the image is for windows1 and i owe windows2 $48
+> 
+> now windows2 paid the bill and in the second image it shows this for him, 48 also but green
+> 
+> no can we clarify this
+> 
+> instead of 'your balance' can you make it say 'your balance to pay'
+> 
+> and that should be 0 for windows 2, and for windows 1 it should be 48 cause he owes money"
+
+### Problem Analysis:
+#### **Before Fix:**
+- **"Your balance"** label was ambiguous
+- **windows1 (owes money)**: Showed "$48.13" in red ✅ (correct)
+- **windows2 (paid bill)**: Showed "+$48.13" in green ❌ (confusing - they don't need to pay anything!)
+- **User Confusion**: People who are owed money were shown positive amounts, making it unclear what they need to pay
+
+### Solution Implemented:
+
+#### **New Logic - "Your Balance to Pay":**
+- **Changed Label**: "Your balance" → **"Your balance to pay"**
+- **Clear Logic**: Only shows the amount you actually need to pay out
+- **windows1 (owes money)**: Shows "$48.13" in red (amount to pay)
+- **windows2 (paid bill)**: Shows "$0.00" in gray (nothing to pay)
+
+#### **Technical Changes:**
+```javascript
+// ❌ Before: Confusing display
+<p>Your balance</p>
+<span className={userBalance < 0 ? "text-red-400" : "text-green-400"}>
+  {userBalance < 0 ? "" : "+"}
+  ${Math.abs(userBalance).toFixed(2)}
+</span>
+
+// ✅ After: Clear "balance to pay"
+<p>Your balance to pay</p>
+<span className={userBalance < 0 ? "text-red-400" : "text-muted-foreground"}>
+  $
+  {userBalance < 0 ? Math.abs(userBalance).toFixed(2) : "0.00"}
+</span>
+```
+
+### User Experience Improvements:
+
+#### **Before Fix:**
+- **Ambiguous**: "Your balance" could mean what you owe OR what you're owed
+- **Green Confusion**: Positive amounts in green made users think they needed to pay
+- **Mental Math Required**: Users had to interpret +/- signs and colors
+
+#### **After Fix:**
+- ✅ **Crystal Clear**: "Your balance to pay" means exactly what you need to pay out
+- ✅ **Intuitive Logic**: People owed money see $0.00 (they don't need to pay anything)
+- ✅ **Immediate Understanding**: Red amount = what you owe, $0.00 = nothing to pay
+- ✅ **Consistent Language**: Same logic across home page, profile section, and trips page
+
+### Files Modified:
+- `app/page.tsx` - Updated main balance display and profile section trip cards
+- `app/trips/page.tsx` - Updated trips list balance display for consistency
+
+### Consistency Across App:
+All balance displays now use the same logic:
+- **Home Page**: Main balance card shows "Your balance to pay"
+- **Profile Section**: Individual trip cards show "Balance to Pay"  
+- **Trips Page**: Trip list shows "Balance to Pay"
+- **Settlement Page**: Still shows traditional +/- balances (appropriate context)
+
+### Testing Scenarios:
+- **Scenario 1**: User owes $48 → Shows "$48.00" in red
+- **Scenario 2**: User is owed $48 → Shows "$0.00" in gray
+- **Scenario 3**: User has $0 balance → Shows "$0.00" in gray
+- **Result**: Clear, unambiguous display that matches user mental model
+
+---
+
 ## Update #68: Enhanced Onboarding & Trip Management Integration  
 **Date**: 2025-01-21  
 **Status**: ✅ Complete
@@ -10008,7 +10206,7 @@ if (currentUserId) {
 - Incorrect calculations when expenses had different split configurations
 - Users couldn't see actual money owed/owed to them
 
-#### **After Fix:**  
+#### **After Fix:**
 - ✅ **Accurate Balances**: Shows real amounts based on expense participation
 - ✅ **Multi-Member Support**: Works correctly with any number of trip members
 - ✅ **Flexible Splits**: Handles expenses split among different subgroups

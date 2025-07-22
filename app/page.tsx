@@ -1107,12 +1107,11 @@ export default function HomePage() {
             <CardContent className="p-6">
               {/* Balance Section */}
               <div className="text-center mb-6">
-                <p className="text-muted-foreground text-sm mb-2">Your balance</p>
+                <p className="text-muted-foreground text-sm mb-2">Your balance to pay</p>
                 <div className="text-4xl font-bold">
-                  <span className={userBalance < 0 ? "text-red-400" : "text-green-400"}>
-                    {userBalance < 0 ? "" : "+"}
+                  <span className={userBalance < 0 ? "text-red-400" : "text-muted-foreground"}>
                     {getCurrencySymbol(activeTrip.currency)}
-                    {Math.abs(Number(userBalance || 0)).toFixed(2)}
+                    {userBalance < 0 ? Math.abs(Number(userBalance || 0)).toFixed(2) : "0.00"}
                   </span>
                 </div>
               </div>
@@ -1365,10 +1364,10 @@ export default function HomePage() {
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-muted-foreground">Your Balance</p>
-                                  <p className={`font-medium ${userBalance < 0 ? "text-red-400" : "text-green-400"}`}>
-                                    {userBalance < 0 ? "-" : "+"}
-                                    {getCurrencySymbol(trip.currency)}{Math.abs(Number(userBalance || 0)).toFixed(2)}
+                                  <p className="text-muted-foreground">Balance to Pay</p>
+                                  <p className={`font-medium ${userBalance < 0 ? "text-red-400" : "text-muted-foreground"}`}>
+                                    {getCurrencySymbol(trip.currency)}
+                                    {userBalance < 0 ? Math.abs(Number(userBalance || 0)).toFixed(2) : "0.00"}
                                   </p>
                                 </div>
                               </div>
