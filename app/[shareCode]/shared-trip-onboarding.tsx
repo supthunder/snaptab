@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { PasskeyAuthStep } from "@/components/onboarding/passkey-auth-step"
 import { JoinTripStep } from "@/components/onboarding/join-trip-step"
@@ -24,8 +24,28 @@ interface SharedTripOnboardingProps {
   }
 }
 
+// Check if session is expired (30 days)
+function isSessionExpired(): boolean {
+  const lastAuth = localStorage.getItem('snapTab_lastAuth')
+  if (!lastAuth) return true
+  
+  const lastAuthTime = parseInt(lastAuth)
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000 // 30 days in milliseconds
+  
+  return Date.now() - lastAuthTime > thirtyDaysMs
+}
+
+// Check if user is already authenticated
+function isUserAuthenticated(): boolean {
+  const username = localStorage.getItem('snapTab_username')
+  const onboardingComplete = localStorage.getItem('snapTab_onboardingComplete')
+  
+  return !!(username && onboardingComplete && !isSessionExpired())
+}
+
 export default function SharedTripOnboarding({ shareData }: SharedTripOnboardingProps) {
   const [currentStep, setCurrentStep] = useState(1)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [data, setData] = useState<OnboardingData>({
     tripCode: shareData.tripCode,
     isJoining: true,
@@ -36,6 +56,39 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
   const updateData = (newData: Partial<OnboardingData>) => {
     setData((prev) => ({ ...prev, ...newData }))
   }
+
+  // Check authentication status on component mount
+  useEffect(() => {
+    const checkAuthAndProceed = async () => {
+      console.log('🔍 Checking authentication status...')
+      
+      if (isUserAuthenticated()) {
+        console.log('✅ User already authenticated, auto-joining trip...')
+        
+        // Load existing user data
+        const username = localStorage.getItem('snapTab_username')
+        const displayName = localStorage.getItem('snapTab_displayName')
+        
+        updateData({ 
+          username: username || '', 
+          displayName: displayName || username || '' 
+        })
+        
+        // Auto-join the trip
+        await autoJoinTrip()
+        
+        // Skip directly to success step
+        setCurrentStep(3)
+        setIsCheckingAuth(false)
+      } else {
+        console.log('❌ User not authenticated or session expired, proceeding with auth flow...')
+        // Proceed with normal onboarding flow
+        setIsCheckingAuth(false)
+      }
+    }
+
+    checkAuthAndProceed()
+  }, [])
 
   const nextStep = async () => {
     if (currentStep === 2) {
@@ -168,6 +221,8 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
     if (data.username) {
       localStorage.setItem('snapTab_username', data.username)
       localStorage.setItem('snapTab_displayName', data.displayName || data.username)
+      // Update session timestamp
+      localStorage.setItem('snapTab_lastAuth', Date.now().toString())
     }
     
     if (data.tripCode) {
@@ -245,6 +300,18 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
       default:
         return renderWelcomeStep()
     }
+  }
+
+  // Show loading screen while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden">
+        <div className="flex flex-col items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mb-4"></div>
+          <p className="text-white/80">Checking authentication...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -92,11 +92,38 @@ export default function HomePage() {
     }
   }
 
+  // Check if session is expired (30 days)
+  const isSessionExpired = (): boolean => {
+    const lastAuth = localStorage.getItem('snapTab_lastAuth')
+    if (!lastAuth) return true
+    
+    const lastAuthTime = parseInt(lastAuth)
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000 // 30 days in milliseconds
+    
+    return Date.now() - lastAuthTime > thirtyDaysMs
+  }
+
   // Check for first-time user and redirect to onboarding
   useEffect(() => {
     const checkOnboarding = () => {
       const onboardingComplete = localStorage.getItem('snapTab_onboardingComplete')
       const hasUsername = localStorage.getItem('snapTab_username')
+      
+      // Check if session is expired
+      if (hasUsername && onboardingComplete && isSessionExpired()) {
+        console.log('🕒 Session expired (30+ days), clearing auth data...')
+        // Clear expired session data
+        localStorage.removeItem('snapTab_onboardingComplete')
+        localStorage.removeItem('snapTab_username')
+        localStorage.removeItem('snapTab_displayName')
+        localStorage.removeItem('snapTab_currentTripCode')
+        localStorage.removeItem('snapTab_currentTripId')
+        localStorage.removeItem('snapTab_lastAuth')
+        
+        // Redirect to onboarding
+        window.location.href = '/onboarding'
+        return
+      }
       
       // If onboarding is not complete and user doesn't have username, redirect to onboarding
       if (!onboardingComplete && !hasUsername) {
@@ -1126,12 +1153,14 @@ export default function HomePage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
+                  console.log('🚪 Manual logout - clearing all auth data...')
                   // Clear all authentication data
                   localStorage.removeItem('snapTab_onboardingComplete')
                   localStorage.removeItem('snapTab_username')
                   localStorage.removeItem('snapTab_displayName')
                   localStorage.removeItem('snapTab_currentTripCode')
                   localStorage.removeItem('snapTab_currentTripId')
+                  localStorage.removeItem('snapTab_lastAuth')
                   
                   // Redirect to onboarding
                   window.location.href = '/onboarding'

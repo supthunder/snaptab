@@ -32,18 +32,19 @@ export async function POST(request: NextRequest) {
                     textAlign: 'center',
                   }}
                 >
-                  {placeName && (
+                  {placeName ? (
                     <div
                       style={{
                         fontSize: 36,
                         fontWeight: '600',
                         marginBottom: 32,
                         color: 'rgba(255, 255, 255, 0.95)',
+                        display: 'flex',
                       }}
                     >
                       {placeName}
                     </div>
-                  )}
+                  ) : null}
 
                   <div
                     style={{
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
                       letterSpacing: '0.1em',
                       marginBottom: 20,
                       textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
+                      display: 'flex',
                     }}
                   >
                     {tripCode}
@@ -63,6 +65,7 @@ export async function POST(request: NextRequest) {
                       height: 4,
                       backgroundColor: 'rgba(255, 255, 255, 0.6)',
                       borderRadius: 2,
+                      display: 'flex',
                     }}
                   />
                 </div>

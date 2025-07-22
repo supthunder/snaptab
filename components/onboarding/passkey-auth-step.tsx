@@ -146,7 +146,42 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
         displayName: result.user.displayName 
       })
       
-      // Continue with onboarding flow (allow existing users to create/join new trips)
+      // Set session timestamp for 30-day persistence
+      localStorage.setItem('snapTab_lastAuth', Date.now().toString())
+      
+      // Check if user has existing trips - if so, redirect to home
+      try {
+        const tripsResponse = await fetch(`/api/trips?username=${encodeURIComponent(result.user.username)}`)
+        if (tripsResponse.ok) {
+          const tripsData = await tripsResponse.json()
+          
+          if (tripsData.trips && tripsData.trips.length > 0) {
+            // Existing user with trips - redirect to home
+            console.log('✅ Existing user with trips found, redirecting to home...')
+            setTimeout(() => {
+              localStorage.setItem('snapTab_username', result.user.username)
+              localStorage.setItem('snapTab_displayName', result.user.displayName)
+              localStorage.setItem('snapTab_onboardingComplete', 'true')
+              
+              // Set most recent trip as active
+              const sortedTrips = tripsData.trips.sort((a: any, b: any) => 
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              )
+              if (sortedTrips[0]) {
+                localStorage.setItem('snapTab_currentTripCode', sortedTrips[0].trip_code.toString())
+              }
+              
+              window.location.href = '/'
+            }, 1500)
+            return
+          }
+        }
+      } catch (error) {
+        console.error('Error checking existing trips:', error)
+        // Continue with normal flow if API call fails
+      }
+      
+      // New user or user without trips - continue with onboarding flow
       setTimeout(() => onNext(), 1500)
 
     } catch (error: any) {
@@ -258,6 +293,10 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
 
       setSuccess('Account created successfully with passkey!')
       updateData({ username })
+      
+      // Set session timestamp for 30-day persistence
+      localStorage.setItem('snapTab_lastAuth', Date.now().toString())
+      
       setTimeout(() => onNext(), 2000)
 
     } catch (error: any) {

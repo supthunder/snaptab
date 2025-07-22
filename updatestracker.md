@@ -2898,6 +2898,92 @@ onClick={() => window.location.href = "/add-trip"}     // Create OR Join
 ✅ **Unified Error Handling**: Same error patterns across all flows  
 ✅ **Easier Maintenance**: Changes to trip flow only need updates in one place  
 
+---
+
+## Update #35: Smart Join Link Authentication & 30-Day Session Management
+**Date**: December 25, 2024  
+**Status**: ✅ Complete
+
+### Problem Identified:
+Users complained that clicking join links forced them to authenticate again, even when already logged in. Additionally, the app lacked proper session management with reasonable expiration times.
+
+### Issues Fixed:
+
+#### **1. Forced Re-Authentication on Join Links**
+**Before**: All join link clicks → Always go through auth flow  
+**After**: Logged-in users → Skip directly to trip joining ⚡
+
+#### **2. No Session Expiration**
+**Before**: Sessions persisted indefinitely (until manual logout)  
+**After**: 30-day session expiration with automatic cleanup 🔒
+
+### Technical Implementation:
+
+#### **Smart Authentication Checking** (`shared-trip-onboarding.tsx`):
+```typescript
+// Check if session is expired (30 days)
+function isSessionExpired(): boolean {
+  const lastAuth = localStorage.getItem('snapTab_lastAuth')
+  if (!lastAuth) return true
+  
+  const lastAuthTime = parseInt(lastAuth)
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000 // 30 days in milliseconds
+  
+  return Date.now() - lastAuthTime > thirtyDaysMs
+}
+
+// Check if user is already authenticated
+function isUserAuthenticated(): boolean {
+  const username = localStorage.getItem('snapTab_username')
+  const onboardingComplete = localStorage.getItem('snapTab_onboardingComplete')
+  
+  return !!(username && onboardingComplete && !isSessionExpired())
+}
+
+// Auto-skip auth if already logged in
+useEffect(() => {
+  const checkAuthAndProceed = async () => {
+    if (isUserAuthenticated()) {
+      console.log('✅ User already authenticated, auto-joining trip...')
+      
+      // Load existing user data
+      const username = localStorage.getItem('snapTab_username')
+      const displayName = localStorage.getItem('snapTab_displayName')
+      
+      updateData({ username: username || '', displayName: displayName || username || '' })
+      
+      // Auto-join the trip
+      await autoJoinTrip()
+      
+      // Skip directly to success step
+      setCurrentStep(3)
+      setIsCheckingAuth(false)
+    } else {
+      console.log('❌ User not authenticated or session expired, proceeding with auth flow...')
+      setIsCheckingAuth(false)
+    }
+  }
+
+  checkAuthAndProceed()
+}, [])
+```
+
+#### **Session Management:**
+- ✅ **30-Day Sessions**: Standard web app session length
+- ✅ **Auto-Logout**: Expired sessions automatically cleared
+- ✅ **Session Renewal**: Every auth action renews the 30-day timer
+- ✅ **Manual Logout**: Immediately clears session timestamp
+- ✅ **Cross-Flow Support**: Works in onboarding, join links, and main app
+
+### UX Benefits:
+
+⚡ **Faster Join Links**: Skip auth for logged-in users (2+ fewer steps)  
+⚡ **Expected Behavior**: Matches standard web app session patterns  
+⚡ **Clear Feedback**: Loading screen shows what's happening  
+⚡ **Smart Routing**: Existing vs new users get appropriate flows  
+
+**Impact**: Join links now work like modern web apps - respecting user's login state while maintaining security! 🚀
+
 ### Impact:
 🎯 **Unified User Experience**: Same polished flow whether new user or existing user  
 ⚡ **Faster Development**: No need to maintain two separate trip creation UIs  
