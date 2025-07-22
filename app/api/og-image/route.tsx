@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
               : 'linear-gradient(45deg, #1e40af, #7c3aed, #1e40af)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
+            filter: backgroundImageUrl ? 'blur(1px)' : undefined,
             position: 'relative'
           }}
         >

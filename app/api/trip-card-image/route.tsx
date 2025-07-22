@@ -23,8 +23,9 @@ export async function POST(request: NextRequest) {
                     justifyContent: 'center',
                     backgroundColor: '#1e1b4b',
                     backgroundImage: backgroundImageUrl && backgroundImageUrl.startsWith('http')
-                      ? `linear-gradient(rgba(30, 27, 75, 0.6), rgba(30, 27, 75, 0.6)), url(${backgroundImageUrl})`
+                      ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${backgroundImageUrl})`
                       : 'linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%)',
+                    filter: backgroundImageUrl && backgroundImageUrl.startsWith('http') ? 'blur(1px)' : undefined,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     color: 'white',

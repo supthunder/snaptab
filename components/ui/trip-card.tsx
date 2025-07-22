@@ -29,7 +29,8 @@ export function TripCard({ tripCode, placeName, backgroundImageUrl, className = 
             <img
               src={backgroundImageUrl}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover filter blur"
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ filter: 'blur(1px)' }}
               onError={() => setImageError(true)}
               onLoad={() => setImageError(false)}
             />

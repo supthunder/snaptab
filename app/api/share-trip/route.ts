@@ -64,14 +64,9 @@ export async function POST(request: NextRequest) {
     // Generate trip card image for better iMessage/social previews
     let ogImageUrl = null
     try {
-      // Get the base URL for internal API calls
-      const baseUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : process.env.NEXTAUTH_URL 
-        ? process.env.NEXTAUTH_URL
-        : request.headers.get('origin') 
-        ? request.headers.get('origin')
-        : 'http://localhost:3000'
+      // Use the request URL to determine base URL for internal API calls
+      const url = new URL(request.url)
+      const baseUrl = `${url.protocol}//${url.host}`
       
       console.log('🖼️ Generating trip card image with base URL:', baseUrl)
       

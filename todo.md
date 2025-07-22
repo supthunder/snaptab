@@ -7,6 +7,7 @@
 - **passkey3 Branch Merged to Main** (2025-01-12) - Successfully merged all recent features including stacked avatars, member removal, trip code display, and expense-based active status logic
 
 ## Pending Features
+- 💸 **Receipt Payment Calculator**: Calculate final amount user needs to pay and show exactly who to pay it to - provide clear actionable payment instructions from receipt/expense data
 - 📝 **Manual Trip Completion**: Add manual trip completion feature - allow users to mark trips as 'done/completed' manually
 - 📊 **Trip Analytics**: Add basic analytics/insights for completed trips
 - 🔗 **Trip Sharing**: Easy trip code sharing via links or QR codes
