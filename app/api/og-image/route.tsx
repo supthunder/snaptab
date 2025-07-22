@@ -34,65 +34,63 @@ export async function POST(request: NextRequest) {
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             filter: backgroundImageUrl ? 'blur(1px)' : undefined,
-            position: 'relative'
+            color: 'white',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            textAlign: 'center'
           }}
         >
-          {/* Location name at top */}
+          {/* Header Text */}
+          <div
+            style={{
+              fontSize: 28,
+              fontWeight: '500',
+              marginBottom: 16,
+              color: 'rgba(255, 255, 255, 0.9)',
+              display: 'flex',
+            }}
+          >
+            ✈️ Join my trip!
+          </div>
+
+          {/* Place Name */}
           {placeName && (
             <div
               style={{
-                position: 'absolute',
-                top: 80,
-                left: 0,
-                right: 0,
+                fontSize: 42,
+                fontWeight: '600',
+                marginBottom: 8,
+                color: 'rgba(255, 255, 255, 0.95)',
                 display: 'flex',
-                justifyContent: 'center',
-                color: 'white',
-                fontSize: 36,
-                fontWeight: 600,
-                textAlign: 'center'
               }}
             >
-              {placeName}
+              📍 {placeName}
             </div>
           )}
-          
-          {/* Trip Code - Large and centered */}
+
+          {/* Trip Code */}
           <div
             style={{
+              fontSize: 96,
+              fontWeight: 'bold',
+              letterSpacing: '0.1em',
+              marginBottom: 16,
+              textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
               display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginTop: placeName ? 40 : 0
             }}
           >
-            <div
-              style={{
-                color: 'white',
-                fontSize: 120,
-                fontWeight: 900,
-                letterSpacing: '0.1em',
-                textAlign: 'center',
-                textShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
-                display: 'flex'
-              }}
-            >
-              {tripCode}
-            </div>
-            
-            {/* Underline */}
-            <div
-              style={{
-                width: 120,
-                height: 4,
-                background: 'rgba(255, 255, 255, 0.6)',
-                borderRadius: 2,
-                marginTop: 20,
-                marginBottom: 30,
-                display: 'flex'
-              }}
-            />
+            {tripCode}
+          </div>
+
+          {/* Bottom Text */}
+          <div
+            style={{
+              fontSize: 24,
+              fontWeight: '500',
+              color: 'rgba(255, 255, 255, 0.8)',
+              display: 'flex',
+            }}
+          >
+            💰 Split expenses together
           </div>
 
           {/* Call to action text */}

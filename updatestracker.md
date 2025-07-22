@@ -5,6 +5,62 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #71: Enhanced Trip Card Design with Emojis & Engaging Copy  
+**Date**: 2025-01-21  
+**Status**: ✅ Complete
+
+### User Request:
+> "amazing! it works, however i want it to look nicer, not just tokyo 703, make it include the text to be nicer more emoji etc and maybe 'Join my trip!' etc flight emoji etc"
+
+### Enhancement Summary:
+**Transformed boring trip cards into engaging, emoji-rich invitations** that tell the complete SnapTab story.
+
+#### **Before:**
+```
+Tokyo
+703
+___
+```
+
+#### **After:**
+```
+✈️ Join my trip!
+📍 Tokyo  
+703
+💰 Split expenses together
+```
+
+### Changes Made:
+
+#### **1. Enhanced Text Layout** (`/api/trip-card-image` & `/api/og-image`):
+- **Header**: "✈️ Join my trip!" - Clear call-to-action with flight emoji
+- **Location**: "📍 Tokyo" - Pin emoji makes location clear
+- **Trip Code**: Large, bold trip code (slightly smaller to fit content)
+- **Footer**: "💰 Split expenses together" - Explains app value prop
+
+#### **2. Visual Improvements**:
+- **Emoji Integration**: Flight ✈️, location 📍, and money 💰 emojis for visual appeal
+- **Better Hierarchy**: Clear information flow from invitation → location → code → value prop
+- **Consistent Styling**: Applied to both trip-card-image and og-image endpoints
+- **Engaging Copy**: Transformed from static info display to inviting call-to-action
+
+#### **3. User Experience Impact**:
+- **More Shareable**: Engaging emojis and copy make links more appealing to click
+- **Clear Value Prop**: Recipients understand it's about splitting travel expenses
+- **Friendly Tone**: "Join my trip!" creates personal, inviting feeling
+- **Complete Information**: Shows what, where, how, and why in one card
+
+### Technical Details:
+- Updated both `/api/trip-card-image/route.tsx` and `/api/og-image/route.tsx`
+- Maintained consistent blur(1px) effect across both endpoints
+- Preserved responsive sizing and text shadows for readability
+- Enhanced social sharing appeal for iMessage, WhatsApp, Twitter, Facebook
+
+### Result:
+Trip cards now transform from boring info displays into **engaging travel invitations** that clearly communicate SnapTab's value proposition while looking beautiful in social media previews! 🎉
+
+---
+
 ## Update #70: Fixed Share Link Open Graph Images  
 **Date**: 2025-01-21  
 **Status**: ✅ Complete

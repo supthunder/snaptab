@@ -33,26 +33,41 @@ export async function POST(request: NextRequest) {
                     textAlign: 'center',
                   }}
                 >
+                  {/* Header Text */}
+                  <div
+                    style={{
+                      fontSize: 28,
+                      fontWeight: '500',
+                      marginBottom: 16,
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      display: 'flex',
+                    }}
+                  >
+                    ✈️ Join my trip!
+                  </div>
+
+                  {/* Place Name */}
                   {placeName ? (
                     <div
                       style={{
-                        fontSize: 36,
+                        fontSize: 42,
                         fontWeight: '600',
-                        marginBottom: 32,
+                        marginBottom: 8,
                         color: 'rgba(255, 255, 255, 0.95)',
                         display: 'flex',
                       }}
                     >
-                      {placeName}
+                      📍 {placeName}
                     </div>
                   ) : null}
 
+                  {/* Trip Code */}
                   <div
                     style={{
-                      fontSize: 120,
+                      fontSize: 96,
                       fontWeight: 'bold',
                       letterSpacing: '0.1em',
-                      marginBottom: 20,
+                      marginBottom: 16,
                       textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
                       display: 'flex',
                     }}
@@ -60,15 +75,17 @@ export async function POST(request: NextRequest) {
                     {tripCode}
                   </div>
 
+                  {/* Bottom Text */}
                   <div
                     style={{
-                      width: 140,
-                      height: 4,
-                      backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                      borderRadius: 2,
+                      fontSize: 24,
+                      fontWeight: '500',
+                      color: 'rgba(255, 255, 255, 0.8)',
                       display: 'flex',
                     }}
-                  />
+                  >
+                    💰 Split expenses together
+                  </div>
                 </div>
       ),
       {
