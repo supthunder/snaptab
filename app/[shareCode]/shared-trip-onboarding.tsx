@@ -53,6 +53,15 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
   })
   const totalSteps = 3 // Welcome → Auth → Success (Skip Join step)
 
+  // Debug shareData
+  console.log('🔍 SharedTripOnboarding shareData:', {
+    shareCode: shareData.shareCode,
+    tripCode: shareData.tripCode,
+    placeName: shareData.placeName,
+    hasBackgroundImage: !!shareData.backgroundImageUrl,
+    backgroundImageUrl: shareData.backgroundImageUrl ? shareData.backgroundImageUrl.substring(0, 50) + '...' : 'null'
+  })
+
   const updateData = (newData: Partial<OnboardingData>) => {
     setData((prev) => ({ ...prev, ...newData }))
   }
@@ -103,8 +112,13 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
 
   const autoJoinTrip = async () => {
     try {
-      if (!data.username) {
-        console.error('No username available for auto-join')
+      console.log('🔍 AutoJoinTrip called with data:', { username: data.username, tripCode: data.tripCode, isJoining: data.isJoining })
+      
+      // Try to get username from data or fallback to localStorage
+      const username = data.username || localStorage.getItem('snapTab_username')
+      
+      if (!username) {
+        console.error('❌ No username available for auto-join. Current data:', data)
         return
       }
 
@@ -113,8 +127,8 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: data.username,
-          displayName: data.displayName || data.username
+          username: username,
+          displayName: data.displayName || username
         })
       })
 
@@ -129,7 +143,7 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
       const joinResponse = await fetch(`/api/trips/${shareData.tripCode}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: data.username })
+        body: JSON.stringify({ username: username })
       })
 
       if (!joinResponse.ok) {
@@ -141,6 +155,7 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
       let tripCardData = null
       
       // First try to use stored background image from share data
+      console.log('🔍 Checking shareData.backgroundImageUrl:', shareData.backgroundImageUrl)
       if (shareData.backgroundImageUrl) {
         tripCardData = {
           tripCode: shareData.tripCode,
@@ -148,7 +163,10 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
           backgroundImageUrl: shareData.backgroundImageUrl,
           generatedAt: new Date().toISOString()
         }
-        console.log('✅ Using stored background image from share data')
+        console.log('✅ Using stored background image from share data:', {
+          placeName: shareData.placeName,
+          backgroundImageUrl: shareData.backgroundImageUrl.substring(0, 50) + '...'
+        })
       } else {
         // If no background image in share data, try to generate one with location
         console.log('⚠️ No background image in share data, attempting to generate with location')
@@ -189,6 +207,13 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
       }
 
       // Update data with trip info
+      console.log('🔍 Final tripCardData being set:', {
+        tripCode: tripCardData?.tripCode,
+        placeName: tripCardData?.placeName,
+        hasBackgroundImage: !!tripCardData?.backgroundImageUrl,
+        backgroundImageUrl: tripCardData?.backgroundImageUrl ? tripCardData.backgroundImageUrl.substring(0, 50) + '...' : 'null'
+      })
+      
       updateData({ 
         tripCode: shareData.tripCode,
         tripName: shareData.placeName || tripData.trip?.name || tripData.name || `Trip ${shareData.tripCode}`,
@@ -296,7 +321,7 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
       case 3:
         // Skip JoinTripStep since we already have trip context from the share URL
         // Go directly to success/trip card confirmation
-        return <TripCardStep onNext={completeOnboarding} onSkipToHome={completeOnboarding} data={data} />
+        return <TripCardStep onNext={completeOnboarding} onSkipToHome={completeOnboarding} data={data} shareData={shareData} />
       default:
         return renderWelcomeStep()
     }

@@ -40,6 +40,7 @@ export interface Trip {
   createdAt: string
   expenses: Expense[]
   tripCode?: number // For database trips with 3-digit codes
+  createdBy?: string // User ID who created the trip
 }
 
 // Get all trips from localStorage

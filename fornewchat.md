@@ -29,12 +29,20 @@ SnapTab is a **travel expense splitting app** that uses AI-powered receipt scann
    - **Streamlined to one-click "Copy Invite Link"** (generate + copy combined)
    - Fixed trip card display to show only place name and code (larger text)
 
+4. **Fixed Join Link Username & Background Issues** (January 21, 2025)
+   - **Username Race Condition Fix**: Added localStorage fallback for authentication timing issues
+   - **Context-Aware Authentication**: Prevents existing users from being redirected away from join flow
+   - **Trip Card Background Fix**: Location images now appear blurred **inside the trip card** (not page background)
+   - **Visual Polish**: Perth Amboy background shows properly in "Joined Trip!" success page
+
 ### **Key Technical Achievements:**
 - **Dynamic OG Image Generation**: Beautiful trip cards with destination photos for iMessage/social sharing
 - **Vercel Blob Integration**: Storing generated images for persistent social previews  
 - **One-Click Sharing UX**: Eliminated multi-step sharing friction
 - **Database Migration**: Updated all historical merchant names to uppercase
 - **Enhanced Visual Design**: Simplified trip cards with better typography
+- **Robust Join Flow**: Fixed authentication race conditions and background image display
+- **TripCard Background Support**: Location images beautifully blurred inside trip cards with text overlay
 
 ---
 
@@ -284,6 +292,9 @@ GOOGLE_PLACES_API_KEY= # Location autocomplete
 - ✅ OG image generation JSX structure  
 - ✅ Two-step sharing friction
 - ✅ Trip card visual clutter
+- ✅ Join link username race condition errors
+- ✅ Background image placement (moved to trip card with blur)
+- ✅ Context-aware authentication flow for shared trips
 
 ### **Current State:**
 - All major sharing features working
@@ -346,6 +357,6 @@ The app is in excellent shape with all core features working beautifully. Focus 
 
 ---
 
-**Last Updated**: January 20, 2025
-**Commit Hash**: `8ad7979` - "Streamline sharing UI: One-click copy invite link"
-**Status**: ✅ All systems operational, deployed to production 
+**Last Updated**: January 21, 2025
+**Latest Updates**: Join link username fix + trip card background image fix
+**Status**: ✅ All systems operational, join flow working perfectly 

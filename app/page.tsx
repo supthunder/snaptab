@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle, Home, User, Users, Calendar } from "lucide-react"
+import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle, Home, User, Users, Calendar, Trash2 } from "lucide-react"
 import { MembersList, MembersModal } from "@/components/ui/members-list"
 import { PullToRefresh } from "@/components/ui/pull-to-refresh"
 import { Button } from "@/components/ui/button"
@@ -54,6 +54,7 @@ export default function HomePage() {
   const [isTripsLoading, setIsTripsLoading] = useState(false)
   const [tripsLoaded, setTripsLoaded] = useState(false) // Track if trips have been loaded
   const [userProfile, setUserProfile] = useState<{
+    id: string
     username: string
     displayName: string
     avatarUrl?: string
@@ -246,7 +247,9 @@ export default function HomePage() {
           items: expense.items || [],
           itemAssignments: expense.item_assignments || [],
           splitMode: expense.split_mode || 'even'
-        })) || []
+        })) || [],
+        tripCode: parseInt(tripCode),
+        createdBy: tripData.trip.created_by // Include creator ID
       }
       
       setActiveTrip(trip)
@@ -405,7 +408,8 @@ export default function HomePage() {
                   itemAssignments: expense.item_assignments || [],
                   splitMode: expense.split_mode || 'even'
                 })) || [],
-                tripCode: trip.trip_code
+                tripCode: trip.trip_code,
+                createdBy: tripDetails.trip?.created_by // Include creator ID
               }
             } else {
               // Fallback to basic trip info if detailed fetch fails
@@ -477,21 +481,24 @@ export default function HomePage() {
         if (response.ok) {
           const data = await response.json()
           setUserProfile({
+            id: data.user?.id,
             username,
             displayName: displayName || username,
             avatarUrl: data.user?.avatar_url
           })
         } else {
-          // Fallback to localStorage data only
+          // Fallback: we don't have user ID, so create a temporary one
           setUserProfile({
+            id: '', // Empty ID means we can't check ownership
             username,
             displayName: displayName || username
           })
         }
       } catch (error) {
         console.error('Failed to load user profile:', error)
-        // Fallback to localStorage data only
+        // Fallback: we don't have user ID, so create a temporary one
         setUserProfile({
+          id: '', // Empty ID means we can't check ownership
           username,
           displayName: displayName || username
         })
@@ -791,6 +798,54 @@ export default function HomePage() {
     if (hasExpenses) return "active"
     if (trip.endDate && new Date(trip.endDate) < new Date()) return "completed"
     return "upcoming"
+  }
+
+  const handleDeleteTrip = async (trip: Trip, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent card selection
+    
+    const username = localStorage.getItem('snapTab_username')
+    if (!username) {
+      alert('You must be logged in to delete trips')
+      return
+    }
+
+    // Check if user is the creator (we'll let the API handle this check)
+    // The API will verify the user is the creator by comparing user IDs
+
+    // The API will check if trip has expenses and authorization
+
+    // Confirm deletion
+    const confirmed = confirm(`Are you sure you want to delete "${trip.name}"? This action cannot be undone.`)
+    if (!confirmed) return
+
+    try {
+      const response = await fetch(`/api/trips/${trip.tripCode}/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      })
+
+      if (response.ok) {
+        // Remove trip from local state
+        const updatedTrips = trips.filter(t => t.id !== trip.id)
+        setTrips(updatedTrips)
+        
+        // Show success message
+        console.log(`✅ Trip "${trip.name}" deleted successfully`)
+        
+        // If this was the active trip, switch to home tab
+        if (activeTrip?.id === trip.id) {
+          setActiveTab('home')
+          window.location.reload()
+        }
+      } else {
+        const errorData = await response.json()
+        alert(errorData.error || 'Failed to delete trip')
+      }
+    } catch (error) {
+      console.error('Error deleting trip:', error)
+      alert('Failed to delete trip. Please try again.')
+    }
   }
 
   const handleRemoveMember = async (memberId: string) => {
@@ -1261,11 +1316,23 @@ export default function HomePage() {
                     return (
                       <Card
                         key={trip.id}
-                        className={`minimal-card cursor-pointer transition-all duration-200 ${
+                        className={`minimal-card cursor-pointer transition-all duration-200 relative ${
                           hasExpenses ? "ring-2 ring-primary/30 bg-primary/5" : "hover:bg-card/80"
                         }`}
                         onClick={() => handleTripSelect(trip.id)}
                       >
+                        {/* Delete Icon - Only show for trips created by current user */}
+                        {trip.tripCode && trip.createdBy && userProfile?.id && trip.createdBy === userProfile.id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute top-2 right-2 h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/20 z-10"
+                            onClick={(e) => handleDeleteTrip(trip, e)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex-1">
@@ -1322,20 +1389,6 @@ export default function HomePage() {
                                 <span className="text-sm text-muted-foreground">
                                   {trip.expenses.length} expense{trip.expenses.length > 1 ? 's' : ''}
                                 </span>
-                              )}
-                              {!hasExpenses && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 rounded-lg"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleTripSelect(trip.id)
-                                  }}
-                                >
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Select
-                                </Button>
                               )}
                             </div>
                           </div>

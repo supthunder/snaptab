@@ -11,9 +11,18 @@ interface TripCardStepProps {
   onNext: () => void
   onSkipToHome?: () => void
   data: OnboardingData
+  shareData?: {
+    shareCode: string
+    tripCode: string
+    ogImageUrl: string | null
+    username: string | null
+    placeName: string | null
+    backgroundImageUrl: string | null
+    createdAt: string
+  }
 }
 
-export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) {
+export function TripCardStep({ onNext, onSkipToHome, data, shareData }: TripCardStepProps) {
   const [isGeneratingShare, setIsGeneratingShare] = useState(false)
   const [shareUrlCopied, setShareUrlCopied] = useState(false)
   
@@ -81,7 +90,7 @@ export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) 
           <TripCard
             tripCode={data.tripCard?.tripCode || data.tripCode || 'XXX'}
             placeName={data.tripCard?.placeName || data.selectedPlace?.main_text || data.tripName}
-            backgroundImageUrl={data.tripCard?.backgroundImageUrl || null}
+            backgroundImageUrl={shareData?.backgroundImageUrl || data.tripCard?.backgroundImageUrl || null}
           />
         </div>
       </div>
