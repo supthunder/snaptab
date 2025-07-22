@@ -30,48 +30,6 @@ async function getShareData(shareCode: string) {
   }
 }
 
-// Generate OG image if missing
-async function ensureOgImage(shareData: any) {
-  if (shareData.og_image_url) {
-    return shareData.og_image_url
-  }
-
-  try {
-    console.log('🖼️ No OG image found, generating on-the-fly for share code:', shareData.share_code)
-    
-    // Generate the image using the trip-card-image API
-    const response = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/trip-card-image`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tripCode: shareData.trip_code,
-        placeName: shareData.place_name,
-        backgroundImageUrl: shareData.background_image_url
-      })
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      
-      // Update the database with the new OG image URL
-      await sql`
-        UPDATE trip_shares 
-        SET og_image_url = ${data.imageUrl}
-        WHERE share_code = ${shareData.share_code}
-      `
-      
-      console.log('✅ Generated and saved OG image:', data.imageUrl)
-      return data.imageUrl
-    } else {
-      console.error('❌ Failed to generate OG image:', response.status)
-    }
-  } catch (error) {
-    console.error('❌ Error generating OG image:', error)
-  }
-
-  return null
-}
-
 // Generate metadata for OpenGraph
 export async function generateMetadata({ params }: ShareCodePageProps): Promise<Metadata> {
   const { shareCode } = await params
@@ -90,18 +48,15 @@ export async function generateMetadata({ params }: ShareCodePageProps): Promise<
   
   const description = `Split travel expenses together with SnapTab. Enter code ${shareData.trip_code} to join the group.`
 
-  // Ensure we have an OG image (generate if missing)
-  const ogImageUrl = await ensureOgImage(shareData)
-
   return {
     title,
     description,
     openGraph: {
       title,
       description,
-      images: ogImageUrl ? [
+      images: shareData.og_image_url ? [
         {
-          url: ogImageUrl,
+          url: shareData.og_image_url,
           width: 600,
           height: 400,
           alt: title
@@ -113,7 +68,7 @@ export async function generateMetadata({ params }: ShareCodePageProps): Promise<
       card: 'summary_large_image',
       title,
       description,
-      images: ogImageUrl ? [ogImageUrl] : [],
+      images: shareData.og_image_url ? [shareData.og_image_url] : [],
     }
   }
 }
