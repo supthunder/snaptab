@@ -84,12 +84,55 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
         throw new Error(errorData.error || 'Failed to join trip')
       }
 
-      // Use the original share data for trip card (preserve location image)
-      let tripCardData = {
-        tripCode: shareData.tripCode,
-        placeName: shareData.placeName || tripData.trip?.name || tripData.name,
-        backgroundImageUrl: shareData.backgroundImageUrl, // Use original location image
-        generatedAt: new Date().toISOString()
+      // Generate trip card with location image (same as original trip creator)
+      let tripCardData = null
+      
+      // First try to use stored background image from share data
+      if (shareData.backgroundImageUrl) {
+        tripCardData = {
+          tripCode: shareData.tripCode,
+          placeName: shareData.placeName || tripData.trip?.name || tripData.name,
+          backgroundImageUrl: shareData.backgroundImageUrl,
+          generatedAt: new Date().toISOString()
+        }
+        console.log('✅ Using stored background image from share data')
+      } else {
+        // If no background image in share data, try to generate one with location
+        console.log('⚠️ No background image in share data, attempting to generate with location')
+        try {
+          const cardResponse = await fetch('/api/trip-card', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tripCode: shareData.tripCode,
+              placeId: null, // We don't have place ID from share data
+              placeName: shareData.placeName || tripData.trip?.name || tripData.name
+            })
+          })
+          
+          if (cardResponse.ok) {
+            tripCardData = await cardResponse.json()
+            console.log('✅ Generated new trip card with location')
+          } else {
+            console.log('❌ Failed to generate trip card, using fallback')
+            // Fallback to basic data
+            tripCardData = {
+              tripCode: shareData.tripCode,
+              placeName: shareData.placeName || tripData.trip?.name || tripData.name,
+              backgroundImageUrl: null, // Will show gradient
+              generatedAt: new Date().toISOString()
+            }
+          }
+        } catch (cardError) {
+          console.error('Failed to generate trip card:', cardError)
+          // Fallback to basic data
+          tripCardData = {
+            tripCode: shareData.tripCode,
+            placeName: shareData.placeName || tripData.trip?.name || tripData.name,
+            backgroundImageUrl: null, // Will show gradient
+            generatedAt: new Date().toISOString()
+          }
+        }
       }
 
       // Update data with trip info

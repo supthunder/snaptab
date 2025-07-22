@@ -15,6 +15,14 @@ export async function POST(request: NextRequest) {
   try {
     const { tripCode, placeName, backgroundImageUrl, username } = await request.json()
 
+    console.log('🔗 Share trip request:', { 
+      tripCode, 
+      placeName, 
+      hasBackgroundImage: !!backgroundImageUrl,
+      backgroundImageUrl: backgroundImageUrl ? backgroundImageUrl.substring(0, 50) + '...' : 'null',
+      username 
+    })
+
     if (!tripCode) {
       return NextResponse.json({ error: 'Trip code is required' }, { status: 400 })
     }
@@ -31,6 +39,12 @@ export async function POST(request: NextRequest) {
       const existing = existingShare.rows[0]
       console.log('♻️ Reusing existing share link for trip:', tripCode)
       
+      console.log('♻️ Existing share data:', { 
+        shareCode: existing.share_code, 
+        hasBackgroundImage: !!existing.background_image_url,
+        backgroundImageUrl: existing.background_image_url ? existing.background_image_url.substring(0, 50) + '...' : 'null'
+      })
+      
       return NextResponse.json({
         shareCode: existing.share_code,
         shareUrl: `/${existing.share_code}`,
@@ -38,6 +52,7 @@ export async function POST(request: NextRequest) {
         tripCode,
         placeName: existing.place_name,
         username: existing.username,
+        backgroundImageUrl: existing.background_image_url,
         isExisting: true
       })
     }
@@ -90,13 +105,20 @@ export async function POST(request: NextRequest) {
         VALUES (${shareCode}, ${tripCode}, ${ogImageUrl}, ${username || null}, ${placeName || null}, ${backgroundImageUrl || null})
       `
 
+      console.log('✅ New share link created:', { 
+        shareCode, 
+        hasBackgroundImage: !!backgroundImageUrl,
+        hasOgImage: !!ogImageUrl 
+      })
+
       return NextResponse.json({
         shareCode,
         shareUrl: `/${shareCode}`, // This will be snaptab.cash/928abcde
         ogImageUrl,
         tripCode,
         placeName,
-        username
+        username,
+        backgroundImageUrl
       })
 
     } catch (dbError) {
