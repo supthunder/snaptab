@@ -84,24 +84,12 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
         throw new Error(errorData.error || 'Failed to join trip')
       }
 
-      // Generate trip card
-      let tripCardData = null
-      try {
-        const cardResponse = await fetch('/api/trip-card', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tripCode: shareData.tripCode,
-            placeId: null,
-            placeName: shareData.placeName || tripData.trip?.name || tripData.name
-          })
-        })
-        
-        if (cardResponse.ok) {
-          tripCardData = await cardResponse.json()
-        }
-      } catch (cardError) {
-        console.error('Failed to generate trip card:', cardError)
+      // Use the original share data for trip card (preserve location image)
+      let tripCardData = {
+        tripCode: shareData.tripCode,
+        placeName: shareData.placeName || tripData.trip?.name || tripData.name,
+        backgroundImageUrl: shareData.backgroundImageUrl, // Use original location image
+        generatedAt: new Date().toISOString()
       }
 
       // Update data with trip info

@@ -1,8 +1,9 @@
 
 import { motion } from "framer-motion"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { TripCard } from "@/components/ui/trip-card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowRight, Share2, Copy, Check } from "lucide-react"
 import type { OnboardingData } from "./onboarding-flow"
 
@@ -85,6 +86,11 @@ export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) 
         </div>
       </div>
 
+      {/* Trip Members Section (only for joined trips) */}
+      {data.isJoining && (
+        <TripMembersSection tripCode={data.tripCode} />
+      )}
+
       {/* Instructions */}
       <div className="px-6 pb-4">
         <div className="space-y-4">
@@ -94,12 +100,12 @@ export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) 
               text: "Snap receipts to add expenses",
             },
             {
-              icon: "🤝", 
-              text: `Share code ${data.tripCode} with friends`,
+              icon: data.isJoining ? "💰" : "🤝", 
+              text: data.isJoining ? "Track balances in real-time" : `Share code ${data.tripCode} with friends`,
             },
             {
-              icon: "💰",
-              text: "Track balances in real-time",
+              icon: data.isJoining ? "🎉" : "💰",
+              text: data.isJoining ? "Start adding your expenses!" : "Track balances in real-time",
             },
           ].map((feature, index) => (
             <motion.div
@@ -172,6 +178,155 @@ export function TripCardStep({ onNext, onSkipToHome, data }: TripCardStepProps) 
           </Button>
         </motion.div>
       </div>
+    </div>
+  )
+}
+
+// Component to show current trip members with overlapping avatars
+function TripMembersSection({ tripCode }: { tripCode?: string }) {
+  const [members, setMembers] = useState<Array<{
+    id: string
+    username: string
+    display_name?: string
+    avatar_url?: string
+    created_at?: string
+  }>>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (!tripCode) return
+      
+      try {
+        const response = await fetch(`/api/trips/${tripCode}`)
+        if (response.ok) {
+          const tripData = await response.json()
+          setMembers(tripData.members || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch trip members:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchMembers()
+  }, [tripCode])
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  const getUserColor = (userId: string, username: string) => {
+    const colors = [
+      { bg: "bg-red-500", text: "text-white" },
+      { bg: "bg-blue-500", text: "text-white" },
+      { bg: "bg-green-500", text: "text-white" },
+      { bg: "bg-purple-500", text: "text-white" },
+      { bg: "bg-pink-500", text: "text-white" },
+      { bg: "bg-indigo-500", text: "text-white" },
+      { bg: "bg-orange-500", text: "text-white" },
+      { bg: "bg-teal-500", text: "text-white" },
+      { bg: "bg-cyan-500", text: "text-white" },
+      { bg: "bg-emerald-500", text: "text-white" },
+      { bg: "bg-violet-500", text: "text-white" },
+      { bg: "bg-rose-500", text: "text-white" },
+    ]
+
+    const hashString = (str: string) => {
+      let hash = 0
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i)
+        hash = ((hash << 5) - hash) + char
+        hash = hash & hash
+      }
+      return Math.abs(hash)
+    }
+
+    const hash = hashString(userId + username)
+    const colorIndex = hash % colors.length
+    return colors[colorIndex]
+  }
+
+  if (isLoading) return null
+
+  if (members.length === 0) return null
+
+  const visibleMembers = members.slice(0, 4)
+  const hiddenCount = members.length - 4
+
+  return (
+    <div className="px-6 pb-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 1.2 }}
+        className="bg-white/10 backdrop-blur-sm rounded-2xl p-4"
+      >
+        <h3 className="text-white font-semibold mb-3 text-center">
+          🎉 You've joined {members.length} {members.length === 1 ? 'member' : 'members'}!
+        </h3>
+        
+        {/* Overlapping Avatars */}
+        <div className="flex items-center justify-center">
+          <div className="flex items-center">
+            {visibleMembers.map((member, index) => {
+              const userColor = getUserColor(member.id, member.username)
+              return (
+                <div
+                  key={member.id}
+                  className="relative"
+                  style={{
+                    marginLeft: index > 0 ? "-12px" : "0",
+                    zIndex: visibleMembers.length - index,
+                  }}
+                >
+                  <Avatar className="h-12 w-12 border-2 border-white shadow-lg">
+                    <AvatarImage
+                      src={member.avatar_url}
+                      alt={member.username}
+                      className="object-cover"
+                    />
+                    <AvatarFallback 
+                      className={`text-sm font-medium ${
+                        member.avatar_url 
+                          ? "bg-primary/10 text-primary" 
+                          : `${userColor.bg} ${userColor.text}`
+                      }`}
+                    >
+                      {getInitials(member.username)}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              )
+            })}
+
+            {/* Hidden Members Count */}
+            {hiddenCount > 0 && (
+              <div
+                className="flex items-center justify-center h-12 w-12 rounded-full bg-white/20 border-2 border-white shadow-lg"
+                style={{
+                  marginLeft: visibleMembers.length > 0 ? "-12px" : "0",
+                  zIndex: 0,
+                }}
+              >
+                <span className="text-sm font-semibold text-white">+{hiddenCount}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="text-center mt-3">
+          <p className="text-white/80 text-sm">
+            {members.map(m => m.username).join(", ")}
+          </p>
+        </div>
+      </motion.div>
     </div>
   )
 } 
