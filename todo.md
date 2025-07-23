@@ -7,6 +7,12 @@
 - **passkey3 Branch Merged to Main** (2025-01-12) - Successfully merged all recent features including stacked avatars, member removal, trip code display, and expense-based active status logic
 
 ## Pending Features
+- 🔐 **Prevent Duplicate Passkey Accounts**: Implement device-level duplicate account prevention to stop users from creating multiple accounts on the same device:
+  - **Issue**: Currently users can logout and create new accounts with different usernames, leading to confusion and data fragmentation
+  - **Preferred Solution**: Use WebAuthn device passkey detection by calling `navigator.credentials.get()` with empty `allowCredentials` to detect existing passkeys on device
+  - **UX Flow**: Before showing registration form, check for existing passkeys → if found, show "Found existing account: [username]" → require explicit logout before allowing new registration
+  - **Fallback**: Also check localStorage for quick detection (`snapTab_username`, `snapTab_displayName`)
+  - **Benefits**: Prevents data loss, reduces user confusion, maintains single identity per device
 - 🧮 **Settlement System Implementation**: Create settlement page showing who owes money to whom with optimal payment transactions to minimize the number of transfers needed
 - 💳 **Settlement UI Components**: Build settlement interface showing individual balances, suggested payments, and "Mark as Paid" functionality 
 - 📊 **Payment Tracking**: Track which settlement payments have been completed and update balances accordingly
