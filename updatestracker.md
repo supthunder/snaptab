@@ -11397,4 +11397,153 @@ isActive: (tripData.expenses && tripData.expenses.length > 0) || false
 ```jsx
 // Trip code in top right corner
 {activeTab === 'home' && currentTripCode && (
-  <div className="absolute top-6 right-6 z-10" style={{paddingTop: 'env(safe-area-inset-
+  <div className="absolute top-6 right-6 z-10" style={{paddingTop: 'env(safe-area-inset-top)'}}
+    <span className="text-xs font-medium text-muted-foreground bg-card border border-border rounded-full px-2 py-1">
+      Trip #{currentTripCode}
+    </span>
+  </div>
+)}
+```
+
+### Files Modified:
+- `app/page.tsx` - Added trip code display and fixed centering logic
+
+### User Experience Benefits:
+- **Clear Trip Identification**: Users always know which trip they're viewing
+- **Perfect Visual Balance**: Title properly centered with trip code in corner
+- **Contextual Information**: Trip code only shows when relevant (home tab, database trips)
+
+---
+
+## Update #81: Fixed .DS_Store Git Tracking Issue  
+**Date**: 2025-01-21  
+**Status**: ✅ Complete
+
+### User Issue:
+> "why does changes show .DS_Store?"
+
+### Problem Analysis:
+**macOS System Files in Git**
+- `.DS_Store` files are automatically created by macOS Finder to store directory metadata (icon positions, view settings, etc.)
+- The file was already being tracked by git before it was added to `.gitignore`
+- When a file is already tracked, adding it to `.gitignore` doesn't stop git from tracking changes to it
+- This caused the file to appear as modified (`M .DS_Store`) in git status
+
+### Solution Implemented:
+
+#### **1. Removed from Git Tracking**
+**Before**: `.DS_Store` showing as modified in git status
+**After**: Removed from git tracking while keeping the file in working directory
+```bash
+git rm --cached .DS_Store
+```
+
+#### **2. Verified .gitignore Configuration**
+**Already Present**: `.DS_Store` was already properly included in `.gitignore` file
+- Listed multiple times on lines 28, 30, 33, and 34
+- Includes related macOS files: `.DS_Store?`, `._*`, `.Spotlight-V100`, `.Trashes`
+
+#### **3. Git Status Results**
+**Before Fix**: `M .DS_Store` (modified - confusing for user)
+**After Fix**: `D .DS_Store` (deleted from tracking - staged for commit)
+
+### Technical Resolution:
+- **Command Used**: `git rm --cached .DS_Store` to untrack without deleting file
+- **Result**: File staged for removal from git tracking
+- **Future Behavior**: Any new `.DS_Store` files will be automatically ignored
+- **Working Directory**: File remains in filesystem for macOS functionality
+
+### User Experience Impact:
+- ✅ **Clean Git Status**: No more confusing `.DS_Store` modifications in git status
+- ✅ **Proper Ignore Behavior**: Future `.DS_Store` files automatically ignored
+- ✅ **System Compatibility**: macOS can still create and use `.DS_Store` files
+- ✅ **Development Workflow**: No more accidental commits of system files
+
+### Files Affected:
+- `.DS_Store` - Removed from git tracking (staged for deletion)
+- `.gitignore` - Already properly configured with `.DS_Store` patterns
+
+### Explanation for User:
+The `.DS_Store` file was showing in changes because macOS automatically creates these files when you browse directories, and this specific file was already being tracked by git before it was added to the `.gitignore` file. The fix removes it from git tracking while keeping it in your working directory, and all future `.DS_Store` files will be automatically ignored as intended.
+
+---
+
+## Update #82: Updated PWA App Icon to Cat Logo  
+**Date**: 2025-01-21  
+**Status**: ✅ Complete
+
+### User Request:
+> "also this is a pwa app, so i want the app@catlogo.png icon for it to be catlogo
+> 
+> also i want the app name to be "SnapTab""
+
+### Changes Implemented:
+
+#### **1. Updated PWA Manifest Icons**
+**Before**: Used `android-chrome-192x192.png` and `android-chrome-512x512.png`
+**After**: Updated to use `catlogo.png` for all PWA icon sizes
+- **192x192 icon**: Now uses `/catlogo.png`
+- **512x512 icon**: Now uses `/catlogo.png`
+- **Screenshot**: Updated PWA screenshot to use cat logo
+
+#### **2. Updated Browser Favicons**
+**Before**: Used separate favicon files (`favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png`)
+**After**: All favicons now use `catlogo.png` for consistency
+- **16x16 favicon**: Now uses `/catlogo.png`
+- **32x32 favicon**: Now uses `/catlogo.png`
+- **Apple touch icon**: Now uses `/catlogo.png`
+
+#### **3. Confirmed App Name**
+**Already Correct**: App name was already properly set to "SnapTab"
+- **Manifest name**: "SnapTab - Split Group Expenses"
+- **Short name**: "SnapTab"
+- **Apple Web App title**: "SnapTab"
+
+### Technical Implementation:
+
+#### **PWA Manifest Updates:**
+```json
+"icons": [
+  {
+    "src": "/catlogo.png",
+    "sizes": "192x192",
+    "type": "image/png",
+    "purpose": "any maskable"
+  },
+  {
+    "src": "/catlogo.png",
+    "sizes": "512x512",
+    "type": "image/png", 
+    "purpose": "any maskable"
+  }
+]
+```
+
+#### **Browser Icon Updates:**
+```typescript
+icons: {
+  icon: [
+    { url: "/catlogo.png", sizes: "16x16", type: "image/png" },
+    { url: "/catlogo.png", sizes: "32x32", type: "image/png" },
+  ],
+  apple: [
+    { url: "/catlogo.png", sizes: "180x180", type: "image/png" },
+  ],
+}
+```
+
+### User Experience Impact:
+- ✅ **Consistent Branding**: Cat logo now appears everywhere (PWA icon, browser tab, home screen)
+- ✅ **Professional Appearance**: Single cohesive icon across all platforms
+- ✅ **PWA Compliance**: App icon displays correctly when installed on mobile devices
+- ✅ **Cross-Platform**: Works on iOS home screen, Android launcher, browser bookmarks
+
+### Files Modified:
+- `public/manifest.json` - Updated PWA icon references to use catlogo.png
+- `app/layout.tsx` - Updated favicon and apple touch icon to use catlogo.png
+
+### Benefits:
+- **Brand Recognition**: Cute cat calculator logo represents the expense splitting functionality
+- **Visual Consistency**: Same icon across all platforms and contexts
+- **PWA Integration**: Perfect integration with mobile device home screens
+- **Professional Polish**: Cohesive branding throughout the entire app experience

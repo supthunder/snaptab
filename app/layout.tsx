@@ -11,6 +11,15 @@ export const metadata: Metadata = {
   title: "SnapTab - Split Group Expenses",
   description: "The fastest way to track and split group travel expenses",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/catlogo.png", sizes: "16x16", type: "image/png" },
+      { url: "/catlogo.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/catlogo.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
