@@ -123,9 +123,19 @@ export default function HomePage() {
     setIsBalanceExpanded(!isBalanceExpanded)
   }
 
-  // Handle marking payment as paid
-  const handleMarkPaymentPaid = (transactionKey: string) => {
-    setPaidSettlements(prev => new Set([...prev, transactionKey]))
+  // Handle toggling payment as paid/unpaid
+  const handleTogglePaymentPaid = (transactionKey: string) => {
+    setPaidSettlements(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(transactionKey)) {
+        // If already paid, mark as unpaid
+        newSet.delete(transactionKey)
+      } else {
+        // If not paid, mark as paid
+        newSet.add(transactionKey)
+      }
+      return newSet
+    })
     // Here you would also update the backend to track the payment
     // For now, we'll just update the local state
   }
@@ -1266,9 +1276,16 @@ export default function HomePage() {
                                 </div>
                                 
                                 {debt.isPaid ? (
-                                  <div className="w-6 h-6 bg-green-400 rounded-full flex items-center justify-center">
+                                  <Button
+                                    size="sm"
+                                    className="w-6 h-6 p-0 bg-green-400 hover:bg-green-500 rounded-full border-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleTogglePaymentPaid(transactionKey)
+                                    }}
+                                  >
                                     <Check className="h-4 w-4 text-white" />
-                                  </div>
+                                  </Button>
                                 ) : (
                                   <Button
                                     size="sm"
@@ -1276,7 +1293,7 @@ export default function HomePage() {
                                     className="h-8 w-8 p-0 border-2 hover:bg-green-900/20 hover:border-green-700/50"
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      handleMarkPaymentPaid(transactionKey)
+                                      handleTogglePaymentPaid(transactionKey)
                                     }}
                                   >
                                     <Check className="h-4 w-4" />
