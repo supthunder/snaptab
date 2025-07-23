@@ -5,6 +5,83 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #77: Add Toggle Functionality to Settlement Payment Status  
+**Date**: 2025-01-21  
+**Status**: ✅ Complete
+
+### User Request:
+> "hen i select paid now, theres no way to unelect it?? what if i accidentally click it , so if i click again make it unelect it as paid"
+
+### Problem Analysis:
+**One-Way Payment Marking**
+- Users could mark payments as "paid" but couldn't undo accidental clicks
+- Green checkmark was static (non-clickable div) after marking as paid
+- No way to correct mistakes or change payment status back to unpaid
+- Poor UX for handling accidental interactions
+
+### Solution Implemented:
+
+#### **1. Bidirectional Toggle Function**
+**Before**: `handleMarkPaymentPaid()` - only added to paid set
+```javascript
+const handleMarkPaymentPaid = (transactionKey: string) => {
+  setPaidSettlements(prev => new Set([...prev, transactionKey]))
+}
+```
+
+**After**: `handleTogglePaymentPaid()` - toggles between paid/unpaid
+```javascript
+const handleTogglePaymentPaid = (transactionKey: string) => {
+  setPaidSettlements(prev => {
+    const newSet = new Set(prev)
+    if (newSet.has(transactionKey)) {
+      newSet.delete(transactionKey)  // Unmark as paid
+    } else {
+      newSet.add(transactionKey)     // Mark as paid  
+    }
+    return newSet
+  })
+}
+```
+
+#### **2. Interactive Green Checkmark**
+**Before**: Static div - not clickable when paid
+```jsx
+<div className="w-6 h-6 bg-green-400 rounded-full flex items-center justify-center">
+  <Check className="h-4 w-4 text-white" />
+</div>
+```
+
+**After**: Clickable Button with hover effects
+```jsx
+<Button
+  className="w-6 h-6 p-0 bg-green-400 hover:bg-green-500 rounded-full border-0"
+  onClick={() => handleTogglePaymentPaid(transactionKey)}
+>
+  <Check className="h-4 w-4 text-white" />
+</Button>
+```
+
+#### **3. Visual Feedback**
+- **Hover Effect**: Green checkmark darkens on hover (`hover:bg-green-500`)
+- **Consistent Interaction**: Both paid and unpaid states are clickable
+- **Visual Cues**: Hover states indicate interactive elements
+
+### User Flow:
+1. **Unpaid State**: Shows outline checkbox button → Click to mark as paid
+2. **Paid State**: Shows green checkmark button → Click to mark as unpaid  
+3. **Toggle**: Can switch back and forth as many times as needed
+4. **Visual Feedback**: Hover effects on both states show they're interactive
+
+### Impact:
+- ✅ **Mistake Recovery**: Users can undo accidental payment markings
+- ✅ **Better UX**: No permanent one-way actions that can't be reversed
+- ✅ **Visual Consistency**: Both states have clear interactive indicators
+- ✅ **Flexible Payment Tracking**: Allows real-world payment status changes
+- ✅ **Intuitive Interface**: Click to toggle - simple and expected behavior
+
+---
+
 ## Update #76: Fix Settlement Details Dark Theme Styling  
 **Date**: 2025-01-21  
 **Status**: ✅ Complete
