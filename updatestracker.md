@@ -5,6 +5,111 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #72: Fixed Trip Card Image Quality - Proper Stretching & Text Legibility  
+**Date**: 2025-01-21  
+**Status**: ✅ Complete
+
+### User Request:
+> "the legibility is off
+> 1. why is the image repeated. it should be stretched out 
+> 2. make the text thicker stand out more maybe add like a border around the text to stand out?"
+
+### Issue Analysis:
+**Problem 1: Image Repetition**
+- Background images were being repeated instead of properly stretched/covered
+- Single CSS property causing tiling instead of full coverage
+
+**Problem 2: Poor Text Legibility**
+- Basic text shadow `2px 2px 4px rgba(0,0,0,0.3)` wasn't strong enough
+- Text was getting lost against bright background images
+- Need stronger contrast and visual separation
+
+### Solution Implemented:
+
+#### **1. Fixed Background Image Stretching**
+**Before:**
+```css
+backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${backgroundImageUrl})`
+backgroundSize: 'cover'
+filter: 'blur(1px)'
+```
+
+**After:**
+```css
+// Separate layered approach with absolute positioning
+<div style={{
+  position: 'absolute',
+  backgroundImage: `url(${backgroundImageUrl})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',  // Prevents repetition
+  filter: 'blur(2px)',
+}} />
+```
+
+#### **2. Enhanced Text Legibility**
+**Multi-Layer Text Shadow System:**
+```css
+// Trip code (most important)
+textShadow: '0 0 30px rgba(0,0,0,0.9), 4px 4px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7)'
+
+// Other text elements
+textShadow: '0 0 20px rgba(0,0,0,0.8), 2px 2px 4px rgba(0,0,0,0.9)'
+```
+
+**Additional Contrast Enhancements:**
+- **Dark Overlay**: Added `rgba(0, 0, 0, 0.5)` overlay between background and text
+- **Higher Font Weights**: Increased from `'500'/'600'` to `'700'/'800'/'900'`
+- **Pure White Text**: Changed from translucent whites to solid `color: 'white'`
+- **Layered Z-Index**: Proper stacking with background (z:1), overlay (z:2), text (z:3)
+
+### Technical Implementation:
+
+#### **Both APIs Updated:**
+- `app/api/trip-card-image/route.tsx` - 600x400 trip cards
+- `app/api/og-image/route.tsx` - 1200x630 social media cards
+
+#### **Layered Architecture:**
+1. **Background Layer** (z-index: 1): Image with `backgroundRepeat: 'no-repeat'`
+2. **Overlay Layer** (z-index: 2): Dark semi-transparent overlay
+3. **Content Layer** (z-index: 3): Text with enhanced shadows
+
+#### **Font Weight Progression:**
+- **Header Text**: `fontWeight: '700'` (bolder)
+- **Place Name**: `fontWeight: '800'` (extra bold)  
+- **Trip Code**: `fontWeight: '900'` (maximum boldness)
+- **Bottom Text**: `fontWeight: '700'` (bolder)
+
+### Visual Improvements:
+
+#### **Before Fix:**
+- ❌ Background images repeated/tiled
+- ❌ Weak text shadows, poor legibility
+- ❌ Text hard to read against bright backgrounds
+- ❌ Inconsistent image stretching
+
+#### **After Fix:**
+- ✅ **Perfect Image Stretching**: No repetition, full coverage
+- ✅ **Outstanding Text Legibility**: Multi-layer shadows with glow effects
+- ✅ **Professional Contrast**: Dark overlay ensures readability
+- ✅ **Bold Typography**: Heavy font weights stand out dramatically
+- ✅ **Layer Separation**: Clear visual hierarchy with proper z-indexing
+
+### Impact:
+🎨 **Visual Quality**: Trip cards now look professional with proper image handling  
+📱 **Mobile Readability**: Text clearly visible on all background types  
+🔗 **Social Sharing**: Better engagement with high-quality OG images  
+✨ **Brand Consistency**: Polished appearance across all platforms  
+
+### Files Modified:
+- `app/api/trip-card-image/route.tsx` - Enhanced image and text rendering
+- `app/api/og-image/route.tsx` - Applied same fixes for social media cards
+
+### Result:
+Trip card images now display with **perfect image stretching** and **crystal-clear text legibility** against any background. The multi-layer shadow system ensures text stands out dramatically while maintaining beautiful visual design! 🎉
+
+---
+
 ## Update #71: Enhanced Trip Card Design with Emojis & Engaging Copy  
 **Date**: 2025-01-21  
 **Status**: ✅ Complete

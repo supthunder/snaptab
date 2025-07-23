@@ -22,69 +22,124 @@ export async function POST(request: NextRequest) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: '#1e1b4b',
-                    backgroundImage: backgroundImageUrl && backgroundImageUrl.startsWith('http')
-                      ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${backgroundImageUrl})`
-                      : 'linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%)',
-                    filter: backgroundImageUrl && backgroundImageUrl.startsWith('http') ? 'blur(1px)' : undefined,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    color: 'white',
+                    position: 'relative',
                     fontFamily: 'Inter, system-ui, sans-serif',
                     textAlign: 'center',
                   }}
                 >
-                  {/* Header Text */}
-                  <div
-                    style={{
-                      fontSize: 28,
-                      fontWeight: '500',
-                      marginBottom: 16,
-                      color: 'rgba(255, 255, 255, 0.9)',
-                      display: 'flex',
-                    }}
-                  >
-                    ✈️ Join my trip!
-                  </div>
-
-                  {/* Place Name */}
-                  {placeName ? (
+                  {/* Background Image with proper stretching */}
+                  {backgroundImageUrl && backgroundImageUrl.startsWith('http') ? (
                     <div
                       style={{
-                        fontSize: 42,
-                        fontWeight: '600',
-                        marginBottom: 8,
-                        color: 'rgba(255, 255, 255, 0.95)',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundImage: `url(${backgroundImageUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                        filter: 'blur(2px)',
+                        zIndex: 1,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%)',
+                        zIndex: 1,
+                      }}
+                    />
+                  )}
+
+                  {/* Dark overlay for better text readability */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'rgba(0, 0, 0, 0.5)',
+                      zIndex: 2,
+                    }}
+                  />
+
+                  {/* Content with better text styling */}
+                  <div
+                    style={{
+                      position: 'relative',
+                      zIndex: 3,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                    }}
+                  >
+                    {/* Header Text */}
+                    <div
+                      style={{
+                        fontSize: 28,
+                        fontWeight: '700',
+                        marginBottom: 16,
+                        color: 'white',
+                        textShadow: '0 0 20px rgba(0,0,0,0.8), 2px 2px 4px rgba(0,0,0,0.9)',
                         display: 'flex',
                       }}
                     >
-                      📍 {placeName}
+                      ✈️ Join my trip!
                     </div>
-                  ) : null}
 
-                  {/* Trip Code */}
-                  <div
-                    style={{
-                      fontSize: 96,
-                      fontWeight: 'bold',
-                      letterSpacing: '0.1em',
-                      marginBottom: 16,
-                      textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
-                      display: 'flex',
-                    }}
-                  >
-                    {tripCode}
-                  </div>
+                    {/* Place Name */}
+                    {placeName ? (
+                      <div
+                        style={{
+                          fontSize: 42,
+                          fontWeight: '800',
+                          marginBottom: 12,
+                          color: 'white',
+                          textShadow: '0 0 20px rgba(0,0,0,0.8), 2px 2px 4px rgba(0,0,0,0.9)',
+                          display: 'flex',
+                        }}
+                      >
+                        📍 {placeName}
+                      </div>
+                    ) : null}
 
-                  {/* Bottom Text */}
-                  <div
-                    style={{
-                      fontSize: 24,
-                      fontWeight: '500',
-                      color: 'rgba(255, 255, 255, 0.8)',
-                      display: 'flex',
-                    }}
-                  >
-                    💰 Split expenses together
+                    {/* Trip Code */}
+                    <div
+                      style={{
+                        fontSize: 96,
+                        fontWeight: '900',
+                        letterSpacing: '0.1em',
+                        marginBottom: 20,
+                        color: 'white',
+                        textShadow: '0 0 30px rgba(0,0,0,0.9), 4px 4px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7)',
+                        display: 'flex',
+                      }}
+                    >
+                      {tripCode}
+                    </div>
+
+                    {/* Bottom Text */}
+                    <div
+                      style={{
+                        fontSize: 24,
+                        fontWeight: '700',
+                        color: 'white',
+                        textShadow: '0 0 20px rgba(0,0,0,0.8), 2px 2px 4px rgba(0,0,0,0.9)',
+                        display: 'flex',
+                      }}
+                    >
+                      💰 Split expenses together
+                    </div>
                   </div>
                 </div>
       ),
