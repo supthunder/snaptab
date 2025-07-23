@@ -7,6 +7,9 @@
 - **passkey3 Branch Merged to Main** (2025-01-12) - Successfully merged all recent features including stacked avatars, member removal, trip code display, and expense-based active status logic
 
 ## Pending Features
+- 🧮 **Settlement System Implementation**: Create settlement page showing who owes money to whom with optimal payment transactions to minimize the number of transfers needed
+- 💳 **Settlement UI Components**: Build settlement interface showing individual balances, suggested payments, and "Mark as Paid" functionality 
+- 📊 **Payment Tracking**: Track which settlement payments have been completed and update balances accordingly
 - 💸 **Receipt Payment Calculator**: Calculate final amount user needs to pay and show exactly who to pay it to - provide clear actionable payment instructions from receipt/expense data
 - 📝 **Manual Trip Completion**: Add manual trip completion feature - allow users to mark trips as 'done/completed' manually
 - 📊 **Trip Analytics**: Add basic analytics/insights for completed trips
@@ -16,6 +19,13 @@
 - 📄 **Export Functionality**: Export trip expenses to PDF/CSV
 
 ## Completed
+- ✅ **Animated Balance Card Expansion**: Implemented smooth fluid expansion of "Your balance to pay" card with:
+  - **Fluid Animation**: 300ms CSS transitions with height/opacity changes
+  - **Settlement Details**: Shows exactly who you owe money to with amounts and descriptions
+  - **Payment Tracking**: Interactive checkboxes to mark individual payments as completed
+  - **Visual States**: Color-coded unpaid (red) vs paid (green) items with staggered animations
+  - **Real-time Updates**: Immediate visual feedback when marking payments complete
+  - **Professional UX**: Chevron indicators, loading states, and smooth expand/collapse
 - ✅ **Expense Deletion**: Implemented complete expense deletion with database integration, API endpoint, and frontend functionality  
 - ✅ **Balance Calculation Fix**: Fixed home page balance to use actual database split data instead of simplified member division
 - ✅ **Receipt Image Storage & Display**: Added complete receipt image storage in Vercel Blob with display in expense details

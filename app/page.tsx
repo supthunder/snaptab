@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle, Home, User, Users, Calendar, Trash2 } from "lucide-react"
+import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle, Home, User, Users, Calendar, Trash2, ChevronUp, ChevronDown } from "lucide-react"
 import { MembersList, MembersModal } from "@/components/ui/members-list"
 import { PullToRefresh } from "@/components/ui/pull-to-refresh"
 import { Button } from "@/components/ui/button"
@@ -70,6 +70,79 @@ export default function HomePage() {
     avatar_url?: string
   }>>([])
   const [currentTripCode, setCurrentTripCode] = useState<string | null>(null)
+  
+  // Balance card expansion state
+  const [isBalanceExpanded, setIsBalanceExpanded] = useState(false)
+  const [settlementData, setSettlementData] = useState<{
+    balances: Array<{
+      user_id: string
+      username: string 
+      display_name?: string
+      total_paid: number
+      total_owed: number
+      net_balance: number
+    }>
+    transactions: Array<{
+      from_user_id: string
+      from_username: string
+      to_user_id: string
+      to_username: string
+      amount: number
+    }>
+  } | null>(null)
+  const [isLoadingSettlement, setIsLoadingSettlement] = useState(false)
+  const [paidSettlements, setPaidSettlements] = useState<Set<string>>(new Set())
+
+  // Load settlement data for balance expansion
+  const loadSettlementData = async () => {
+    const tripCode = localStorage.getItem('snapTab_currentTripCode')
+    if (!tripCode) return
+
+    setIsLoadingSettlement(true)
+    try {
+      const response = await fetch(`/api/trips/${tripCode}/settlement`)
+      if (response.ok) {
+        const data = await response.json()
+        setSettlementData(data)
+      } else {
+        console.error('Failed to load settlement data')
+      }
+    } catch (error) {
+      console.error('Error loading settlement data:', error)
+    } finally {
+      setIsLoadingSettlement(false)
+    }
+  }
+
+  // Handle balance card expansion
+  const handleBalanceCardClick = async () => {
+    if (!isBalanceExpanded) {
+      // Expanding - load settlement data
+      await loadSettlementData()
+    }
+    setIsBalanceExpanded(!isBalanceExpanded)
+  }
+
+  // Handle marking payment as paid
+  const handleMarkPaymentPaid = (transactionKey: string) => {
+    setPaidSettlements(prev => new Set([...prev, transactionKey]))
+    // Here you would also update the backend to track the payment
+    // For now, we'll just update the local state
+  }
+
+  // Get current user's debts (who they owe money to)
+  const getCurrentUserDebts = () => {
+    if (!settlementData) return []
+    const currentUsername = localStorage.getItem('snapTab_username')
+    
+    return settlementData.transactions.filter(transaction => 
+      transaction.from_username === currentUsername
+    ).map(transaction => ({
+      to_username: transaction.to_username,
+      amount: transaction.amount,
+      isPaid: paidSettlements.has(`${transaction.from_username}-${transaction.to_username}-${transaction.amount}`)
+    }))
+  }
 
   // Refresh function for pull-to-refresh
   const handleRefresh = async () => {
@@ -1102,12 +1175,24 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Balance Card */}
-          <Card className="minimal-card mb-6">
+          {/* Balance Card - Animated Expansion */}
+          <Card 
+            className={`minimal-card mb-6 cursor-pointer transition-all duration-300 ease-out ${
+              isBalanceExpanded ? 'shadow-lg' : 'hover:shadow-md'
+            }`}
+            onClick={handleBalanceCardClick}
+          >
             <CardContent className="p-6">
               {/* Balance Section */}
               <div className="text-center mb-6">
-                <p className="text-muted-foreground text-sm mb-2">Your balance to pay</p>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <p className="text-muted-foreground text-sm">Your balance to pay</p>
+                  {isBalanceExpanded ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
                 <div className="text-4xl font-bold">
                   <span className={userBalance < 0 ? "text-red-400" : "text-muted-foreground"}>
                     {getCurrencySymbol(activeTrip.currency)}
@@ -1116,18 +1201,116 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Bottom Row: Total + Members + Edit */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-foreground text-lg">Total: {getCurrencySymbol(activeTrip.currency)}{Number(activeTrip.totalExpenses || 0).toFixed(2)}</p>
-                </div>
+              {/* Expanded Settlement Details */}
+              <div 
+                className={`transition-all duration-300 ease-out overflow-hidden ${
+                  isBalanceExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                {isLoadingSettlement ? (
+                  <div className="text-center py-6">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
+                    <p className="text-sm text-muted-foreground">Loading settlement details...</p>
+                  </div>
+                ) : (
+                  <div className="border-t border-border pt-6 mt-6">
+                    <h3 className="font-medium text-lg mb-4 text-center">Settlement Details</h3>
+                    
+                    {getCurrentUserDebts().length === 0 ? (
+                      <div className="text-center py-4">
+                        <Check className="h-8 w-8 text-green-400 mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">You're all settled up! 🎉</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {getCurrentUserDebts().map((debt, index) => {
+                          const transactionKey = `${localStorage.getItem('snapTab_username')}-${debt.to_username}-${debt.amount}`
+                          
+                          return (
+                            <div 
+                              key={transactionKey}
+                              className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
+                                debt.isPaid 
+                                  ? 'bg-green-50 border-green-200 opacity-75' 
+                                  : 'bg-red-50 border-red-200 hover:bg-red-100'
+                              }`}
+                              style={{
+                                animationDelay: `${index * 50}ms`
+                              }}
+                            >
+                              <div className="flex items-center space-x-3">
+                                {/* Avatar placeholder */}
+                                <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium text-primary">
+                                    {debt.to_username.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                
+                                <div>
+                                  <p className={`font-medium ${debt.isPaid ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                    Pay {debt.to_username}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {debt.isPaid ? 'Marked as paid' : 'From shared expenses'}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center space-x-3">
+                                <div className="text-right">
+                                  <p className={`text-lg font-semibold ${
+                                    debt.isPaid ? 'line-through text-muted-foreground' : 'text-red-400'
+                                  }`}>
+                                    {getCurrencySymbol(activeTrip.currency)}{debt.amount.toFixed(2)}
+                                  </p>
+                                </div>
+                                
+                                {debt.isPaid ? (
+                                  <div className="w-6 h-6 bg-green-400 rounded-full flex items-center justify-center">
+                                    <Check className="h-4 w-4 text-white" />
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 w-8 p-0 border-2 hover:bg-green-50 hover:border-green-300"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleMarkPaymentPaid(transactionKey)
+                                    }}
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
-                <MembersList 
-                  members={tripMembers}
-                  maxVisible={3}
-                  onEditClick={() => setIsMembersModalOpen(true)}
-                  className="cursor-pointer hover:opacity-80 transition-opacity"
-                />
+              {/* Bottom Row: Total + Members + Edit - Only show when collapsed */}
+              <div className={`transition-all duration-300 ${
+                isBalanceExpanded ? 'opacity-0 max-h-0 overflow-hidden' : 'opacity-100'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-foreground text-lg">Total: {getCurrencySymbol(activeTrip.currency)}{Number(activeTrip.totalExpenses || 0).toFixed(2)}</p>
+                  </div>
+
+                  <MembersList 
+                    members={tripMembers}
+                    maxVisible={3}
+                    onEditClick={(e) => {
+                      e?.stopPropagation()
+                      setIsMembersModalOpen(true)
+                    }}
+                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
