@@ -1421,7 +1421,7 @@ export default function HomePage() {
                                 
                                 <div>
                                   <p className={`font-medium ${debt.isPaid ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                                    Pay {debt.to_username}
+                                    {debt.to_username}
                                   </p>
                                   {debt.isPaid && (
                                     <p className="text-sm text-muted-foreground">
@@ -1431,7 +1431,7 @@ export default function HomePage() {
                                 </div>
                               </div>
                               
-                              <div className="flex items-center space-x-3">
+                              <div className="flex items-center gap-4">
                                 <div className="text-right">
                                   <p className={`text-lg font-semibold ${
                                     debt.isPaid ? 'line-through text-muted-foreground' : 'text-red-400'
@@ -1447,26 +1447,12 @@ export default function HomePage() {
                                 ) : (
                                   <a
                                     href={venmoLink}
-                                    className="flex items-center justify-center w-8 h-8 bg-[#3D95CE] hover:bg-[#2d7bb8] rounded-lg transition-colors"
+                                    className="flex items-center justify-center w-16 h-8 bg-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-medium text-primary-foreground"
                                     onClick={(e) => {
                                       e.stopPropagation()
                                     }}
                                   >
-                                    <svg 
-                                      width="20" 
-                                      height="20" 
-                                      viewBox="0 0 48 48" 
-                                      fill="none" 
-                                      xmlns="http://www.w3.org/2000/svg"
-                                    >
-                                      <path 
-                                        d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z" 
-                                        fill="white"
-                                        stroke="white"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
+                                    Pay
                                   </a>
                                 )}
                               </div>
