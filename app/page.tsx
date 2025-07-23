@@ -1231,8 +1231,8 @@ export default function HomePage() {
                               key={transactionKey}
                               className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
                                 debt.isPaid 
-                                  ? 'bg-green-50 border-green-200 opacity-75' 
-                                  : 'bg-red-50 border-red-200 hover:bg-red-100'
+                                  ? 'bg-green-900/20 border-green-700/30 opacity-75' 
+                                  : 'bg-card border-border hover:bg-card/80'
                               }`}
                               style={{
                                 animationDelay: `${index * 50}ms`
@@ -1273,7 +1273,7 @@ export default function HomePage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-8 w-8 p-0 border-2 hover:bg-green-50 hover:border-green-300"
+                                    className="h-8 w-8 p-0 border-2 hover:bg-green-900/20 hover:border-green-700/50"
                                     onClick={(e) => {
                                       e.stopPropagation()
                                       handleMarkPaymentPaid(transactionKey)
