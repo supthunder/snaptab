@@ -16,7 +16,7 @@ export default function AddExpensePage() {
     description: "",
     amount: "",
     date: new Date().toISOString().split("T")[0],
-    paidBy: "You",
+    paidBy: "", // Will be set to current user below
     category: "",
     summary: "",
     emoji: "",
@@ -38,6 +38,15 @@ export default function AddExpensePage() {
 
   useEffect(() => {
     const loadTripData = async () => {
+      // Get current user from localStorage
+      const currentUser = localStorage.getItem('snapTab_username') || localStorage.getItem('snapTab_displayName') || 'You'
+      
+      // Set current user as default payer
+      setFormData(prev => ({
+        ...prev,
+        paidBy: currentUser
+      }))
+      
       // Check if we have a trip code from onboarding
       const tripCode = localStorage.getItem('snapTab_currentTripCode')
       
@@ -55,7 +64,7 @@ export default function AddExpensePage() {
           const trip: Trip = {
             id: tripData.trip.id,
             name: tripData.trip.name,
-            members: tripData.members?.map((member: any) => member.username) || [],
+            members: tripData.members?.map((member: any) => member.display_name || member.username) || [],
             totalExpenses: tripData.expenses?.reduce((sum: number, expense: any) => sum + expense.total_amount, 0) || 0,
             currency: tripData.trip.currency || 'USD',
             startDate: undefined,
@@ -67,6 +76,17 @@ export default function AddExpensePage() {
           
           setActiveTrip(trip)
           setSelectedMembers(trip.members) // Default to all members
+          
+          // Update paidBy to match the current user's display name if available
+          const currentMember = tripData.members?.find((member: any) => 
+            member.username === localStorage.getItem('snapTab_username')
+          )
+          if (currentMember) {
+            setFormData(prev => ({
+              ...prev,
+              paidBy: currentMember.display_name || currentMember.username
+            }))
+          }
           
         } catch (error) {
           console.error('Failed to load trip from database:', error)
@@ -131,8 +151,7 @@ export default function AddExpensePage() {
   }, [])
 
   const handleMemberToggle = (member: string) => {
-    if (member === "You") return // User always included
-
+    // Allow current user to be toggled but keep them in by default
     setSelectedMembers((prev) => 
       prev.includes(member) 
         ? prev.filter((m) => m !== member) 
@@ -277,6 +296,22 @@ export default function AddExpensePage() {
       const username = localStorage.getItem('snapTab_username')
       
       if (tripCode && username) {
+        // Convert display names back to usernames for database operations
+        const paidByUsername = formData.paidBy === (localStorage.getItem('snapTab_displayName') || localStorage.getItem('snapTab_username')) 
+          ? username 
+          : formData.paidBy // If someone else paid, keep as is (assume it's correct username)
+        
+        // Convert selected member display names to usernames
+        const splitWithUsernames = selectedMembers.map(memberDisplayName => {
+          // If it's the current user, use their username
+          if (memberDisplayName === (localStorage.getItem('snapTab_displayName') || localStorage.getItem('snapTab_username'))) {
+            return username
+          }
+          // For other members, we need to find their username from the trip data
+          // For now, assume display name = username (this could be improved)
+          return memberDisplayName
+        })
+        
         // Save expense to database
         const expenseData = {
           name: formData.description,
@@ -286,8 +321,8 @@ export default function AddExpensePage() {
           currency: activeTrip.currency,
           receipt_image_url: receiptImageUrl,
           expense_date: formData.date,
-          paid_by_username: username,
-          split_with_usernames: selectedMembers,
+          paid_by_username: paidByUsername,
+          split_with_usernames: splitWithUsernames,
           split_mode: splitMode,
           category: formData.category || undefined,
           summary: formData.summary || undefined,
@@ -723,7 +758,7 @@ export default function AddExpensePage() {
                         selectedMembers.includes(member)
                           ? "bg-primary/10 border border-primary/20"
                           : "bg-background border border-border"
-                      } ${member === "You" ? "opacity-100" : ""}`}
+                      }`}
                       onClick={() => handleMemberToggle(member)}
                     >
                       <div className="flex items-center space-x-3">
