@@ -84,7 +84,7 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
         })
         
         // Auto-join the trip
-        await autoJoinTrip()
+        await autoJoinTrip({ username: username || '', displayName: displayName || username || '' })
         
         // Skip directly to success step
         setCurrentStep(3)
@@ -99,10 +99,10 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
     checkAuthAndProceed()
   }, [])
 
-  const nextStep = async () => {
+  const nextStep = async (authData?: { username: string; displayName?: string }) => {
     if (currentStep === 2) {
       // After auth step, automatically join the trip before going to success step
-      await autoJoinTrip()
+      await autoJoinTrip(authData)
     }
     
     if (currentStep < totalSteps) {
@@ -110,15 +110,16 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
     }
   }
 
-  const autoJoinTrip = async () => {
+  const autoJoinTrip = async (authData?: { username: string; displayName?: string }) => {
     try {
       console.log('🔍 AutoJoinTrip called with data:', { username: data.username, tripCode: data.tripCode, isJoining: data.isJoining })
+      console.log('🔍 AutoJoinTrip called with authData:', authData)
       
-      // Try to get username from data or fallback to localStorage
-      const username = data.username || localStorage.getItem('snapTab_username')
+      // Try to get username from authData first, then data, then localStorage
+      const username = authData?.username || data.username || localStorage.getItem('snapTab_username')
       
       if (!username) {
-        console.error('❌ No username available for auto-join. Current data:', data)
+        console.error('❌ No username available for auto-join. Current data:', data, 'AuthData:', authData)
         return
       }
 
@@ -128,7 +129,7 @@ export default function SharedTripOnboarding({ shareData }: SharedTripOnboarding
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: username,
-          displayName: data.displayName || username
+          displayName: authData?.displayName || data.displayName || username
         })
       })
 

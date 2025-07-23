@@ -5,6 +5,60 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #75: Fix Shared Trip Onboarding Race Condition  
+**Date**: 2025-01-21  
+**Status**: ✅ Complete
+
+### User Issue:
+> "if i join a trip in incognito window... AutoJoinTrip called with data: {username: undefined, tripCode: '699', isJoining: true}... the trip wont show me in the members list: but it shows me the trip and the members currently in it. in logged in correctly tho"
+
+### Problem Analysis:
+**Race Condition in Authentication Flow**
+- PasskeyAuthStep successfully authenticates: `"Sign-in success, updating data with username: ejiphone"`
+- But AutoJoinTrip receives undefined username: `"AutoJoinTrip called with data: {username: undefined}"`
+- React state updates are asynchronous, so `updateData()` hadn't applied when `nextStep()` called `autoJoinTrip()`
+
+### Root Cause:
+```javascript
+// In PasskeyAuthStep:
+updateData({ username: result.user.username })  // Async React state update
+onNext()  // Called immediately - state not updated yet
+
+// In SharedTripOnboarding:
+nextStep() → autoJoinTrip() → data.username  // Still undefined!
+```
+
+### Solution Implemented:
+
+#### **1. Pass Authentication Data Directly**
+**Modified Function Signatures:**
+- `nextStep(authData?: { username: string; displayName?: string })`
+- `autoJoinTrip(authData?: { username: string; displayName?: string })`
+- `onNext(authData?: { username: string; displayName?: string })`
+
+#### **2. Priority-Based Username Resolution**
+```javascript
+// New resolution order in autoJoinTrip:
+const username = authData?.username || data.username || localStorage.getItem('snapTab_username')
+```
+
+#### **3. Enhanced Logging for Debugging**
+- Added `authData` parameter logging in `autoJoinTrip`
+- Better error messages showing both `data` and `authData` states
+
+### Files Modified:
+- `app/[shareCode]/shared-trip-onboarding.tsx`: Updated nextStep and autoJoinTrip functions
+- `components/onboarding/passkey-auth-step.tsx`: Pass username directly to onNext
+
+### Impact:
+- ✅ **Fixed incognito/fresh browser shared trip joining**
+- ✅ **Eliminated React state timing dependency**
+- ✅ **User properly added to trip members list**
+- ✅ **Maintains backward compatibility with existing flow**
+- ✅ **Better error logging for future debugging**
+
+---
+
 ## Update #74: Animated Balance Card Expansion with Settlement Details  
 **Date**: 2025-01-21  
 **Status**: ✅ Complete

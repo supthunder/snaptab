@@ -18,7 +18,7 @@ interface OnboardingData {
 }
 
 interface PasskeyAuthStepProps {
-  onNext: () => void
+  onNext: (authData?: { username: string; displayName?: string }) => void
   data: OnboardingData
   updateData: (data: Partial<OnboardingData>) => void
 }
@@ -194,7 +194,7 @@ export function PasskeyAuthStep({ onNext, data, updateData }: PasskeyAuthStepPro
       // Use shorter delay and pass username directly to ensure it's available
       setTimeout(() => {
         console.log('🔍 About to call onNext, current data should have username:', result.user.username)
-        onNext()
+        onNext({ username: result.user.username, displayName: result.user.displayName })
       }, 1500)
 
     } catch (error: any) {
