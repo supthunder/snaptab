@@ -1187,14 +1187,16 @@ export default function HomePage() {
 
           {/* Balance Card - Animated Expansion */}
           <Card 
-            className={`minimal-card mb-6 cursor-pointer transition-all duration-300 ease-out ${
+            className={`minimal-card mb-6 transition-all duration-300 ease-out ${
               isBalanceExpanded ? 'shadow-lg' : 'hover:shadow-md'
             }`}
-            onClick={handleBalanceCardClick}
           >
             <CardContent className="p-6">
-              {/* Balance Section */}
-              <div className="text-center mb-6">
+              {/* Balance Section - Clickable Header */}
+              <div 
+                className="text-center mb-6 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={handleBalanceCardClick}
+              >
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <p className="text-muted-foreground text-sm">Your balance to pay</p>
                   {isBalanceExpanded ? (
@@ -1235,11 +1237,16 @@ export default function HomePage() {
                       <div className="space-y-3">
                         {getCurrentUserDebts().map((debt, index) => {
                           const transactionKey = `${localStorage.getItem('snapTab_username')}-${debt.to_username}-${debt.amount}`
+                          const currentUsername = localStorage.getItem('snapTab_username') || 'user'
+                          
+                          // Create Venmo deeplink
+                          const venmoNote = `${activeTrip.name} - paid with SnapTab`
+                          const venmoLink = `venmo://paycharge?txn=pay&recipients=${debt.to_username}&note=${encodeURIComponent(venmoNote)}&amount=${debt.amount.toFixed(2)}`
                           
                           return (
                             <div 
                               key={transactionKey}
-                              className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
+                              className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 cursor-pointer ${
                                 debt.isPaid 
                                   ? 'bg-green-900/20 border-green-700/30 opacity-75' 
                                   : 'bg-card border-border hover:bg-card/80'
@@ -1247,6 +1254,7 @@ export default function HomePage() {
                               style={{
                                 animationDelay: `${index * 50}ms`
                               }}
+                              onClick={() => handleTogglePaymentPaid(transactionKey)}
                             >
                               <div className="flex items-center space-x-3">
                                 {/* Avatar placeholder */}
@@ -1260,9 +1268,11 @@ export default function HomePage() {
                                   <p className={`font-medium ${debt.isPaid ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                                     Pay {debt.to_username}
                                   </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {debt.isPaid ? 'Marked as paid' : 'From shared expenses'}
-                                  </p>
+                                  {debt.isPaid && (
+                                    <p className="text-sm text-muted-foreground">
+                                      Marked as paid
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                               
@@ -1276,28 +1286,33 @@ export default function HomePage() {
                                 </div>
                                 
                                 {debt.isPaid ? (
-                                  <Button
-                                    size="sm"
-                                    className="w-6 h-6 p-0 bg-green-400 hover:bg-green-500 rounded-full border-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleTogglePaymentPaid(transactionKey)
-                                    }}
-                                  >
+                                  <div className="w-6 h-6 bg-green-400 rounded-full flex items-center justify-center">
                                     <Check className="h-4 w-4 text-white" />
-                                  </Button>
+                                  </div>
                                 ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 w-8 p-0 border-2 hover:bg-green-900/20 hover:border-green-700/50"
+                                  <a
+                                    href={venmoLink}
+                                    className="flex items-center justify-center w-8 h-8 bg-[#3D95CE] hover:bg-[#2d7bb8] rounded-lg transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      handleTogglePaymentPaid(transactionKey)
                                     }}
                                   >
-                                    <Check className="h-4 w-4" />
-                                  </Button>
+                                    <svg 
+                                      width="20" 
+                                      height="20" 
+                                      viewBox="0 0 48 48" 
+                                      fill="none" 
+                                      xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                      <path 
+                                        d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z" 
+                                        fill="white"
+                                        stroke="white"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </svg>
+                                  </a>
                                 )}
                               </div>
                             </div>
