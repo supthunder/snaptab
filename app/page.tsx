@@ -93,7 +93,21 @@ export default function HomePage() {
     }>
   } | null>(null)
   const [isLoadingSettlement, setIsLoadingSettlement] = useState(false)
-  const [paidSettlements, setPaidSettlements] = useState<Set<string>>(new Set())
+  const [settlementPayments, setSettlementPayments] = useState<Array<{
+    id: string
+    trip_id: string
+    from_user_id: string
+    to_user_id: string
+    from_username: string
+    to_username: string
+    from_display_name?: string
+    to_display_name?: string
+    amount: number
+    is_paid: boolean
+    paid_at?: string
+    created_at: string
+  }>>([])
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false)
   
   // Venmo username state
   const [venmoUsername, setVenmoUsername] = useState<string | null>(null)
@@ -107,18 +121,32 @@ export default function HomePage() {
     if (!tripCode) return
 
     setIsLoadingSettlement(true)
+    setIsLoadingPayments(true)
     try {
-      const response = await fetch(`/api/trips/${tripCode}/settlement`)
-      if (response.ok) {
-        const data = await response.json()
-        setSettlementData(data)
+      // Load both settlement calculations and payment status
+      const [settlementResponse, paymentsResponse] = await Promise.all([
+        fetch(`/api/trips/${tripCode}/settlement`),
+        fetch(`/api/trips/${tripCode}/payments`)
+      ])
+
+      if (settlementResponse.ok) {
+        const settlementData = await settlementResponse.json()
+        setSettlementData(settlementData)
       } else {
         console.error('Failed to load settlement data')
+      }
+
+      if (paymentsResponse.ok) {
+        const paymentsData = await paymentsResponse.json()
+        setSettlementPayments(paymentsData.payments || [])
+      } else {
+        console.error('Failed to load payment data')
       }
     } catch (error) {
       console.error('Error loading settlement data:', error)
     } finally {
       setIsLoadingSettlement(false)
+      setIsLoadingPayments(false)
     }
   }
 
@@ -203,34 +231,75 @@ export default function HomePage() {
   }
 
   // Handle toggling payment as paid/unpaid
-  const handleTogglePaymentPaid = (transactionKey: string) => {
-    setPaidSettlements(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(transactionKey)) {
-        // If already paid, mark as unpaid
-        newSet.delete(transactionKey)
-      } else {
-        // If not paid, mark as paid
-        newSet.add(transactionKey)
+  const handleTogglePaymentPaid = async (paymentId: string) => {
+    const tripCode = localStorage.getItem('snapTab_currentTripCode')
+    const username = localStorage.getItem('snapTab_username')
+    if (!tripCode || !username) return
+
+    // Find the payment to toggle
+    const payment = settlementPayments.find(p => p.id === paymentId)
+    if (!payment) return
+
+    const newPaidStatus = !payment.is_paid
+
+    // Optimistically update UI
+    setSettlementPayments(prev => 
+      prev.map(p => 
+        p.id === paymentId 
+          ? { ...p, is_paid: newPaidStatus }
+          : p
+      )
+    )
+
+    try {
+      const response = await fetch(`/api/trips/${tripCode}/payments`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentId,
+          isPaid: newPaidStatus,
+          username
+        })
+      })
+
+      if (!response.ok) {
+        // Revert optimistic update on error
+        setSettlementPayments(prev => 
+          prev.map(p => 
+            p.id === paymentId 
+              ? { ...p, is_paid: !newPaidStatus }
+              : p
+          )
+        )
+        console.error('Failed to update payment status')
       }
-      return newSet
-    })
-    // Here you would also update the backend to track the payment
-    // For now, we'll just update the local state
+    } catch (error) {
+      // Revert optimistic update on error
+      setSettlementPayments(prev => 
+        prev.map(p => 
+          p.id === paymentId 
+            ? { ...p, is_paid: !newPaidStatus }
+            : p
+        )
+      )
+      console.error('Error updating payment status:', error)
+    }
   }
 
-  // Get current user's debts (who they owe money to)
-  const getCurrentUserDebts = () => {
-    if (!settlementData) return []
+  // Get payments user owes (You Owe section)
+  const getYouOwePayments = () => {
     const currentUsername = localStorage.getItem('snapTab_username')
-    
-    return settlementData.transactions.filter(transaction => 
-      transaction.from_username === currentUsername
-    ).map(transaction => ({
-      to_username: transaction.to_username,
-      amount: transaction.amount,
-      isPaid: paidSettlements.has(`${transaction.from_username}-${transaction.to_username}-${transaction.amount}`)
-    }))
+    return settlementPayments.filter(payment => 
+      payment.from_username === currentUsername
+    )
+  }
+
+  // Get payments owed to user (Owed to You section)
+  const getOwedToYouPayments = () => {
+    const currentUsername = localStorage.getItem('snapTab_username')
+    return settlementPayments.filter(payment => 
+      payment.to_username === currentUsername
+    )
   }
 
   // Refresh function for pull-to-refresh
@@ -1381,84 +1450,191 @@ export default function HomePage() {
                       </Dialog>
                     </div>
 
-                    <h3 className="font-medium text-lg mb-4 text-center">Settlement Details</h3>
+                    <h3 className="font-medium text-lg mb-6 text-center">Settlement Details</h3>
                     
-                    {getCurrentUserDebts().length === 0 ? (
+                    {(isLoadingPayments || isLoadingSettlement) ? (
+                      <div className="text-center py-6">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
+                        <p className="text-sm text-muted-foreground">Loading payment details...</p>
+                      </div>
+                    ) : (getYouOwePayments().length === 0 && getOwedToYouPayments().length === 0) ? (
                       <div className="text-center py-4">
                         <Check className="h-8 w-8 text-green-400 mx-auto mb-2" />
                         <p className="text-sm text-muted-foreground">You're all settled up! 🎉</p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {getCurrentUserDebts().map((debt, index) => {
-                          const transactionKey = `${localStorage.getItem('snapTab_username')}-${debt.to_username}-${debt.amount}`
-                          const currentUsername = localStorage.getItem('snapTab_username') || 'user'
-                          
-                          // Create Venmo deeplink - pay to the person they owe
-                          const venmoNote = `${activeTrip.name} - paid with SnapTab`
-                          const venmoLink = `venmo://paycharge?txn=pay&recipients=${debt.to_username}&note=${encodeURIComponent(venmoNote)}&amount=${debt.amount.toFixed(2)}`
-                          
-                          return (
-                            <div 
-                              key={transactionKey}
-                              className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 cursor-pointer ${
-                                debt.isPaid 
-                                  ? 'bg-green-900/20 border-green-700/30 opacity-75' 
-                                  : 'bg-card border-border hover:bg-card/80'
-                              }`}
-                              style={{
-                                animationDelay: `${index * 50}ms`
-                              }}
-                              onClick={() => handleTogglePaymentPaid(transactionKey)}
-                            >
-                              <div className="flex items-center space-x-3">
-                                {/* Avatar placeholder */}
-                                <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-medium text-primary">
-                                    {debt.to_username.charAt(0).toUpperCase()}
-                                  </span>
-                                </div>
+                      <div className="space-y-6">
+                        {/* You Owe Section */}
+                        {getYouOwePayments().length > 0 && (
+                          <div>
+                            <h4 className="font-medium text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                              <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                              You Owe
+                            </h4>
+                            <div className="space-y-3">
+                              {getYouOwePayments().map((payment, index) => {
+                                // Create Venmo deeplink - pay to the person they owe
+                                const venmoNote = `${activeTrip.name} - paid with SnapTab`
+                                const venmoLink = `venmo://paycharge?txn=pay&recipients=${payment.to_username}&note=${encodeURIComponent(venmoNote)}&amount=${Number(payment.amount).toFixed(2)}`
                                 
-                                <div>
-                                  <p className={`font-medium ${debt.isPaid ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                                    {debt.to_username}
-                                  </p>
-                                  {debt.isPaid && (
-                                    <p className="text-sm text-muted-foreground">
-                                      Marked as paid
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center gap-4">
-                                <div className="text-right">
-                                  <p className={`text-lg font-semibold ${
-                                    debt.isPaid ? 'line-through text-muted-foreground' : 'text-red-400'
-                                  }`}>
-                                    {getCurrencySymbol(activeTrip.currency)}{debt.amount.toFixed(2)}
-                                  </p>
-                                </div>
-                                
-                                {debt.isPaid ? (
-                                  <div className="w-6 h-6 bg-green-400 rounded-full flex items-center justify-center">
-                                    <Check className="h-4 w-4 text-white" />
-                                  </div>
-                                ) : (
-                                  <a
-                                    href={venmoLink}
-                                    className="flex items-center justify-center w-16 h-8 bg-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-medium text-primary-foreground"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
+                                return (
+                                  <div 
+                                    key={payment.id}
+                                    className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md ${
+                                      payment.is_paid 
+                                        ? 'bg-green-900/20 border-green-700/30 opacity-75' 
+                                        : 'bg-card border-border hover:bg-card/80 hover:border-red-300/50'
+                                    }`}
+                                    style={{
+                                      animationDelay: `${index * 50}ms`
                                     }}
+                                    onClick={() => handleTogglePaymentPaid(payment.id)}
                                   >
-                                    Pay
-                                  </a>
-                                )}
-                              </div>
+                                    <div className="flex items-center space-x-3">
+                                      {/* Avatar placeholder */}
+                                      <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                                        <span className="text-sm font-medium text-primary">
+                                          {(payment.to_display_name || payment.to_username).charAt(0).toUpperCase()}
+                                        </span>
+                                      </div>
+                                      
+                                      <div>
+                                        <p className={`font-medium ${payment.is_paid ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                          {payment.to_display_name || payment.to_username}
+                                        </p>
+                                        {payment.is_paid && (
+                                          <p className="text-sm text-green-600">
+                                            Marked as paid
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-4">
+                                      <div className="text-right">
+                                        <p className={`text-lg font-semibold ${
+                                          payment.is_paid ? 'line-through text-muted-foreground' : 'text-red-400'
+                                        }`}>
+                                          {getCurrencySymbol(activeTrip.currency)}{Number(payment.amount).toFixed(2)}
+                                        </p>
+                                      </div>
+                                      
+                                      {payment.is_paid ? (
+                                        <Button
+                                          className="w-6 h-6 p-0 bg-green-400 hover:bg-green-500 rounded-full border-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleTogglePaymentPaid(payment.id)
+                                          }}
+                                        >
+                                          <Check className="h-4 w-4 text-white" />
+                                        </Button>
+                                      ) : (
+                                        <div className="flex items-center gap-2">
+                                          <a
+                                            href={venmoLink}
+                                            className="flex items-center justify-center w-16 h-8 bg-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-medium text-primary-foreground"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              // Also mark as paid when Pay button is clicked
+                                              handleTogglePaymentPaid(payment.id)
+                                            }}
+                                          >
+                                            Pay
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
                             </div>
-                          )
-                        })}
+                          </div>
+                        )}
+
+                        {/* Owed to You Section */}
+                        {getOwedToYouPayments().length > 0 && (
+                          <div>
+                            <h4 className="font-medium text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                              Owed to You
+                            </h4>
+                            <div className="space-y-3">
+                              {getOwedToYouPayments().map((payment, index) => (
+                                <div 
+                                  key={payment.id}
+                                  className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md ${
+                                    payment.is_paid 
+                                      ? 'bg-green-900/20 border-green-700/30' 
+                                      : 'bg-card border-border hover:bg-card/80 hover:border-green-300/50'
+                                  }`}
+                                  style={{
+                                    animationDelay: `${(getYouOwePayments().length + index) * 50}ms`
+                                  }}
+                                  onClick={() => handleTogglePaymentPaid(payment.id)}
+                                >
+                                  <div className="flex items-center space-x-3">
+                                    {/* Avatar placeholder */}
+                                    <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                                      <span className="text-sm font-medium text-primary">
+                                        {(payment.from_display_name || payment.from_username).charAt(0).toUpperCase()}
+                                      </span>
+                                    </div>
+                                    
+                                    <div>
+                                      <p className={`font-medium ${payment.is_paid ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                        {payment.from_display_name || payment.from_username}
+                                      </p>
+                                      {payment.is_paid ? (
+                                        <p className="text-sm text-green-600">
+                                          Paid ✓
+                                        </p>
+                                      ) : (
+                                        <p className="text-sm text-muted-foreground">
+                                          Owes you
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                      <p className={`text-lg font-semibold ${
+                                        payment.is_paid ? 'line-through text-muted-foreground' : 'text-green-400'
+                                      }`}>
+                                        +{getCurrencySymbol(activeTrip.currency)}{Number(payment.amount).toFixed(2)}
+                                      </p>
+                                    </div>
+                                    
+                                    {payment.is_paid ? (
+                                      <Button
+                                        className="w-6 h-6 p-0 bg-green-400 hover:bg-green-500 rounded-full border-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleTogglePaymentPaid(payment.id)
+                                        }}
+                                      >
+                                        <Check className="h-4 w-4 text-white" />
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-8 h-8 p-0 border-2 border-dashed border-muted-foreground/30 hover:border-green-400 hover:bg-green-400/10"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleTogglePaymentPaid(payment.id)
+                                        }}
+                                      >
+                                        <Check className="h-4 w-4 text-muted-foreground hover:text-green-400" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

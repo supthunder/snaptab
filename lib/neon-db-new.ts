@@ -81,6 +81,19 @@ export interface PasskeyCredential {
   last_used_at?: string
 }
 
+export interface SettlementPayment {
+  id: string
+  trip_id: string
+  from_user_id: string
+  to_user_id: string
+  amount: number
+  is_paid: boolean
+  paid_at?: string
+  marked_by_user_id?: string
+  created_at: string
+  updated_at: string
+}
+
 // Database initialization - create the new schema
 export async function initializeNewDatabase() {
   try {
@@ -189,6 +202,23 @@ export async function initializeNewDatabase() {
       )
     `
 
+    // Create settlement_payments table for tracking payment status
+    await sql`
+      CREATE TABLE IF NOT EXISTS settlement_payments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        trip_id UUID NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+        from_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        to_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount DECIMAL(10,2) NOT NULL,
+        is_paid BOOLEAN DEFAULT FALSE,
+        paid_at TIMESTAMPTZ,
+        marked_by_user_id UUID REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(trip_id, from_user_id, to_user_id)
+      )
+    `
+
     // Create indexes (with error handling)
     console.log('Creating indexes...')
     try {
@@ -210,6 +240,10 @@ export async function initializeNewDatabase() {
       await sql`CREATE INDEX IF NOT EXISTS idx_item_assignments_item ON item_assignments(expense_item_id)`
       await sql`CREATE INDEX IF NOT EXISTS idx_item_assignments_user ON item_assignments(user_id)`
       await sql`CREATE INDEX IF NOT EXISTS idx_expenses_split_with ON expenses USING GIN (split_with)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_settlement_payments_trip ON settlement_payments(trip_id)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_settlement_payments_from_user ON settlement_payments(from_user_id)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_settlement_payments_to_user ON settlement_payments(to_user_id)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_settlement_payments_paid ON settlement_payments(is_paid)`
       console.log('Indexes created successfully')
     } catch (indexError) {
       console.warn('Some indexes may have failed to create:', indexError)
@@ -1031,6 +1065,123 @@ async function generateUniqueTripCode(): Promise<number> {
   
   console.error('Failed to generate unique trip code after', maxAttempts, 'attempts')
   throw new Error('Could not generate unique trip code')
+}
+
+// Settlement Payment Management Functions
+export async function createOrUpdateSettlementPayment(
+  tripId: string,
+  fromUserId: string,
+  toUserId: string,
+  amount: number
+): Promise<SettlementPayment | null> {
+  try {
+    const result = await sql`
+      INSERT INTO settlement_payments (trip_id, from_user_id, to_user_id, amount)
+      VALUES (${tripId}, ${fromUserId}, ${toUserId}, ${amount})
+      ON CONFLICT (trip_id, from_user_id, to_user_id) 
+      DO UPDATE SET amount = ${amount}, updated_at = NOW()
+      RETURNING id, trip_id, from_user_id, to_user_id, CAST(amount AS FLOAT) as amount, 
+                is_paid, paid_at, marked_by_user_id, created_at, updated_at
+    `
+    return result.rows[0] as SettlementPayment
+  } catch (error) {
+    console.error('Error creating/updating settlement payment:', error)
+    return null
+  }
+}
+
+export async function getSettlementPayments(tripId: string): Promise<SettlementPayment[]> {
+  try {
+    const result = await sql`
+      SELECT sp.id,
+             sp.trip_id,
+             sp.from_user_id,
+             sp.to_user_id,
+             CAST(sp.amount AS FLOAT) as amount,
+             sp.is_paid,
+             sp.paid_at,
+             sp.marked_by_user_id,
+             sp.created_at,
+             sp.updated_at,
+             fu.username as from_username, 
+             fu.display_name as from_display_name,
+             tu.username as to_username,
+             tu.display_name as to_display_name
+      FROM settlement_payments sp
+      JOIN users fu ON sp.from_user_id = fu.id
+      JOIN users tu ON sp.to_user_id = tu.id
+      WHERE sp.trip_id = ${tripId}
+      ORDER BY sp.created_at ASC
+    `
+    return result.rows as SettlementPayment[]
+  } catch (error) {
+    console.error('Error fetching settlement payments:', error)
+    return []
+  }
+}
+
+export async function updatePaymentStatus(
+  paymentId: string,
+  isPaid: boolean,
+  markedByUserId?: string
+): Promise<boolean> {
+  try {
+    await sql`
+      UPDATE settlement_payments 
+      SET is_paid = ${isPaid}, 
+          paid_at = ${isPaid ? 'NOW()' : null},
+          marked_by_user_id = ${markedByUserId},
+          updated_at = NOW()
+      WHERE id = ${paymentId}
+    `
+    return true
+  } catch (error) {
+    console.error('Error updating payment status:', error)
+    return false
+  }
+}
+
+export async function getPaymentById(paymentId: string): Promise<SettlementPayment | null> {
+  try {
+    const result = await sql`
+      SELECT id, trip_id, from_user_id, to_user_id, CAST(amount AS FLOAT) as amount, 
+             is_paid, paid_at, marked_by_user_id, created_at, updated_at
+      FROM settlement_payments 
+      WHERE id = ${paymentId} 
+      LIMIT 1
+    `
+    return result.rows.length > 0 ? result.rows[0] as SettlementPayment : null
+  } catch (error) {
+    console.error('Error fetching payment by ID:', error)
+    return null
+  }
+}
+
+export async function syncSettlementPayments(tripCode: number): Promise<boolean> {
+  try {
+    // Get trip
+    const trip = await getTripByCode(tripCode)
+    if (!trip) return false
+
+    // Get current settlement calculations
+    const settlement = await getTripSettlement(tripCode)
+    if (!settlement) return false
+
+    // Create or update settlement payments for each transaction
+    for (const transaction of settlement.transactions) {
+      await createOrUpdateSettlementPayment(
+        trip.id,
+        transaction.from_user_id,
+        transaction.to_user_id,
+        transaction.amount
+      )
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error syncing settlement payments:', error)
+    return false
+  }
 }
 
 // Test function
