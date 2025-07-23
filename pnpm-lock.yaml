@@ -104,6 +104,9 @@ dependencies:
   '@vercel/postgres':
     specifier: ^0.10.0
     version: 0.10.0
+  '@vercel/speed-insights':
+    specifier: ^1.2.0
+    version: 1.2.0(next@15.2.4)(react@19.0.0)
   autoprefixer:
     specifier: ^10.4.20
     version: 10.4.20(postcss@8.5.0)
@@ -1961,6 +1964,34 @@ packages:
       ws: 8.18.3(bufferutil@4.0.9)
     transitivePeerDependencies:
       - utf-8-validate
+    dev: false
+
+  /@vercel/speed-insights@1.2.0(next@15.2.4)(react@19.0.0):
+    resolution: {integrity: sha512-y9GVzrUJ2xmgtQlzFP2KhVRoCglwfRQgjyfY607aU0hh0Un6d0OUyrJkjuAlsV18qR4zfoFPs/BiIj9YDS6Wzw==}
+    requiresBuild: true
+    peerDependencies:
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
+    dependencies:
+      next: 15.2.4(react-dom@19.0.0)(react@19.0.0)
+      react: 19.0.0
     dev: false
 
   /ansi-regex@5.0.1:
