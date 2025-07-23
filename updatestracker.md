@@ -5,6 +5,49 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 
 ---
 
+## Update #76: Fix Settlement Details Dark Theme Styling  
+**Date**: 2025-01-21  
+**Status**: ✅ Complete
+
+### User Issue:
+> "another issue i dont like how this colo scheme doesnt match the dark theme as before, make it match the rest of theapp i.e the recents etc"
+
+### Problem Analysis:
+**Inconsistent Theme Colors in Settlement Details**
+- Settlement Details cards were using light theme colors (`bg-red-50`, `bg-green-50`, `border-red-200`, etc.)
+- This created a jarring visual inconsistency against the dark theme used throughout the rest of the app
+- Recent expenses cards and other UI elements properly used dark theme styling
+- User experience was disrupted by the light-colored cards standing out inappropriately
+
+### Solution Implemented:
+
+#### **1. Updated Card Background Colors**
+**Before**: Light theme backgrounds
+- Unpaid debts: `bg-red-50 border-red-200 hover:bg-red-100`  
+- Paid debts: `bg-green-50 border-green-200`
+
+**After**: Dark theme backgrounds
+- Unpaid debts: `bg-card border-border hover:bg-card/80`  
+- Paid debts: `bg-green-900/20 border-green-700/30`
+
+#### **2. Fixed Button Hover States**
+**Before**: `hover:bg-green-50 hover:border-green-300` (light theme)  
+**After**: `hover:bg-green-900/20 hover:border-green-700/50` (dark theme)
+
+#### **3. Maintained Semantic Colors**
+- **Text colors**: Already using proper dark theme classes (`text-foreground`, `text-muted-foreground`, `text-red-400`)
+- **Visual hierarchy**: Preserved the meaning of red (owe money) and green (paid) while adapting to dark theme
+- **Consistency**: Now matches the styling of Recent expenses cards and other UI elements
+
+### Impact:
+- ✅ **Visual Consistency**: Settlement Details now seamlessly blend with the dark theme
+- ✅ **Professional Appearance**: No more jarring light cards on dark backgrounds  
+- ✅ **User Experience**: Cohesive color scheme throughout the entire app
+- ✅ **Maintained Functionality**: All interaction states and visual feedback preserved
+- ✅ **Semantic Clarity**: Color meanings (red=debt, green=paid) remain clear in dark theme
+
+---
+
 ## Update #75: Fix Shared Trip Onboarding Race Condition  
 **Date**: 2025-01-21  
 **Status**: ✅ Complete
