@@ -6,6 +6,7 @@ export interface User {
   username: string
   display_name?: string
   avatar_url?: string
+  venmo_username?: string
   created_at: string
   updated_at: string
 }
@@ -92,6 +93,7 @@ export async function initializeNewDatabase() {
         username VARCHAR(50) UNIQUE NOT NULL,
         display_name VARCHAR(100),
         avatar_url TEXT,
+        venmo_username VARCHAR(50),
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
@@ -298,6 +300,54 @@ export async function updateUserAvatar(username: string, avatarUrl: string): Pro
   } catch (error) {
     console.error('Error updating user avatar:', error)
     return null
+  }
+}
+
+// Get user's Venmo username
+export async function getUserVenmoUsername(username: string): Promise<string | null> {
+  try {
+    const result = await sql`
+      SELECT venmo_username FROM users WHERE username = ${username.toLowerCase()} LIMIT 1
+    `
+    return result.rows[0]?.venmo_username || null
+  } catch (error) {
+    console.error('Error fetching Venmo username:', error)
+    return null
+  }
+}
+
+// Set user's Venmo username
+export async function setUserVenmoUsername(username: string, venmoUsername: string): Promise<boolean> {
+  try {
+    // Validate venmo username
+    if (!isValidUsername(venmoUsername)) {
+      throw new Error('Invalid Venmo username format')
+    }
+
+    await sql`
+      UPDATE users 
+      SET venmo_username = ${venmoUsername.toLowerCase()}, updated_at = NOW()
+      WHERE username = ${username.toLowerCase()}
+    `
+    return true
+  } catch (error) {
+    console.error('Error setting Venmo username:', error)
+    return false
+  }
+}
+
+// Remove user's Venmo username
+export async function removeUserVenmoUsername(username: string): Promise<boolean> {
+  try {
+    await sql`
+      UPDATE users 
+      SET venmo_username = NULL, updated_at = NOW()
+      WHERE username = ${username.toLowerCase()}
+    `
+    return true
+  } catch (error) {
+    console.error('Error removing Venmo username:', error)
+    return false
   }
 }
 

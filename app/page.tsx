@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle, Home, User, Users, Calendar, Trash2, ChevronUp, ChevronDown } from "lucide-react"
+import { Camera, Plus, ArrowRight, Menu, Loader2, Check, AlertCircle, Home, User, Users, Calendar, Trash2, ChevronUp, ChevronDown, Edit3 } from "lucide-react"
 import { MembersList, MembersModal } from "@/components/ui/members-list"
 import { PullToRefresh } from "@/components/ui/pull-to-refresh"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 
 import { 
   getActiveTrip, 
@@ -92,6 +94,12 @@ export default function HomePage() {
   } | null>(null)
   const [isLoadingSettlement, setIsLoadingSettlement] = useState(false)
   const [paidSettlements, setPaidSettlements] = useState<Set<string>>(new Set())
+  
+  // Venmo username state
+  const [venmoUsername, setVenmoUsername] = useState<string | null>(null)
+  const [isVenmoDialogOpen, setIsVenmoDialogOpen] = useState(false)
+  const [venmoEditValue, setVenmoEditValue] = useState('')
+  const [isLoadingVenmo, setIsLoadingVenmo] = useState(false)
 
   // Load settlement data for balance expansion
   const loadSettlementData = async () => {
@@ -114,13 +122,84 @@ export default function HomePage() {
     }
   }
 
+  // Load user's Venmo username
+  const loadVenmoUsername = async () => {
+    const username = localStorage.getItem('snapTab_username')
+    if (!username) return
+
+    try {
+      const response = await fetch(`/api/users/venmo?username=${username}`)
+      if (response.ok) {
+        const data = await response.json()
+        setVenmoUsername(data.venmoUsername)
+      }
+    } catch (error) {
+      console.error('Failed to load Venmo username:', error)
+    }
+  }
+
   // Handle balance card expansion
   const handleBalanceCardClick = async () => {
     if (!isBalanceExpanded) {
-      // Expanding - load settlement data
-      await loadSettlementData()
+      // Expanding - load settlement data and Venmo username
+      await Promise.all([loadSettlementData(), loadVenmoUsername()])
     }
     setIsBalanceExpanded(!isBalanceExpanded)
+  }
+
+  // Handle Venmo username save
+  const handleSaveVenmoUsername = async () => {
+    const username = localStorage.getItem('snapTab_username')
+    if (!username) return
+
+    setIsLoadingVenmo(true)
+    try {
+      const response = await fetch('/api/users/venmo', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, venmoUsername: venmoEditValue })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setVenmoUsername(data.venmoUsername)
+        setIsVenmoDialogOpen(false)
+        setVenmoEditValue('')
+      } else {
+        console.error('Failed to save Venmo username')
+      }
+    } catch (error) {
+      console.error('Error saving Venmo username:', error)
+    } finally {
+      setIsLoadingVenmo(false)
+    }
+  }
+
+  // Handle Venmo username removal
+  const handleRemoveVenmoUsername = async () => {
+    const username = localStorage.getItem('snapTab_username')
+    if (!username) return
+
+    setIsLoadingVenmo(true)
+    try {
+      const response = await fetch('/api/users/venmo', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      })
+
+      if (response.ok) {
+        setVenmoUsername(null)
+        setIsVenmoDialogOpen(false)
+        setVenmoEditValue('')
+      } else {
+        console.error('Failed to remove Venmo username')
+      }
+    } catch (error) {
+      console.error('Error removing Venmo username:', error)
+    } finally {
+      setIsLoadingVenmo(false)
+    }
   }
 
   // Handle toggling payment as paid/unpaid
@@ -1226,6 +1305,82 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <div className="border-t border-border pt-6 mt-6">
+                    {/* Venmo Username Section */}
+                    <div className="flex items-center justify-center gap-2 mb-6 pb-4 border-b border-border">
+                      <div className="flex items-center gap-2">
+                        <svg 
+                          width="20" 
+                          height="20" 
+                          viewBox="0 0 48 48" 
+                          fill="none" 
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path 
+                            d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z" 
+                            fill="#3D95CE"
+                            stroke="#3D95CE"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <span className="text-foreground font-medium">
+                          {venmoUsername || localStorage.getItem('snapTab_username')}
+                        </span>
+                      </div>
+                      
+                      <Dialog open={isVenmoDialogOpen} onOpenChange={setIsVenmoDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-primary/10"
+                            onClick={() => {
+                              setVenmoEditValue(venmoUsername || '')
+                            }}
+                          >
+                            <Edit3 className="h-3 w-3" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Set Venmo Username</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-sm font-medium">Venmo Username</label>
+                              <Input
+                                value={venmoEditValue}
+                                onChange={(e) => setVenmoEditValue(e.target.value)}
+                                placeholder="Enter your Venmo username"
+                                className="mt-1"
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                This will be used for payment requests. Leave empty to use your main username.
+                              </p>
+                            </div>
+                            <div className="flex gap-3">
+                              <Button
+                                onClick={handleSaveVenmoUsername}
+                                disabled={isLoadingVenmo}
+                                className="flex-1"
+                              >
+                                {isLoadingVenmo ? 'Saving...' : 'Save'}
+                              </Button>
+                              {venmoUsername && (
+                                <Button
+                                  variant="outline"
+                                  onClick={handleRemoveVenmoUsername}
+                                  disabled={isLoadingVenmo}
+                                >
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+
                     <h3 className="font-medium text-lg mb-4 text-center">Settlement Details</h3>
                     
                     {getCurrentUserDebts().length === 0 ? (
@@ -1239,7 +1394,7 @@ export default function HomePage() {
                           const transactionKey = `${localStorage.getItem('snapTab_username')}-${debt.to_username}-${debt.amount}`
                           const currentUsername = localStorage.getItem('snapTab_username') || 'user'
                           
-                          // Create Venmo deeplink
+                          // Create Venmo deeplink - pay to the person they owe
                           const venmoNote = `${activeTrip.name} - paid with SnapTab`
                           const venmoLink = `venmo://paycharge?txn=pay&recipients=${debt.to_username}&note=${encodeURIComponent(venmoNote)}&amount=${debt.amount.toFixed(2)}`
                           

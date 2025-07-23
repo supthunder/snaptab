@@ -11,38 +11,41 @@ SnapTab is a **travel expense splitting app** that uses AI-powered receipt scann
 
 ### **Major Updates Completed:**
 
-1. **Enhanced Home Page Date/Time Display** (Update #60)
-   - Fixed "today" detection logic to use scan time vs receipt date
-   - Implemented smart date formatting: "today • 1:15pm", "monday • 2:30pm", "7/11 • 3:45pm"
-   - Updated ALL merchant names to ALL CAPS for consistency
+1. **Enhanced Settlement Card UI & Venmo Integration** (Update #78 - January 21, 2025)
+   - **Venmo Payment Integration**: Replaced generic payment buttons with official Venmo deeplink buttons
+   - **Streamlined UI**: Removed "From shared expenses" text for cleaner appearance
+   - **Full Card Interaction**: Made entire settlement card clickable to mark payments as paid/unpaid
+   - **Smart Deeplink**: `venmo://paycharge?txn=pay&recipients={username}&note={trip_name} - paid with SnapTab&amount={amount}`
+   - **Official Branding**: Used Venmo blue (#3D95CE) with proper SVG icon from provided assets
+   - **Marketing Integration**: Added "paid with SnapTab" in payment notes for app promotion
+   - **Enhanced UX**: Separate click handling for card toggle vs Venmo app launch
 
-2. **Enhanced Expense Details Page** (Update #61) 
-   - Removed cluttered "Expense Details" title from header
-   - Added full expense editing with split options (member selection, item assignment)
-   - Integrated same split UI as Add Expense page
+2. **Animated Balance Card Expansion** (Update #74-77)
+   - **Fluid Animation**: 300ms CSS transitions for smooth card expansion
+   - **Settlement Details**: Shows exactly who you owe money to with amounts
+   - **Payment Tracking**: Interactive toggle system to mark individual payments complete
+   - **Visual States**: Color-coded unpaid (red) vs paid (green) with proper dark theme styling
+   - **Bidirectional Toggle**: Users can mark/unmark payments as paid repeatedly
 
-3. **Enhanced Onboarding & Trip Card Sharing** (Update #62-#66)
-   - Removed unnecessary "Share this code" text from trip cards
-   - Changed button text from "Generate Shareable Link" to "Invite Link"
-   - **Implemented dynamic trip card image generation** for Open Graph previews
-   - **Added blurred Google Places backgrounds** to OG images for rich social sharing
-   - **Streamlined to one-click "Copy Invite Link"** (generate + copy combined)
-   - Fixed trip card display to show only place name and code (larger text)
+3. **Auto-Select Current User & Balance Logic** (Update #73)
+   - **Smart Defaults**: Auto-select logged-in user as "Paid by" in add expense form
+   - **Verified Balance Calculation**: Confirmed existing balance logic works correctly
+   - **Enhanced User Experience**: Reduces friction when adding expenses
 
-4. **Fixed Join Link Username & Background Issues** (January 21, 2025)
-   - **Username Race Condition Fix**: Added localStorage fallback for authentication timing issues
-   - **Context-Aware Authentication**: Prevents existing users from being redirected away from join flow
-   - **Trip Card Background Fix**: Location images now appear blurred **inside the trip card** (not page background)
-   - **Visual Polish**: Perth Amboy background shows properly in "Joined Trip!" success page
+4. **Previous Major Features** (Updates #70-72)
+   - **Enhanced Open Graph Images**: Fixed image repetition and improved text legibility
+   - **Cost Logic Implementation**: Comprehensive balance calculation with settlement system
+   - **Visual Improvements**: Better shadows, contrast, and dark theme consistency
 
 ### **Key Technical Achievements:**
-- **Dynamic OG Image Generation**: Beautiful trip cards with destination photos for iMessage/social sharing
-- **Vercel Blob Integration**: Storing generated images for persistent social previews  
-- **One-Click Sharing UX**: Eliminated multi-step sharing friction
-- **Database Migration**: Updated all historical merchant names to uppercase
-- **Enhanced Visual Design**: Simplified trip cards with better typography
-- **Robust Join Flow**: Fixed authentication race conditions and background image display
-- **TripCard Background Support**: Location images beautifully blurred inside trip cards with text overlay
+- **Venmo Payment Integration**: Native iOS/Android deeplink integration with prefilled payment details
+- **Settlement System**: Complete debt calculation and payment tracking functionality  
+- **Animated UI Components**: Smooth 300ms transitions for balance card expansion
+- **Smart Event Handling**: Proper click event separation for complex interactive elements
+- **Dark Theme Consistency**: All settlement components properly styled for dark mode
+- **Payment State Management**: Bidirectional toggle system with local state persistence
+- **Real-time Settlement Data**: Integration with backend settlement API endpoints
+- **Visual Polish**: Official payment app branding with proper hover states and feedback
 
 ---
 
@@ -297,11 +300,12 @@ GOOGLE_PLACES_API_KEY= # Location autocomplete
 - ✅ Context-aware authentication flow for shared trips
 
 ### **Current State:**
-- All major sharing features working
-- Beautiful OG images for social previews
-- Streamlined one-click sharing UX
-- Robust passkey authentication
-- Smart receipt scanning with AI
+- ✅ **Complete Settlement System**: Animated balance expansion with payment tracking
+- ✅ **Venmo Integration**: Native payment app integration with deeplinks
+- ✅ **Smart UI Interactions**: Full card click areas with proper event handling
+- ✅ **Dark Theme Consistency**: All components properly styled for dark mode
+- ✅ **Real-time Balance Updates**: Live settlement calculations with database integration
+- ✅ **Payment State Persistence**: Toggle functionality with local state management
 
 ---
 
@@ -358,5 +362,5 @@ The app is in excellent shape with all core features working beautifully. Focus 
 ---
 
 **Last Updated**: January 21, 2025
-**Latest Updates**: Join link username fix + trip card background image fix
-**Status**: ✅ All systems operational, join flow working perfectly 
+**Latest Updates**: Venmo integration for settlement payments + animated balance card expansion
+**Status**: ✅ All systems operational, settlement system with payment integration complete 

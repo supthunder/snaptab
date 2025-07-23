@@ -3,6 +3,159 @@
 ## Overview
 This file tracks all updates, features, and improvements made to the SnapTab expense tracking app.
 
+## 🎯 **Current Session Status** (January 21, 2025)
+**Latest Completed**: Update #79 - Custom Venmo Username Support  
+**Key Achievements**: 
+- ✅ Complete settlement system with animated balance card expansion
+- ✅ Venmo payment integration with native deeplinks
+- ✅ Custom Venmo username functionality with database storage
+- ✅ Enhanced UI interactions with proper event handling
+- ✅ Venmo username edit modal with validation and removal
+- ✅ Dark theme consistency across all settlement components
+- ✅ Payment state management with bidirectional toggle functionality
+
+**System Status**: All major features operational, settlement flow complete with customizable Venmo integration.
+
+---
+
+## Update #79: Custom Venmo Username Support  
+**Date**: 2025-01-21  
+**Status**: ✅ Complete
+
+### User Request:
+> "lets make a way for the venmo username to work if it is diff from my main username when i clikc o n balance and it opesnthis card above settel ment details add a venmo icon + username i can click the edit icon next to it to set the username/unset etc"
+
+### Changes Implemented:
+
+#### **1. Database Schema Changes**
+**Added venmo_username column to users table:**
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS venmo_username VARCHAR(50)
+```
+
+**Updated User Interface:**
+```typescript
+export interface User {
+  id: string
+  username: string
+  display_name?: string
+  avatar_url?: string
+  venmo_username?: string  // New field
+  created_at: string
+  updated_at: string
+}
+```
+
+#### **2. API Endpoints for Venmo Username Management**
+**Created `/api/users/venmo` with full CRUD operations:**
+- **GET** `?username=<username>` - Retrieve user's Venmo username
+- **PUT** with `{username, venmoUsername}` - Set/update Venmo username
+- **DELETE** with `{username}` - Remove Venmo username (set to null)
+
+**Database Functions Added:**
+- `getUserVenmoUsername(username)` - Fetch Venmo username
+- `setUserVenmoUsername(username, venmoUsername)` - Update Venmo username
+- `removeUserVenmoUsername(username)` - Clear Venmo username
+
+#### **3. Enhanced Settlement Card UI**
+**Venmo Username Display:**
+- Added Venmo icon + username display above "Settlement Details"
+- Shows custom Venmo username if set, otherwise shows main username
+- Clean visual integration with existing settlement card design
+
+**Edit Functionality:**
+- Edit icon (pencil) next to Venmo username
+- Click to open modal dialog for editing
+- Input field with placeholder and validation
+- Save/Remove buttons for full control
+
+#### **4. Smart Venmo Username Management**
+**Default Behavior:**
+- Defaults to main app username if no custom Venmo username set
+- Visual indicator shows which username is being used
+
+**Edit Modal Features:**
+- Pre-fills current Venmo username in edit field
+- Clear explanatory text about usage
+- Save button updates database and UI
+- Remove button clears custom username (reverts to main username)
+- Loading states during API operations
+
+#### **5. Enhanced User Experience**
+**Automatic Loading:**
+- Venmo username loaded when balance card expands
+- Seamless integration with existing settlement data loading
+- No additional user interaction required
+
+**Visual Design:**
+- Official Venmo blue color for icon consistency
+- Proper spacing and typography alignment
+- Clean separation from settlement details with border
+- Responsive modal dialog
+
+### Technical Implementation:
+
+#### **Database Layer:**
+```typescript
+// New database functions
+export async function getUserVenmoUsername(username: string): Promise<string | null>
+export async function setUserVenmoUsername(username: string, venmoUsername: string): Promise<boolean>
+export async function removeUserVenmoUsername(username: string): Promise<boolean>
+```
+
+#### **API Layer:**
+```typescript
+// Full REST API for Venmo username management
+GET /api/users/venmo?username=<username>
+PUT /api/users/venmo {username, venmoUsername}
+DELETE /api/users/venmo {username}
+```
+
+#### **Frontend State Management:**
+```typescript
+const [venmoUsername, setVenmoUsername] = useState<string | null>(null)
+const [isVenmoDialogOpen, setIsVenmoDialogOpen] = useState(false)
+const [venmoEditValue, setVenmoEditValue] = useState('')
+const [isLoadingVenmo, setIsLoadingVenmo] = useState(false)
+```
+
+### User Experience Flow:
+
+#### **Setting Custom Venmo Username:**
+1. Click balance card to expand settlement details
+2. See current Venmo username (main username if not set)
+3. Click edit icon to open modal
+4. Enter custom Venmo username
+5. Click Save → Database updated, UI refreshed
+
+#### **Removing Custom Venmo Username:**
+1. Open edit modal
+2. Click Remove button
+3. Venmo username cleared → Reverts to main username display
+
+#### **Payment Flow (Unchanged):**
+1. Click Venmo button on debt card
+2. Opens Venmo app with correct recipient (the person they owe)
+3. Pre-filled payment amount and trip note
+
+### Benefits:
+
+#### **User Flexibility:**
+- ✅ **Different Platform Usernames**: Users can have different usernames across apps
+- ✅ **Easy Management**: Simple UI for setting and updating Venmo credentials
+- ✅ **Smart Defaults**: No setup required - works with main username by default
+
+#### **Technical Robustness:**
+- ✅ **Database Integration**: Persistent storage of Venmo usernames
+- ✅ **API Validation**: Proper validation and error handling
+- ✅ **UI/UX Polish**: Smooth animations and loading states
+- ✅ **Backwards Compatibility**: Existing users unaffected by changes
+
+#### **Business Value:**
+- ✅ **Payment Friction Reduction**: Correct usernames = successful payments
+- ✅ **User Adoption**: Accommodates real-world username variations
+- ✅ **Platform Integration**: Better integration with popular payment apps
+
 ---
 
 ## Update #78: Venmo Integration for Settlement Payments  
