@@ -788,65 +788,9 @@ export default function HomePage() {
     fileInputRef.current?.click()
   }
 
-  // Helper function to save photo to device
-  const savePhotoToDevice = async (file: File) => {
-    try {
-      // Check if Web Share API is available (better for mobile)
-      if (navigator.share && navigator.canShare) {
-        try {
-          const shareData = {
-            files: [file],
-            title: 'SnapTab Receipt',
-            text: 'Receipt photo from SnapTab'
-          }
-          
-          if (navigator.canShare(shareData)) {
-            // Let user choose how to save/share the photo
-            await navigator.share(shareData)
-            console.log('Photo shared successfully via Web Share API')
-            return
-          }
-        } catch (shareError) {
-          console.log('Web Share API failed, falling back to download:', shareError)
-          // Fall through to download method
-        }
-      }
-      
-      // Fallback: Create download link
-      const url = URL.createObjectURL(file)
-      
-      // Create a temporary anchor element to trigger download
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `snaptab-receipt-${Date.now()}.${file.name.split('.').pop() || 'jpg'}`
-      
-      // For mobile Safari, we need to handle it differently
-      if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        // On iOS, open in new window so user can save manually
-        window.open(url, '_blank')
-      } else {
-        // Append to body, click, and remove
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-      }
-      
-      // Clean up the temporary URL after a delay
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
-      
-      console.log('Photo saved to device successfully')
-    } catch (error) {
-      console.error('Failed to save photo to device:', error)
-      // Don't throw error - this is a nice-to-have feature
-    }
-  }
-
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-
-    // Save photo to device immediately after selection
-    await savePhotoToDevice(file)
 
     setIsScanning(true)
     setError(null)
@@ -858,8 +802,6 @@ export default function HomePage() {
       { text: 'API called, checking environment...', type: 'info' as const },
       { text: 'Processing form data...', type: 'info' as const },
       { text: `File received: ${file.name} ${file.type} ${file.size}`, type: 'success' as const },
-      { text: 'Saving photo to device gallery...', type: 'info' as const },
-      { text: 'Photo saved to device successfully ✓', type: 'success' as const },
       { text: 'OpenAI API key found, initializing client...', type: 'info' as const },
       { text: 'OpenAI client initialized successfully', type: 'success' as const },
       { text: 'Converting file to base64...', type: 'warning' as const },

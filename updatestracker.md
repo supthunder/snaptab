@@ -3,8 +3,8 @@
 ## Overview
 This file tracks all updates, features, and improvements made to the SnapTab expense tracking app.
 
-## 🎯 **Current Session Status** (January 21, 2025)
-**Latest Completed**: Update #80 - Settlement Card UI Cleanup and Layout Improvements  
+## 🎯 **Current Session Status** (January 25, 2025)
+**Latest Completed**: Update #81 - Reverted Photo Save Feature from Previous Commit  
 **Key Achievements**: 
 - ✅ Complete settlement system with animated balance card expansion
 - ✅ Venmo payment integration with native deeplinks
@@ -14,8 +14,84 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - ✅ Venmo username edit modal with validation and removal
 - ✅ Dark theme consistency across all settlement components
 - ✅ Payment state management with bidirectional toggle functionality
+- ✅ Code reverted to clean state (removed experimental photo save feature)
 
-**System Status**: All major features operational, settlement flow complete with polished UI and customizable Venmo integration.
+**System Status**: All major features operational, settlement flow complete with polished UI. Experimental features removed to maintain stable codebase.
+
+---
+
+## Update #81: Reverted Photo Save Feature from Previous Commit  
+**Date**: 2025-01-25  
+**Status**: ✅ Complete
+
+### User Request:
+> "this file@page.tsx remove all the changes to this file from the previous cmomit"
+
+### Changes Reverted:
+
+#### **1. Removed `savePhotoToDevice` Function**
+**Removed**: Complete 56-line function that handled photo saving to device
+- Web Share API implementation for mobile sharing
+- Fallback download link creation for desktop
+- iOS-specific handling with `window.open()`
+- URL cleanup and error handling
+
+#### **2. Removed Photo Save Call**
+**Removed**: `await savePhotoToDevice(file)` call from `handleFileUpload` function
+- No longer automatically saves photos to device after scanning
+- Simplified scan flow without device storage interaction
+
+#### **3. Removed Terminal Log Entries**
+**Removed**: Two log entries from terminal animation:
+- `'Saving photo to device gallery...', type: 'info'`
+- `'Photo saved to device successfully ✓', type: 'success'`
+
+#### **4. Reverted MembersList Event Handling**
+**Reverted**: `onEditClick` prop back to proper event handling
+```jsx
+// Restored proper event handling
+onEditClick={(e) => {
+  e?.stopPropagation()
+  setIsMembersModalOpen(true)
+}}
+```
+
+### Technical Changes Reverted:
+
+#### **Photo Save Feature Removal:**
+- Removed Web Share API integration
+- Removed download link creation logic
+- Removed iOS-specific photo saving handling
+- Removed file URL cleanup and error handling
+
+#### **Terminal Animation Cleanup:**
+- Reduced terminal log sequence by 2 entries
+- Simplified scan flow timeline
+- Removed photo save status updates
+
+#### **Event Handling Fix:**
+- Restored proper event propagation control
+- Fixed balance card click interaction
+- Maintained proper component isolation
+
+### Impact of Reversion:
+
+#### **Before Revert (Previous Commit):**
+- Photos automatically saved to device gallery after scanning
+- Extended terminal animation with save status
+- Potential event handling conflicts with balance card
+
+#### **After Revert (Current State):**
+- ✅ **Clean Scan Flow**: Receipt scanning without automatic photo saving
+- ✅ **Simplified Terminal**: Focused terminal logs without save operations  
+- ✅ **Proper Events**: Balance card interactions work correctly
+- ✅ **Stable Codebase**: Removed experimental features that may have caused issues
+
+### Reason for Reversion:
+User requested removal of all changes from the previous "testing save files" commit to maintain a clean, stable codebase without experimental photo saving functionality.
+
+### Files Modified:
+- `app/page.tsx` - Reverted all changes from commit "b8a2ef0"
 
 ---
 
