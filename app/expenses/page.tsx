@@ -55,6 +55,7 @@ export default function ExpensesPage() {
               id: expense.id,
               tripId: expense.trip_id,
               description: expense.name,
+              merchantName: expense.merchant_name,
               amount: parseFloat(expense.total_amount || 0),
               date: expense.expense_date,
               paidBy: expense.paid_by_username || "You",
@@ -269,7 +270,7 @@ export default function ExpensesPage() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className="font-medium text-lg mb-1">
-                        {expense.summary || expense.description}
+                        {expense.merchantName || expense.summary || expense.description}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {expense.paidBy} • {formatDate(expense.date)}

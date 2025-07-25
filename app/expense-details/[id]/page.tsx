@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   getCategoryColor, 
   type Trip, 
@@ -118,6 +119,7 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
               if (tripResponse.ok) {
                 const tripData = await tripResponse.json()
                 setTrip(tripData.trip)
+                setTripMembers(tripData.members?.map((member: any) => member.username) || [])
               }
             } catch (error) {
               console.error('Failed to load trip data:', error)
@@ -404,12 +406,21 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                   </div>
                   <div>
                     <Label htmlFor="paidBy">Paid By</Label>
-                    <Input
-                      id="paidBy"
+                    <Select
                       value={editForm.paidBy}
-                      onChange={(e) => setEditForm({...editForm, paidBy: e.target.value})}
-                      placeholder="Enter who paid"
-                    />
+                      onValueChange={(value) => setEditForm({...editForm, paidBy: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select who paid" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tripMembers.map((member) => (
+                          <SelectItem key={member} value={member}>
+                            {member}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="date">Date</Label>

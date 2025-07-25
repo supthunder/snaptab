@@ -12,6 +12,7 @@ export interface ItemAssignment {
 export interface Expense {
   id: string
   description: string
+  merchantName?: string
   amount: number
   date: string
   paidBy: string
