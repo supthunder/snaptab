@@ -1318,4 +1318,95 @@ export async function testNewDatabaseConnection() {
     console.error('❌ New database connection failed:', error)
     return { success: false, error }
   }
+}
+
+// Passkey authentication functions
+export async function getUserById(userId: string): Promise<User | null> {
+  try {
+    const result = await sql`
+      SELECT id, username, display_name, created_at, updated_at, avatar_url
+      FROM users 
+      WHERE id = ${userId}
+    `
+    
+    if (result.rows.length === 0) {
+      return null
+    }
+    
+    const row = result.rows[0]
+    return {
+      id: row.id,
+      username: row.username,
+      display_name: row.display_name,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      avatar_url: row.avatar_url
+    }
+  } catch (error) {
+    console.error('Error getting user by ID:', error)
+    return null
+  }
+}
+
+export async function getPasskeyCredentialsByUserId(userId: string): Promise<any[]> {
+  try {
+    const result = await sql`
+      SELECT id, credential_id, public_key, counter, created_at
+      FROM passkey_credentials 
+      WHERE user_id = ${userId}
+    `
+    
+    return result.rows.map(row => ({
+      id: row.id,
+      credentialId: row.credential_id,
+      publicKey: row.public_key,
+      counter: row.counter,
+      createdAt: row.created_at
+    }))
+  } catch (error) {
+    console.error('Error getting passkey credentials by user ID:', error)
+    return []
+  }
+}
+
+export async function getPasskeyCredentialByCredentialId(credentialId: string): Promise<any | null> {
+  try {
+    const result = await sql`
+      SELECT id, user_id, credential_id, public_key, counter, created_at
+      FROM passkey_credentials 
+      WHERE credential_id = ${credentialId}
+    `
+    
+    if (result.rows.length === 0) {
+      return null
+    }
+    
+    const row = result.rows[0]
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      credential_id: row.credential_id,
+      public_key: row.public_key,
+      counter: row.counter,
+      created_at: row.created_at
+    }
+  } catch (error) {
+    console.error('Error getting passkey credential by credential ID:', error)
+    return null
+  }
+}
+
+export async function updatePasskeyCredentialCounter(credentialId: string, counter: number): Promise<boolean> {
+  try {
+    const result = await sql`
+      UPDATE passkey_credentials 
+      SET counter = ${counter}, updated_at = NOW()
+      WHERE credential_id = ${credentialId}
+    `
+    
+    return result.rowCount > 0
+  } catch (error) {
+    console.error('Error updating passkey credential counter:', error)
+    return false
+  }
 } 
