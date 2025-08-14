@@ -1346,7 +1346,9 @@ export default function HomePage() {
                 onClick={handleBalanceCardClick}
               >
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <p className="text-muted-foreground text-sm">Your balance to pay</p>
+                  <p className="text-muted-foreground text-sm">
+                  {userBalance < 0 ? "Your balance to pay" : userBalance > 0 ? "You are owed" : "All settled"}
+                </p>
                   {isBalanceExpanded ? (
                     <ChevronUp className="h-4 w-4 text-muted-foreground" />
                   ) : (
@@ -1354,9 +1356,9 @@ export default function HomePage() {
                   )}
                 </div>
                 <div className="text-4xl font-bold">
-                  <span className={userBalance < 0 ? "text-red-400" : "text-muted-foreground"}>
+                  <span className={userBalance < 0 ? "text-red-400" : userBalance > 0 ? "text-green-400" : "text-muted-foreground"}>
                     {getCurrencySymbol(activeTrip.currency)}
-                    {userBalance < 0 ? Math.abs(Number(userBalance || 0)).toFixed(2) : "0.00"}
+                    {Math.abs(Number(userBalance || 0)).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -1896,10 +1898,12 @@ export default function HomePage() {
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-muted-foreground">Balance to Pay</p>
-                                  <p className={`font-medium ${userBalance < 0 ? "text-red-400" : "text-muted-foreground"}`}>
+                                  <p className="text-muted-foreground">
+                                    {userBalance < 0 ? "Balance to Pay" : userBalance > 0 ? "You Are Owed" : "All Settled"}
+                                  </p>
+                                  <p className={`font-medium ${userBalance < 0 ? "text-red-400" : userBalance > 0 ? "text-green-400" : "text-muted-foreground"}`}>
                                     {getCurrencySymbol(trip.currency)}
-                                    {userBalance < 0 ? Math.abs(Number(userBalance || 0)).toFixed(2) : "0.00"}
+                                    {Math.abs(Number(userBalance || 0)).toFixed(2)}
                                   </p>
                                 </div>
                               </div>
