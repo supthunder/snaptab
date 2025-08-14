@@ -1400,7 +1400,7 @@ export async function updatePasskeyCredentialCounter(credentialId: string, count
   try {
     const result = await sql`
       UPDATE passkey_credentials 
-      SET counter = ${counter}, updated_at = NOW()
+      SET counter = ${counter}
       WHERE credential_id = ${credentialId}
     `
     

@@ -14,8 +14,7 @@ export async function POST(request: NextRequest) {
         credential_id TEXT UNIQUE NOT NULL,
         public_key TEXT NOT NULL,
         counter INTEGER DEFAULT 0,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `
     
