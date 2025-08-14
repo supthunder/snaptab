@@ -1,103 +1,95 @@
 import { sql } from '@vercel/postgres'
 
-// Types for the new database schema
+// Database types
 export interface User {
-  id: string
-  username: string
-  display_name?: string
-  avatar_url?: string
-  venmo_username?: string
-  created_at: string
-  updated_at: string
+  id: string;
+  username: string;
+  display_name?: string;
+  passkey_credential?: any;
+  created_at: string;
+  avatar_url?: string;
+  venmo_username?: string;
 }
 
 export interface Trip {
-  id: string
-  trip_code: number
-  name: string
-  currency: string
-  created_by: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface TripMember {
-  id: string
-  trip_id: string
-  user_id: string
-  joined_at: string
-  is_active: boolean
+  id: string;
+  trip_code: number;
+  name: string;
+  place_name?: string;
+  background_image_url?: string;
+  created_by: string;
+  created_at: string;
+  is_active: boolean;
+  currency: string;
 }
 
 export interface Expense {
-  id: string
-  trip_id: string
-  name: string
-  description?: string
-  merchant_name?: string
-  total_amount: number
-  currency: string
-  receipt_image_url?: string
-  expense_date: string
-  paid_by: string
-  split_with: string[] // Array of user IDs who this expense is split with
-  split_mode: 'even' | 'items' // How the expense is split
-  category?: string
-  summary?: string
-  emoji?: string
-  tax_amount?: number
-  tip_amount?: number
-  confidence?: number
-  created_at: string
-  updated_at: string
+  id: string;
+  trip_id: string;
+  name: string;
+  description?: string;
+  merchant_name?: string;
+  total_amount: number;
+  currency: string;
+  receipt_image_url?: string;
+  expense_date: string;
+  paid_by: string;
+  split_with: string[];
+  split_mode: 'even' | 'items';
+  category?: string;
+  summary?: string;
+  emoji?: string;
+  tax_amount?: number;
+  tip_amount?: number;
+  confidence?: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ExpenseItem {
-  id: string
-  expense_id: string
-  name: string
-  price: number
-  quantity: number
-  item_order: number
-  created_at: string
+  id: string;
+  expense_id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  item_order: number;
+  created_at: string;
 }
 
 export interface ItemAssignment {
-  id: string
-  expense_item_id: string
-  user_id: string
-  assigned_at: string
-}
-
-export interface PasskeyCredential {
-  id: string
-  user_id: string
-  credential_id: string
-  public_key: string
-  counter: number
-  device_name?: string
-  created_at: string
-  last_used_at?: string
+  id: string;
+  expense_item_id: string;
+  user_id: string;
+  assigned_at: string;
 }
 
 export interface SettlementPayment {
-  id: string
-  trip_id: string
-  from_user_id: string
-  to_user_id: string
-  amount: number
-  is_paid: boolean
-  paid_at?: string
-  marked_by_user_id?: string
-  created_at: string
-  updated_at: string
+  id: string;
+  trip_id: string;
+  from_user_id: string;
+  to_user_id: string;
+  amount: number;
+  is_paid: boolean;
+  paid_at?: string;
+  marked_by_user_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TripShare {
+  id: string;
+  share_code: string;
+  trip_code: number;
+  og_image_url?: string;
+  username?: string;
+  place_name?: string;
+  created_at: string;
 }
 
 // Database initialization - create the new schema
 export async function initializeNewDatabase() {
   try {
-    console.log('🔧 Creating new SnapTab database schema...')
+    console.log('🚀 Initializing new database schema...')
 
     // Create users table
     await sql`
@@ -105,38 +97,25 @@ export async function initializeNewDatabase() {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         username VARCHAR(50) UNIQUE NOT NULL,
         display_name VARCHAR(100),
+        passkey_credential JSONB,
         avatar_url TEXT,
         venmo_username VARCHAR(50),
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `
 
-    // Create passkey_credentials table
-    await sql`
-      CREATE TABLE IF NOT EXISTS passkey_credentials (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        credential_id VARCHAR(255) UNIQUE NOT NULL,
-        public_key TEXT NOT NULL,
-        counter BIGINT DEFAULT 0,
-        device_name VARCHAR(100),
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        last_used_at TIMESTAMPTZ
-      )
-    `
-
-    // Create trips table with 3-digit codes
+    // Create trips table
     await sql`
       CREATE TABLE IF NOT EXISTS trips (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        trip_code INTEGER UNIQUE NOT NULL CHECK (trip_code >= 100 AND trip_code <= 999),
-        name VARCHAR(100) NOT NULL,
-        currency VARCHAR(3) DEFAULT 'USD',
+        trip_code INTEGER UNIQUE NOT NULL,
+        name VARCHAR(200) NOT NULL,
+        place_name VARCHAR(200),
+        background_image_url TEXT,
+        currency VARCHAR(3) NOT NULL DEFAULT 'USD',
         created_by UUID NOT NULL REFERENCES users(id),
-        is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
+        is_active BOOLEAN DEFAULT true
       )
     `
 
@@ -210,7 +189,7 @@ export async function initializeNewDatabase() {
         from_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         to_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         amount DECIMAL(10,2) NOT NULL,
-        is_paid BOOLEAN DEFAULT FALSE,
+        is_paid BOOLEAN DEFAULT false,
         paid_at TIMESTAMPTZ,
         marked_by_user_id UUID REFERENCES users(id),
         created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -219,354 +198,284 @@ export async function initializeNewDatabase() {
       )
     `
 
-    // Create indexes (with error handling)
-    console.log('Creating indexes...')
-    try {
-      await sql`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_passkey_credentials_user_id ON passkey_credentials(user_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_passkey_credentials_credential_id ON passkey_credentials(credential_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_trips_code ON trips(trip_code)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_trips_created_by ON trips(created_by)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_trips_active ON trips(is_active)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_trip_members_trip ON trip_members(trip_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_trip_members_user ON trip_members(user_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_trip_members_active ON trip_members(is_active)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_expenses_trip ON expenses(trip_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_expenses_paid_by ON expenses(paid_by)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_expenses_created_at ON expenses(created_at)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_expense_items_expense ON expense_items(expense_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_expense_items_order ON expense_items(expense_id, item_order)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_item_assignments_item ON item_assignments(expense_item_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_item_assignments_user ON item_assignments(user_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_expenses_split_with ON expenses USING GIN (split_with)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_settlement_payments_trip ON settlement_payments(trip_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_settlement_payments_from_user ON settlement_payments(from_user_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_settlement_payments_to_user ON settlement_payments(to_user_id)`
-      await sql`CREATE INDEX IF NOT EXISTS idx_settlement_payments_paid ON settlement_payments(is_paid)`
-      console.log('Indexes created successfully')
-    } catch (indexError) {
-      console.warn('Some indexes may have failed to create:', indexError)
-      // Continue anyway - indexes are not critical for basic functionality
-    }
+    // Create trip_shares table for sharing system
+    await sql`
+      CREATE TABLE IF NOT EXISTS trip_shares (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        share_code VARCHAR(10) UNIQUE NOT NULL,
+        trip_code INTEGER NOT NULL,
+        og_image_url TEXT,
+        username VARCHAR(50),
+        place_name VARCHAR(200),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
 
-    console.log('✅ New database schema created successfully!')
-    return { success: true }
+    console.log('✅ New database schema initialized successfully')
+    return true
   } catch (error) {
-    console.error('❌ Database schema creation failed:', error)
-    return { success: false, error }
+    console.error('❌ Error initializing new database:', error)
+    throw error
   }
 }
 
-// User Management Functions
-export async function createUser(username: string, displayName?: string, avatarUrl?: string): Promise<User | null> {
+// Create a new user with passkey
+export async function createUser(username: string, displayName?: string, passkeyCredential?: any): Promise<User | null> {
   try {
-    // Validate username
-    if (!isValidUsername(username)) {
-      throw new Error('Invalid username format')
-    }
-
     const result = await sql`
-      INSERT INTO users (username, display_name, avatar_url)
-      VALUES (${username.toLowerCase()}, ${displayName}, ${avatarUrl})
+      INSERT INTO users (username, display_name, passkey_credential)
+      VALUES (${username}, ${displayName || null}, ${passkeyCredential ? JSON.stringify(passkeyCredential) : null})
       RETURNING *
     `
+    
+    if (result.rows.length > 0) {
     return result.rows[0] as User
+    }
+    return null
   } catch (error) {
     console.error('Error creating user:', error)
     return null
   }
 }
 
+// Get user by username
 export async function getUserByUsername(username: string): Promise<User | null> {
   try {
     const result = await sql`
-      SELECT * FROM users WHERE username = ${username.toLowerCase()} LIMIT 1
+      SELECT * FROM users WHERE username = ${username}
     `
-    return result.rows[0] as User || null
+    
+    if (result.rows.length > 0) {
+      return result.rows[0] as User
+    }
+    return null
   } catch (error) {
-    console.error('Error fetching user:', error)
+    console.error('Error getting user by username:', error)
     return null
   }
 }
 
-export async function getUserById(userId: string): Promise<User | null> {
-  try {
-    const result = await sql`
-      SELECT * FROM users WHERE id = ${userId} LIMIT 1
-    `
-    return result.rows[0] as User || null
-  } catch (error) {
-    console.error('Error fetching user by ID:', error)
-    return null
-  }
-}
-
-export async function updateUser(username: string, updates: Partial<User>): Promise<User | null> {
+// Update user's passkey credential
+export async function updateUserPasskey(username: string, passkeyCredential: any): Promise<boolean> {
   try {
     const result = await sql`
       UPDATE users 
-      SET 
-        display_name = COALESCE(${updates.display_name}, display_name),
-        avatar_url = COALESCE(${updates.avatar_url}, avatar_url),
-        updated_at = NOW()
-      WHERE username = ${username.toLowerCase()}
-      RETURNING *
+      SET passkey_credential = ${JSON.stringify(passkeyCredential)}
+      WHERE username = ${username}
     `
-    return result.rows[0] as User || null
+    
+    return (result.rowCount ?? 0) > 0
   } catch (error) {
-    console.error('Error updating user:', error)
-    return null
+    console.error('Error updating user passkey:', error)
+    return false
   }
 }
 
-export async function updateUserAvatar(username: string, avatarUrl: string): Promise<User | null> {
-  try {
+// Generate a unique 3-digit trip code
+async function generateUniqueTripCode(): Promise<number> {
+  let attempts = 0
+  const maxAttempts = 100
+
+  while (attempts < maxAttempts) {
+    const tripCode = Math.floor(Math.random() * 900) + 100 // 100-999
+    
     const result = await sql`
-      UPDATE users 
-      SET 
-        avatar_url = ${avatarUrl},
-        updated_at = NOW()
-      WHERE username = ${username.toLowerCase()}
-      RETURNING *
+      SELECT trip_code FROM trips WHERE trip_code = ${tripCode}
     `
-    return result.rows[0] as User || null
-  } catch (error) {
-    console.error('Error updating user avatar:', error)
-    return null
+    
+    if (result.rows.length === 0) {
+      return tripCode
+    }
+    
+    attempts++
   }
+  
+  throw new Error('Could not generate unique trip code after 100 attempts')
 }
 
-// Get user's Venmo username
-export async function getUserVenmoUsername(username: string): Promise<string | null> {
+// Create a new trip
+export async function createTrip(
+  name: string, 
+  createdByUsername: string, 
+  placeName?: string, 
+  backgroundImageUrl?: string,
+  currency: string = 'USD'
+): Promise<{ trip: Trip; tripCode: number } | null> {
   try {
-    const result = await sql`
-      SELECT venmo_username FROM users WHERE username = ${username.toLowerCase()} LIMIT 1
-    `
-    return result.rows[0]?.venmo_username || null
-  } catch (error) {
-    console.error('Error fetching Venmo username:', error)
-    return null
-  }
-}
-
-// Set user's Venmo username
-export async function setUserVenmoUsername(username: string, venmoUsername: string): Promise<boolean> {
-  try {
-    // Validate venmo username
-    if (!isValidUsername(venmoUsername)) {
-      throw new Error('Invalid Venmo username format')
+    // Get user by username
+    const user = await getUserByUsername(createdByUsername)
+    if (!user) {
+      console.error('User not found:', createdByUsername)
+      return null
     }
 
-    await sql`
-      UPDATE users 
-      SET venmo_username = ${venmoUsername.toLowerCase()}, updated_at = NOW()
-      WHERE username = ${username.toLowerCase()}
-    `
-    return true
-  } catch (error) {
-    console.error('Error setting Venmo username:', error)
-    return false
-  }
-}
-
-// Remove user's Venmo username
-export async function removeUserVenmoUsername(username: string): Promise<boolean> {
-  try {
-    await sql`
-      UPDATE users 
-      SET venmo_username = NULL, updated_at = NOW()
-      WHERE username = ${username.toLowerCase()}
-    `
-    return true
-  } catch (error) {
-    console.error('Error removing Venmo username:', error)
-    return false
-  }
-}
-
-// Trip Management Functions
-export async function createTrip(name: string, currency: string, createdByUsername: string): Promise<{ trip: Trip; tripCode: number } | null> {
-  try {
-    console.log('Creating trip for user:', createdByUsername)
-    
-    // Get user
-    const user = await getUserByUsername(createdByUsername)
-    console.log('Found user:', user ? 'Yes' : 'No', user?.id)
-    if (!user) throw new Error('User not found')
-
     // Generate unique trip code
-    console.log('Generating trip code...')
     const tripCode = await generateUniqueTripCode()
-    console.log('Generated trip code:', tripCode)
     
-    console.log('Inserting trip into database...')
+    // Create trip
     const result = await sql`
-      INSERT INTO trips (trip_code, name, currency, created_by)
-      VALUES (${tripCode}, ${name}, ${currency}, ${user.id})
+      INSERT INTO trips (trip_code, name, place_name, background_image_url, currency, created_by)
+      VALUES (${tripCode}, ${name}, ${placeName || null}, ${backgroundImageUrl || null}, ${currency}, ${user.id})
       RETURNING *
     `
     
+    if (result.rows.length > 0) {
     const trip = result.rows[0] as Trip
-    console.log('Trip created:', trip.id)
 
-    // Add creator as member
-    console.log('Adding creator as member...')
+      // Add creator as first member
     await sql`
       INSERT INTO trip_members (trip_id, user_id)
       VALUES (${trip.id}, ${user.id})
     `
-    console.log('Creator added as member')
 
     return { trip, tripCode }
+    }
+    return null
   } catch (error) {
     console.error('Error creating trip:', error)
     return null
   }
 }
 
-export async function getTripByCode(tripCode: number): Promise<Trip | null> {
+// Get trip by code
+export async function getTripByCode(tripCode: number): Promise<{ trip: Trip; members: User[] } | null> {
   try {
-    const result = await sql`
-      SELECT * FROM trips WHERE trip_code = ${tripCode} AND is_active = true LIMIT 1
+    const tripResult = await sql`
+      SELECT * FROM trips WHERE trip_code = ${tripCode}
     `
-    return result.rows[0] as Trip || null
+    
+    if (tripResult.rows.length === 0) {
+    return null
+    }
+    
+    const trip = tripResult.rows[0] as Trip
+    
+    // Get trip members
+    const membersResult = await sql`
+      SELECT u.* FROM users u
+      JOIN trip_members tm ON u.id = tm.user_id
+      WHERE tm.trip_id = ${trip.id} AND tm.is_active = true
+    `
+    
+    const members = membersResult.rows as User[]
+    
+    return { trip, members }
   } catch (error) {
-    console.error('Error fetching trip:', error)
+    console.error('Error getting trip by code:', error)
     return null
   }
 }
 
-export async function joinTrip(tripCode: number, username: string): Promise<boolean> {
+// Add user to trip
+export async function addUserToTrip(tripCode: number, username: string): Promise<boolean> {
   try {
-    const trip = await getTripByCode(tripCode)
-    const user = await getUserByUsername(username)
-    
-    if (!trip || !user) return false
-
-    // Check if already a member
-    const existing = await sql`
-      SELECT id FROM trip_members 
-      WHERE trip_id = ${trip.id} AND user_id = ${user.id}
+    // Get trip
+    const tripResult = await sql`
+      SELECT id FROM trips WHERE trip_code = ${tripCode}
     `
     
-    if (existing.rows.length > 0) {
-      // Reactivate if inactive
-      await sql`
-        UPDATE trip_members 
-        SET is_active = true 
-        WHERE trip_id = ${trip.id} AND user_id = ${user.id}
-      `
-      return true
+    if (tripResult.rows.length === 0) {
+      return false
     }
-
-    // Add as new member
+    
+    const tripId = tripResult.rows[0].id
+    
+    // Get user
+    const user = await getUserByUsername(username)
+    if (!user) {
+      return false
+    }
+    
+    // Add to trip (ON CONFLICT DO NOTHING handles duplicates)
     await sql`
       INSERT INTO trip_members (trip_id, user_id)
-      VALUES (${trip.id}, ${user.id})
+      VALUES (${tripId}, ${user.id})
+      ON CONFLICT (trip_id, user_id) DO UPDATE SET is_active = true
     `
     
     return true
   } catch (error) {
-    console.error('Error joining trip:', error)
+    console.error('Error adding user to trip:', error)
     return false
   }
 }
 
-export async function getTripMembers(tripCode: number): Promise<User[]> {
-  try {
-    const result = await sql`
-      SELECT u.* 
-      FROM users u
-      JOIN trip_members tm ON u.id = tm.user_id
-      JOIN trips t ON tm.trip_id = t.id
-      WHERE t.trip_code = ${tripCode} AND tm.is_active = true
-      ORDER BY tm.joined_at
-    `
-    return result.rows as User[]
-  } catch (error) {
-    console.error('Error fetching trip members:', error)
-    return []
-  }
-}
-
-export async function removeUserFromTrip(tripCode: number, userId: string): Promise<boolean> {
-  try {
-    const trip = await getTripByCode(tripCode)
-    if (!trip) return false
-
-    // Set user as inactive in trip_members instead of deleting
-    // This preserves historical data while removing access
-    const result = await sql`
-      UPDATE trip_members 
-      SET is_active = false 
-      WHERE trip_id = ${trip.id} AND user_id = ${userId}
-    `
-    
-    return (result.rowCount ?? 0) > 0
-  } catch (error) {
-    console.error('Error removing user from trip:', error)
-    return false
-  }
-}
-
-export async function getUserTrips(username: string): Promise<Trip[]> {
+// Get trips for user
+export async function getTripsForUser(username: string): Promise<Trip[]> {
   try {
     const user = await getUserByUsername(username)
-    if (!user) return []
+    if (!user) {
+      return []
+    }
 
     const result = await sql`
-      SELECT t.* 
-      FROM trips t
+      SELECT t.* FROM trips t
       JOIN trip_members tm ON t.id = tm.trip_id
-      WHERE tm.user_id = ${user.id} AND tm.is_active = true AND t.is_active = true
+      WHERE tm.user_id = ${user.id} AND tm.is_active = true
       ORDER BY t.created_at DESC
     `
+    
     return result.rows as Trip[]
   } catch (error) {
-    console.error('Error fetching user trips:', error)
+    console.error('Error getting trips for user:', error)
     return []
   }
 }
 
-// Expense Management Functions
+// Add expense to trip
 export async function addExpenseToTrip(
   tripCode: number, 
   paidByUsername: string, 
-  expenseData: Omit<Expense, 'id' | 'trip_id' | 'paid_by' | 'created_at' | 'updated_at'>,
-  items: Omit<ExpenseItem, 'id' | 'expense_id' | 'created_at'>[],
-  splitWithUsernames?: string[] // Optional: usernames to split with (defaults to all trip members)
+  expenseData: {
+    name: string;
+    description?: string;
+    merchant_name?: string;
+    total_amount: number;
+    currency: string;
+    receipt_image_url?: string;
+    expense_date: string;
+    split_with: string[];
+    split_mode: 'even' | 'items';
+    category?: string;
+    summary?: string;
+    emoji?: string;
+    tax_amount?: number;
+    tip_amount?: number;
+    confidence?: number;
+  },
+  items: Array<{
+    name: string;
+    price: number;
+    quantity: number;
+    item_order: number;
+  }> = [],
+  splitWithUsernames: string[] = []
 ): Promise<Expense | null> {
   try {
-    const trip = await getTripByCode(tripCode)
-    const user = await getUserByUsername(paidByUsername)
-    
-    if (!trip || !user) return null
-
-    // Verify user is member of trip
-    const isMember = await sql`
-      SELECT id FROM trip_members 
-      WHERE trip_id = ${trip.id} AND user_id = ${user.id} AND is_active = true
+    // Get trip
+    const tripResult = await sql`
+      SELECT id FROM trips WHERE trip_code = ${tripCode}
     `
-    if (isMember.rows.length === 0) return null
-
-    // Determine who to split with
-    let splitWithUserIds: string[] = []
-    if (splitWithUsernames && splitWithUsernames.length > 0) {
-      // Use provided usernames
+    
+    if (tripResult.rows.length === 0) {
+      return null
+    }
+    
+    const tripId = tripResult.rows[0].id
+    
+    // Get user who paid
+    const paidByUser = await getUserByUsername(paidByUsername)
+    if (!paidByUser) {
+      return null
+    }
+    
+    // Get split_with user IDs
+    const splitWithUserIds: string[] = []
       for (const username of splitWithUsernames) {
-        const splitUser = await getUserByUsername(username)
-        if (splitUser) {
-          splitWithUserIds.push(splitUser.id)
-        }
+      const user = await getUserByUsername(username)
+      if (user) {
+        splitWithUserIds.push(user.id)
       }
-    } else if (expenseData.split_with && expenseData.split_with.length > 0) {
-      // Use provided user IDs
-      splitWithUserIds = expenseData.split_with
-    } else {
-      // Default to all trip members
-      const tripMembers = await getTripMembers(tripCode)
-      splitWithUserIds = tripMembers.map(member => member.id)
     }
 
     // Create expense
@@ -577,118 +486,95 @@ export async function addExpenseToTrip(
         category, summary, emoji, tax_amount, tip_amount, confidence
       )
       VALUES (
-        ${trip.id}, ${expenseData.name}, ${expenseData.description}, ${expenseData.merchant_name}, 
-        ${expenseData.total_amount}, ${expenseData.currency}, 
-        ${expenseData.receipt_image_url}, ${expenseData.expense_date}, 
-        ${user.id}, ${JSON.stringify(splitWithUserIds)}::jsonb, ${expenseData.split_mode},
-        ${expenseData.category}, ${expenseData.summary}, ${expenseData.emoji},
-        ${expenseData.tax_amount}, ${expenseData.tip_amount}, ${expenseData.confidence}
+        ${tripId}, ${expenseData.name}, ${expenseData.description || null}, 
+        ${expenseData.merchant_name || null}, ${expenseData.total_amount}, ${expenseData.currency},
+        ${expenseData.receipt_image_url || null}, ${expenseData.expense_date}, ${paidByUser.id}, 
+        ${JSON.stringify(splitWithUserIds)}, ${expenseData.split_mode},
+        ${expenseData.category || null}, ${expenseData.summary || null}, ${expenseData.emoji || null},
+        ${expenseData.tax_amount || null}, ${expenseData.tip_amount || null}, ${expenseData.confidence || null}
       )
       RETURNING *
     `
     
+    if (expenseResult.rows.length === 0) {
+      return null
+    }
+    
     const expense = expenseResult.rows[0] as Expense
 
-    // Add items
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i]
+    // Add expense items if provided
+    if (items.length > 0) {
+      for (const item of items) {
       await sql`
         INSERT INTO expense_items (expense_id, name, price, quantity, item_order)
-        VALUES (${expense.id}, ${item.name}, ${item.price}, ${item.quantity}, ${i})
+          VALUES (${expense.id}, ${item.name}, ${item.price}, ${item.quantity}, ${item.item_order})
       `
+      }
     }
 
     return expense
   } catch (error) {
-    console.error('Error adding expense:', error)
+    console.error('Error adding expense to trip:', error)
     return null
   }
 }
 
-export async function getTripExpenses(tripCode: number): Promise<(Expense & { items: ExpenseItem[]; paid_by_user: User })[]> {
+// Get expenses for trip
+export async function getExpensesForTrip(tripCode: number): Promise<Array<Expense & { paid_by_username: string; paid_by_display_name?: string; split_with_users: User[] }>> {
   try {
-    const trip = await getTripByCode(tripCode)
-    if (!trip) return []
+    const tripResult = await sql`
+      SELECT id FROM trips WHERE trip_code = ${tripCode}
+    `
+    
+    if (tripResult.rows.length === 0) {
+      return []
+    }
+    
+    const tripId = tripResult.rows[0].id
 
     const result = await sql`
       SELECT 
         e.*,
         u.username as paid_by_username,
-        u.display_name as paid_by_display_name,
-        u.avatar_url as paid_by_avatar_url
+        u.display_name as paid_by_display_name
       FROM expenses e
       JOIN users u ON e.paid_by = u.id
-      WHERE e.trip_id = ${trip.id}
+      WHERE e.trip_id = ${tripId}
       ORDER BY e.created_at DESC
     `
     
-    const expenses = result.rows
-
-    // Get items for each expense
-    const expensesWithItems = []
-    for (const expense of expenses) {
-      const itemsResult = await sql`
-        SELECT * FROM expense_items 
-        WHERE expense_id = ${expense.id} 
-        ORDER BY item_order
-      `
+    const expenses = []
+    
+    for (const row of result.rows) {
+      const expense = row as any
       
-      expensesWithItems.push({
-        ...expense,
-        items: itemsResult.rows as ExpenseItem[],
-        paid_by_user: {
-          id: expense.paid_by,
-          username: expense.paid_by_username,
-          display_name: expense.paid_by_display_name,
-          avatar_url: expense.paid_by_avatar_url,
-          created_at: expense.created_at,
-          updated_at: expense.updated_at
+      // Get split_with users
+      const splitWithIds = expense.split_with || []
+      const splitWithUsers: User[] = []
+      
+      for (const userId of splitWithIds) {
+        const userResult = await sql`
+          SELECT * FROM users WHERE id = ${userId}
+        `
+        if (userResult.rows.length > 0) {
+          splitWithUsers.push(userResult.rows[0] as User)
         }
-      } as Expense & { items: ExpenseItem[]; paid_by_user: User })
+      }
+      
+      expenses.push({
+        ...expense,
+        split_with_users: splitWithUsers
+      })
     }
-
-    return expensesWithItems
+    
+    return expenses
   } catch (error) {
-    console.error('Error fetching trip expenses:', error)
+    console.error('Error getting expenses for trip:', error)
     return []
   }
 }
 
-export async function assignItemToUser(expenseItemId: string, username: string): Promise<boolean> {
-  try {
-    const user = await getUserByUsername(username)
-    if (!user) return false
-
-    await sql`
-      INSERT INTO item_assignments (expense_item_id, user_id)
-      VALUES (${expenseItemId}, ${user.id})
-      ON CONFLICT (expense_item_id, user_id) DO NOTHING
-    `
-    
-    return true
-  } catch (error) {
-    console.error('Error assigning item:', error)
-    return false
-  }
-}
-
-export async function unassignItemFromUser(expenseItemId: string, username: string): Promise<boolean> {
-  try {
-    const user = await getUserByUsername(username)
-    if (!user) return false
-
-    await sql`
-      DELETE FROM item_assignments 
-      WHERE expense_item_id = ${expenseItemId} AND user_id = ${user.id}
-    `
-    
-    return true
-  } catch (error) {
-    console.error('Error unassigning item:', error)
-    return false
-  }
-}
-
+// Get expense with items and assignments
 export async function getExpenseWithItems(expenseId: string): Promise<(Expense & { items: (ExpenseItem & { assignments: User[] })[]; paid_by_username?: string; paid_by_display_name?: string; split_with_users?: User[] }) | null> {
   try {
     // Get expense with paid_by user info
@@ -702,58 +588,51 @@ export async function getExpenseWithItems(expenseId: string): Promise<(Expense &
       WHERE e.id = ${expenseId}
     `
     
-    if (expenseResult.rows.length === 0) return null
+    if (expenseResult.rows.length === 0) {
+      return null
+    }
     
-    const expense = expenseResult.rows[0] as Expense & { paid_by_username: string; paid_by_display_name: string }
-
-    // Get split_with users info
-    let splitWithUsers: User[] = []
-    if (expense.split_with && expense.split_with.length > 0) {
-      // Fetch user details for each user ID in split_with
-      for (const userId of expense.split_with) {
+    const expense = expenseResult.rows[0] as any
+    
+    // Get split_with users
+    const splitWithIds = expense.split_with || []
+    const splitWithUsers: User[] = []
+    
+    for (const userId of splitWithIds) {
         const userResult = await sql`
-          SELECT id, username, display_name, avatar_url, created_at, updated_at
-          FROM users 
-          WHERE id = ${userId}
+        SELECT * FROM users WHERE id = ${userId}
         `
         if (userResult.rows.length > 0) {
           splitWithUsers.push(userResult.rows[0] as User)
         }
-      }
-      // Sort by display name
-      splitWithUsers.sort((a, b) => {
-        const nameA = a.display_name || a.username
-        const nameB = b.display_name || b.username
-        return nameA.localeCompare(nameB)
+    }
+    
+    // Get expense items
+    const itemsResult = await sql`
+      SELECT * FROM expense_items 
+      WHERE expense_id = ${expenseId}
+      ORDER BY item_order
+    `
+    
+    const items = []
+    
+    for (const itemRow of itemsResult.rows) {
+      const item = itemRow as ExpenseItem
+      
+      // Get assignments for this item
+      const assignmentsResult = await sql`
+        SELECT u.* FROM users u
+        JOIN item_assignments ia ON u.id = ia.user_id
+        WHERE ia.expense_item_id = ${item.id}
+      `
+      
+      const assignments = assignmentsResult.rows as User[]
+      
+      items.push({
+        ...item,
+        assignments
       })
     }
-
-    const itemsResult = await sql`
-      SELECT 
-        ei.*,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', u.id,
-              'username', u.username,
-              'display_name', u.display_name,
-              'avatar_url', u.avatar_url
-            )
-          ) FILTER (WHERE u.id IS NOT NULL), 
-          '[]'
-        ) as assignments
-      FROM expense_items ei
-      LEFT JOIN item_assignments ia ON ei.id = ia.expense_item_id
-      LEFT JOIN users u ON ia.user_id = u.id
-      WHERE ei.expense_id = ${expenseId}
-      GROUP BY ei.id
-      ORDER BY ei.item_order
-    `
-
-    const items = itemsResult.rows.map(row => ({
-      ...row,
-      assignments: row.assignments || []
-    })) as (ExpenseItem & { assignments: User[] })[]
 
     return {
       ...expense,
@@ -798,44 +677,66 @@ export async function deleteExpense(expenseId: string): Promise<boolean> {
 // Calculate user balance for database-based trips
 export async function getUserBalanceFromDB(tripCode: number, username: string): Promise<number> {
   try {
-    // Get user ID from username
     const user = await getUserByUsername(username)
-    if (!user) return 0
+    if (!user) {
+      return 0
+    }
 
-    // Get all expenses for this trip
-    const expenses = await getTripExpenses(tripCode)
+    const tripResult = await sql`
+      SELECT id FROM trips WHERE trip_code = ${tripCode}
+    `
+    
+    if (tripResult.rows.length === 0) {
+      return 0
+    }
+    
+    const tripId = tripResult.rows[0].id
+
+    // Get all expenses for this trip (excluding settled ones)
+    const expensesResult = await sql`
+      SELECT 
+        id, paid_by, total_amount, split_with, split_mode
+      FROM expenses 
+      WHERE trip_id = ${tripId} AND (is_settled IS NULL OR is_settled = false)
+    `
+
     let balance = 0
 
-    for (const expense of expenses) {
-      // Amount user paid
-      if (expense.paid_by_user.username === username) {
-        balance += parseFloat(expense.total_amount.toString())
+    for (const expense of expensesResult.rows) {
+      const expenseAmount = parseFloat(expense.total_amount.toString())
+      
+      // If user paid for this expense, they get credited
+      if (expense.paid_by === user.id) {
+        balance += expenseAmount
       }
 
-      // Amount user owes
-      if (expense.split_mode === 'items') {
-        // Item-based splitting: sum up individual item assignments
-        let userOwedAmount = 0
-        
-        // Get expense with full item assignment data
-        const fullExpense = await getExpenseWithItems(expense.id)
-        
-        if (fullExpense) {
-          for (const item of fullExpense.items || []) {
-            for (const assignment of item.assignments || []) {
-              if (assignment.username === username) {
-                userOwedAmount += parseFloat(item.price.toString())
-              }
-            }
-          }
+      // Calculate how much this user owes for this expense
+      if (expense.split_mode === 'even') {
+        // Even split among split_with users
+        const splitWithIds = expense.split_with || []
+        if (splitWithIds.includes(user.id)) {
+          const shareAmount = expenseAmount / splitWithIds.length
+          balance -= shareAmount
         }
+      } else if (expense.split_mode === 'items') {
+        // Item-based split - get user's assigned items
+        const assignedItemsResult = await sql`
+          SELECT ei.price, ia_count.assignment_count
+          FROM expense_items ei
+          JOIN item_assignments ia ON ei.id = ia.expense_item_id
+          JOIN (
+            SELECT expense_item_id, COUNT(*) as assignment_count
+            FROM item_assignments
+            GROUP BY expense_item_id
+          ) ia_count ON ei.id = ia_count.expense_item_id
+          WHERE ei.expense_id = ${expense.id} AND ia.user_id = ${user.id}
+        `
         
-        balance -= userOwedAmount
-      } else {
-        // Even splitting: divide by number of people in split_with
-        if (expense.split_with && expense.split_with.includes(user.id)) {
-          const splitAmount = parseFloat(expense.total_amount.toString()) / expense.split_with.length
-          balance -= splitAmount
+        for (const assignedItem of assignedItemsResult.rows) {
+          const itemPrice = parseFloat(assignedItem.price.toString())
+          const assignmentCount = parseInt(assignedItem.assignment_count)
+          const shareAmount = itemPrice / assignmentCount
+          balance -= shareAmount
         }
       }
     }
@@ -847,345 +748,568 @@ export async function getUserBalanceFromDB(tripCode: number, username: string): 
   }
 }
 
-// Settlement & Balance Calculation Functions
-export interface SettlementBalance {
-  user_id: string
-  username: string
-  display_name?: string
-  total_paid: number
-  total_owed: number
-  net_balance: number // positive = owed money, negative = owes money
-}
-
-export interface SettlementTransaction {
-  from_user_id: string
-  from_username: string
-  to_user_id: string
-  to_username: string
-  amount: number
-}
-
-export async function getTripSettlement(tripCode: number): Promise<{
-  balances: SettlementBalance[];
-  transactions: SettlementTransaction[];
-} | null> {
+// Assign item to user
+export async function assignItemToUser(expenseItemId: string, username: string): Promise<boolean> {
   try {
-    const trip = await getTripByCode(tripCode)
-    if (!trip) return null
-
-    // Get all trip members
-    const members = await getTripMembers(tripCode)
-    
-    // Calculate balances for each member
-    const balances: SettlementBalance[] = []
-    
-    for (const member of members) {
-      // Calculate total paid by this user
-      const paidResult = await sql`
-        SELECT COALESCE(SUM(total_amount), 0) as total_paid
-        FROM expenses 
-        WHERE trip_id = ${trip.id} AND paid_by = ${member.id}
-      `
-      const totalPaid = Number(paidResult.rows[0].total_paid)
-
-      // Calculate total owed by this user (from split_with arrays)
-      const owedResult = await sql`
-        SELECT COALESCE(SUM(
-          CASE 
-            WHEN split_mode = 'even' THEN total_amount / jsonb_array_length(split_with)
-            ELSE 0 -- For 'items' mode, we'll calculate separately
-          END
-        ), 0) as total_owed_even
-        FROM expenses 
-        WHERE trip_id = ${trip.id} 
-        AND split_with @> ${JSON.stringify([member.id])}::jsonb
-        AND split_mode = 'even'
-      `
-      let totalOwed = Number(owedResult.rows[0].total_owed_even)
-
-      // Add item-based owes
-      const itemOwedResult = await sql`
-        SELECT COALESCE(SUM(ei.price * ei.quantity), 0) as total_owed_items
-        FROM expenses e
-        JOIN expense_items ei ON e.id = ei.expense_id
-        JOIN item_assignments ia ON ei.id = ia.expense_item_id
-        WHERE e.trip_id = ${trip.id} 
-        AND ia.user_id = ${member.id}
-        AND e.split_mode = 'items'
-      `
-      totalOwed += Number(itemOwedResult.rows[0].total_owed_items)
-
-      const netBalance = totalPaid - totalOwed
-
-      balances.push({
-        user_id: member.id,
-        username: member.username,
-        display_name: member.display_name,
-        total_paid: totalPaid,
-        total_owed: totalOwed,
-        net_balance: netBalance
-      })
-    }
-
-    // Calculate optimal transactions to settle debts
-    const transactions = calculateOptimalTransactions(balances)
-
-    return { balances, transactions }
-  } catch (error) {
-    console.error('Error calculating trip settlement:', error)
-    return null
-  }
-}
-
-function calculateOptimalTransactions(balances: SettlementBalance[]): SettlementTransaction[] {
-  const transactions: SettlementTransaction[] = []
-  
-  // Separate creditors (positive balance) and debtors (negative balance)
-  const creditors = balances.filter(b => b.net_balance > 0.01).sort((a, b) => b.net_balance - a.net_balance)
-  const debtors = balances.filter(b => b.net_balance < -0.01).sort((a, b) => a.net_balance - b.net_balance)
-  
-  let i = 0, j = 0
-  
-  while (i < creditors.length && j < debtors.length) {
-    const creditor = creditors[i]
-    const debtor = debtors[j]
-    
-    const transferAmount = Math.min(creditor.net_balance, Math.abs(debtor.net_balance))
-    
-    if (transferAmount > 0.01) { // Only create transaction if amount is meaningful
-      transactions.push({
-        from_user_id: debtor.user_id,
-        from_username: debtor.username,
-        to_user_id: creditor.user_id,
-        to_username: creditor.username,
-        amount: Math.round(transferAmount * 100) / 100 // Round to 2 decimal places
-      })
+    const user = await getUserByUsername(username)
+    if (!user) {
+      return false
     }
     
-    creditor.net_balance -= transferAmount
-    debtor.net_balance += transferAmount
-    
-    if (creditor.net_balance < 0.01) i++
-    if (Math.abs(debtor.net_balance) < 0.01) j++
-  }
-  
-  return transactions
-}
-
-// Passkey credential functions
-export async function savePasskeyCredential(
-  userId: string, 
-  credentialId: string, 
-  publicKey: string, 
-  deviceName?: string
-): Promise<PasskeyCredential | null> {
-  try {
-    const result = await sql`
-      INSERT INTO passkey_credentials (user_id, credential_id, public_key, device_name)
-      VALUES (${userId}, ${credentialId}, ${publicKey}, ${deviceName})
-      RETURNING *
-    `
-    return result.rows[0] as PasskeyCredential
-  } catch (error) {
-    console.error('Error saving passkey credential:', error)
-    return null
-  }
-}
-
-export async function getPasskeyCredentialsByUserId(userId: string): Promise<PasskeyCredential[]> {
-  try {
-    const result = await sql`
-      SELECT * FROM passkey_credentials 
-      WHERE user_id = ${userId} 
-      ORDER BY created_at DESC
-    `
-    return result.rows as PasskeyCredential[]
-  } catch (error) {
-    console.error('Error fetching passkey credentials:', error)
-    return []
-  }
-}
-
-export async function getPasskeyCredentialByCredentialId(credentialId: string): Promise<PasskeyCredential | null> {
-  try {
-    const result = await sql`
-      SELECT * FROM passkey_credentials 
-      WHERE credential_id = ${credentialId} 
-      LIMIT 1
-    `
-    return result.rows.length > 0 ? result.rows[0] as PasskeyCredential : null
-  } catch (error) {
-    console.error('Error fetching passkey credential:', error)
-    return null
-  }
-}
-
-export async function updatePasskeyCredentialCounter(credentialId: string, counter: number): Promise<boolean> {
-  try {
     await sql`
-      UPDATE passkey_credentials 
-      SET counter = ${counter}, last_used_at = NOW() 
-      WHERE credential_id = ${credentialId}
+      INSERT INTO item_assignments (expense_item_id, user_id)
+      VALUES (${expenseItemId}, ${user.id})
+      ON CONFLICT (expense_item_id, user_id) DO NOTHING
     `
+    
     return true
   } catch (error) {
-    console.error('Error updating passkey credential counter:', error)
+    console.error('Error assigning item to user:', error)
     return false
   }
 }
 
-// Utility Functions
-function isValidUsername(username: string): boolean {
-  return /^[a-zA-Z0-9_]{3,50}$/.test(username)
-}
-
-async function generateUniqueTripCode(): Promise<number> {
-  const maxAttempts = 100
-  console.log('Starting trip code generation...')
-  
-  for (let i = 0; i < maxAttempts; i++) {
-    const code = Math.floor(Math.random() * 900) + 100 // 100-999
-    console.log(`Attempt ${i + 1}: Generated code ${code}`)
-    
-    try {
-      const existing = await sql`
-        SELECT id FROM trips WHERE trip_code = ${code}
-      `
-      console.log(`Code ${code} check result: ${existing.rows.length} existing`)
-      
-      if (existing.rows.length === 0) {
-        console.log(`Code ${code} is unique! Returning.`)
-        return code
-      }
-    } catch (error) {
-      console.error(`Error checking code ${code}:`, error)
-      throw error
+// Unassign item from user
+export async function unassignItemFromUser(expenseItemId: string, username: string): Promise<boolean> {
+  try {
+    const user = await getUserByUsername(username)
+    if (!user) {
+      return false
     }
-  }
-  
-  console.error('Failed to generate unique trip code after', maxAttempts, 'attempts')
-  throw new Error('Could not generate unique trip code')
-}
-
-// Settlement Payment Management Functions
-export async function createOrUpdateSettlementPayment(
-  tripId: string,
-  fromUserId: string,
-  toUserId: string,
-  amount: number
-): Promise<SettlementPayment | null> {
-  try {
+    
     const result = await sql`
-      INSERT INTO settlement_payments (trip_id, from_user_id, to_user_id, amount)
-      VALUES (${tripId}, ${fromUserId}, ${toUserId}, ${amount})
-      ON CONFLICT (trip_id, from_user_id, to_user_id) 
-      DO UPDATE SET amount = ${amount}, updated_at = NOW()
-      RETURNING id, trip_id, from_user_id, to_user_id, CAST(amount AS FLOAT) as amount, 
-                is_paid, paid_at, marked_by_user_id, created_at, updated_at
+      DELETE FROM item_assignments 
+      WHERE expense_item_id = ${expenseItemId} AND user_id = ${user.id}
     `
-    return result.rows[0] as SettlementPayment
+    
+    return (result.rowCount ?? 0) > 0
   } catch (error) {
-    console.error('Error creating/updating settlement payment:', error)
-    return null
+    console.error('Error unassigning item from user:', error)
+    return false
   }
 }
 
-export async function getSettlementPayments(tripId: string): Promise<SettlementPayment[]> {
+// Calculate settlement payments for a trip
+export async function calculateSettlementPayments(tripCode: number): Promise<Array<{
+  from_username: string;
+  to_username: string;
+  amount: number;
+}>> {
   try {
-    const result = await sql`
-      SELECT sp.id,
-             sp.trip_id,
-             sp.from_user_id,
-             sp.to_user_id,
-             CAST(sp.amount AS FLOAT) as amount,
-             sp.is_paid,
-             sp.paid_at,
-             sp.marked_by_user_id,
-             sp.created_at,
-             sp.updated_at,
-             fu.username as from_username, 
-             fu.display_name as from_display_name,
-             tu.username as to_username,
-             tu.display_name as to_display_name
-      FROM settlement_payments sp
-      JOIN users fu ON sp.from_user_id = fu.id
-      JOIN users tu ON sp.to_user_id = tu.id
-      WHERE sp.trip_id = ${tripId}
-      ORDER BY sp.created_at ASC
+    const tripResult = await sql`
+      SELECT id FROM trips WHERE trip_code = ${tripCode}
     `
-    return result.rows as SettlementPayment[]
+    
+    if (tripResult.rows.length === 0) {
+      return []
+    }
+    
+    const tripId = tripResult.rows[0].id
+
+    // Get all trip members
+    const membersResult = await sql`
+      SELECT u.id, u.username FROM users u
+      JOIN trip_members tm ON u.id = tm.user_id
+      WHERE tm.trip_id = ${tripId} AND tm.is_active = true
+    `
+
+    const members = membersResult.rows
+    const balances: { [username: string]: number } = {}
+
+    // Calculate balance for each member
+    for (const member of members) {
+      balances[member.username] = await getUserBalanceFromDB(tripCode, member.username)
+    }
+
+    // Calculate settlement payments using a simple algorithm
+    const settlements: Array<{
+      from_username: string;
+      to_username: string;
+      amount: number;
+    }> = []
+
+    const creditors = Object.entries(balances).filter(([_, balance]) => balance > 0.01).sort((a, b) => b[1] - a[1])
+    const debtors = Object.entries(balances).filter(([_, balance]) => balance < -0.01).sort((a, b) => a[1] - b[1])
+
+    let creditorIndex = 0
+    let debtorIndex = 0
+
+    while (creditorIndex < creditors.length && debtorIndex < debtors.length) {
+      const [creditorUsername, creditorBalance] = creditors[creditorIndex]
+      const [debtorUsername, debtorBalance] = debtors[debtorIndex]
+
+      const settlementAmount = Math.min(creditorBalance, Math.abs(debtorBalance))
+
+      if (settlementAmount > 0.01) {
+        settlements.push({
+          from_username: debtorUsername,
+          to_username: creditorUsername,
+          amount: Math.round(settlementAmount * 100) / 100
+        })
+
+        creditors[creditorIndex][1] -= settlementAmount
+        debtors[debtorIndex][1] += settlementAmount
+      }
+
+      if (creditors[creditorIndex][1] <= 0.01) {
+        creditorIndex++
+      }
+      if (debtors[debtorIndex][1] >= -0.01) {
+        debtorIndex++
+      }
+    }
+
+    return settlements
   } catch (error) {
-    console.error('Error fetching settlement payments:', error)
+    console.error('Error calculating settlement payments:', error)
     return []
   }
 }
 
-export async function updatePaymentStatus(
-  paymentId: string,
-  isPaid: boolean,
-  markedByUserId?: string
+// Get or create settlement payments for a trip
+export async function getSettlementPayments(tripCode: number): Promise<Array<{
+  id: string;
+  trip_id: string;
+  from_user_id: string;
+  to_user_id: string;
+  amount: number;
+  is_paid: boolean;
+  paid_at?: string;
+  marked_by_user_id?: string;
+  created_at: string;
+  updated_at: string;
+  from_username: string;
+  to_username: string;
+}>> {
+  try {
+    const tripResult = await sql`
+      SELECT id FROM trips WHERE trip_code = ${tripCode}
+    `
+    
+    if (tripResult.rows.length === 0) {
+      return []
+    }
+    
+    const tripId = tripResult.rows[0].id
+
+    // First, calculate what the settlements should be
+    const calculatedSettlements = await calculateSettlementPayments(tripCode)
+
+    // Get existing settlement payments
+    const existingResult = await sql`
+      SELECT sp.id, sp.trip_id, sp.from_user_id, sp.to_user_id, 
+             CAST(sp.amount AS FLOAT) as amount,
+             sp.is_paid, sp.paid_at, sp.marked_by_user_id, 
+             sp.created_at, sp.updated_at,
+             fu.username as from_username, tu.username as to_username
+      FROM settlement_payments sp
+      JOIN users fu ON sp.from_user_id = fu.id
+      JOIN users tu ON sp.to_user_id = tu.id
+      WHERE sp.trip_id = ${tripId}
+    `
+
+    const existingPayments = existingResult.rows
+
+    // Create or update settlement payments based on calculated settlements
+    for (const settlement of calculatedSettlements) {
+      await createOrUpdateSettlementPayment(
+        tripId,
+        settlement.from_username,
+        settlement.to_username,
+        settlement.amount
+      )
+    }
+
+    // Get updated settlement payments
+    const updatedResult = await sql`
+      SELECT sp.id, sp.trip_id, sp.from_user_id, sp.to_user_id, 
+             CAST(sp.amount AS FLOAT) as amount,
+             sp.is_paid, sp.paid_at, sp.marked_by_user_id, 
+             sp.created_at, sp.updated_at,
+             fu.username as from_username, tu.username as to_username
+      FROM settlement_payments sp
+      JOIN users fu ON sp.from_user_id = fu.id
+      JOIN users tu ON sp.to_user_id = tu.id
+      WHERE sp.trip_id = ${tripId}
+    `
+
+    return updatedResult.rows as any[]
+  } catch (error) {
+    console.error('Error getting settlement payments:', error)
+    return []
+  }
+}
+
+// Create or update a settlement payment
+export async function createOrUpdateSettlementPayment(
+  tripId: string,
+  fromUsername: string,
+  toUsername: string,
+  amount: number
 ): Promise<boolean> {
   try {
-    await sql`
+    const fromUser = await getUserByUsername(fromUsername)
+    const toUser = await getUserByUsername(toUsername)
+    
+    if (!fromUser || !toUser) {
+      return false
+    }
+
+    const result = await sql`
+      INSERT INTO settlement_payments (trip_id, from_user_id, to_user_id, amount)
+      VALUES (${tripId}, ${fromUser.id}, ${toUser.id}, ${amount})
+      ON CONFLICT (trip_id, from_user_id, to_user_id) 
+      DO UPDATE SET 
+        amount = EXCLUDED.amount,
+        updated_at = NOW()
+      RETURNING id, trip_id, from_user_id, to_user_id, 
+                CAST(amount AS FLOAT) as amount,
+                is_paid, paid_at, marked_by_user_id, 
+                created_at, updated_at
+    `
+
+    return result.rows.length > 0
+  } catch (error) {
+    console.error('Error creating/updating settlement payment:', error)
+    return false
+  }
+}
+
+// Update payment status
+export async function updatePaymentStatus(paymentId: string, isPaid: boolean, markedByUserId: string): Promise<boolean> {
+  try {
+    const result = await sql`
       UPDATE settlement_payments 
-      SET is_paid = ${isPaid}, 
-          paid_at = ${isPaid ? 'NOW()' : null},
-          marked_by_user_id = ${markedByUserId},
-          updated_at = NOW()
+      SET 
+        is_paid = ${isPaid},
+        paid_at = ${isPaid ? 'NOW()' : null},
+        marked_by_user_id = ${markedByUserId},
+        updated_at = NOW()
       WHERE id = ${paymentId}
     `
-    return true
+
+    return (result.rowCount ?? 0) > 0
   } catch (error) {
     console.error('Error updating payment status:', error)
     return false
   }
 }
 
-export async function getPaymentById(paymentId: string): Promise<SettlementPayment | null> {
+// Get payment by ID
+export async function getPaymentById(paymentId: string): Promise<any> {
   try {
     const result = await sql`
-      SELECT id, trip_id, from_user_id, to_user_id, CAST(amount AS FLOAT) as amount, 
-             is_paid, paid_at, marked_by_user_id, created_at, updated_at
-      FROM settlement_payments 
-      WHERE id = ${paymentId} 
-      LIMIT 1
+      SELECT sp.id, sp.trip_id, sp.from_user_id, sp.to_user_id, 
+             CAST(sp.amount AS FLOAT) as amount,
+             sp.is_paid, sp.paid_at, sp.marked_by_user_id, 
+             sp.created_at, sp.updated_at,
+             fu.username as from_username, tu.username as to_username
+      FROM settlement_payments sp
+      JOIN users fu ON sp.from_user_id = fu.id
+      JOIN users tu ON sp.to_user_id = tu.id
+      WHERE sp.id = ${paymentId}
     `
-    return result.rows.length > 0 ? result.rows[0] as SettlementPayment : null
+
+    return result.rows.length > 0 ? result.rows[0] : null
   } catch (error) {
-    console.error('Error fetching payment by ID:', error)
+    console.error('Error getting payment by ID:', error)
     return null
   }
 }
 
-export async function syncSettlementPayments(tripCode: number): Promise<boolean> {
+// Create trip share
+export async function createTripShare(
+  shareCode: string,
+  tripCode: number,
+  ogImageUrl?: string,
+  username?: string,
+  placeName?: string
+): Promise<TripShare | null> {
   try {
-    // Get trip
-    const trip = await getTripByCode(tripCode)
-    if (!trip) return false
-
-    // Get current settlement calculations
-    const settlement = await getTripSettlement(tripCode)
-    if (!settlement) return false
-
-    // Create or update settlement payments for each transaction
-    for (const transaction of settlement.transactions) {
-      await createOrUpdateSettlementPayment(
-        trip.id,
-        transaction.from_user_id,
-        transaction.to_user_id,
-        transaction.amount
-      )
+    const result = await sql`
+      INSERT INTO trip_shares (share_code, trip_code, og_image_url, username, place_name)
+      VALUES (${shareCode}, ${tripCode}, ${ogImageUrl || null}, ${username || null}, ${placeName || null})
+      RETURNING *
+    `
+    
+    if (result.rows.length > 0) {
+      return result.rows[0] as TripShare
     }
-
-    return true
+    return null
   } catch (error) {
-    console.error('Error syncing settlement payments:', error)
+    console.error('Error creating trip share:', error)
+    return null
+  }
+}
+
+// Get trip share by share code
+export async function getTripShareByCode(shareCode: string): Promise<TripShare | null> {
+  try {
+    const result = await sql`
+      SELECT * FROM trip_shares WHERE share_code = ${shareCode}
+    `
+    
+    if (result.rows.length > 0) {
+      return result.rows[0] as TripShare
+    }
+    return null
+    } catch (error) {
+    console.error('Error getting trip share by code:', error)
+    return null
+  }
+}
+
+// Update user avatar
+export async function updateUserAvatar(username: string, avatarUrl: string): Promise<boolean> {
+  try {
+    const result = await sql`
+      UPDATE users 
+      SET avatar_url = ${avatarUrl}
+      WHERE username = ${username}
+    `
+    
+    return (result.rowCount ?? 0) > 0
+  } catch (error) {
+    console.error('Error updating user avatar:', error)
     return false
   }
 }
 
-// Test function
-export async function testNewConnection() {
+// Get user's Venmo username
+export async function getUserVenmoUsername(username: string): Promise<string | null> {
+  try {
+    const result = await sql`
+      SELECT venmo_username FROM users WHERE username = ${username}
+    `
+    
+    if (result.rows.length > 0) {
+      return result.rows[0].venmo_username || null
+    }
+    return null
+  } catch (error) {
+    console.error('Error getting user Venmo username:', error)
+    return null
+  }
+}
+
+// Update user's Venmo username
+export async function updateUserVenmoUsername(username: string, venmoUsername: string): Promise<boolean> {
+  try {
+    const result = await sql`
+      UPDATE users 
+      SET venmo_username = ${venmoUsername}
+      WHERE username = ${username}
+    `
+    
+    return (result.rowCount ?? 0) > 0
+  } catch (error) {
+    console.error('Error updating user Venmo username:', error)
+    return false
+  }
+}
+
+// Delete user's Venmo username
+export async function deleteUserVenmoUsername(username: string): Promise<boolean> {
+  try {
+    const result = await sql`
+      UPDATE users 
+      SET venmo_username = NULL
+      WHERE username = ${username}
+    `
+    
+    return (result.rowCount ?? 0) > 0
+  } catch (error) {
+    console.error('Error deleting user Venmo username:', error)
+    return false
+  }
+}
+
+// Delete trip and all related data
+export async function deleteTrip(tripCode: number, username: string): Promise<boolean> {
+  try {
+    // Get trip and verify user is the creator
+    const tripResult = await sql`
+      SELECT t.id, t.created_by, u.id as user_id
+      FROM trips t
+      JOIN users u ON u.username = ${username}
+      WHERE t.trip_code = ${tripCode} AND t.created_by = u.id
+    `
+    
+    if (tripResult.rows.length === 0) {
+      return false // Trip not found or user is not the creator
+    }
+    
+    const tripId = tripResult.rows[0].id
+    
+    // Delete trip (CASCADE will handle related data)
+    const deleteResult = await sql`
+      DELETE FROM trips WHERE id = ${tripId}
+    `
+    
+    return (deleteResult.rowCount ?? 0) > 0
+  } catch (error) {
+    console.error('Error deleting trip:', error)
+    return false
+  }
+}
+
+// Update expense and handle item assignments
+export async function updateExpense(
+  expenseId: string,
+  updateData: {
+    name?: string;
+    description?: string;
+    merchant_name?: string;
+    total_amount?: number;
+    currency?: string;
+    expense_date?: string;
+    paid_by_username?: string;
+    split_mode?: 'even' | 'items';
+    category?: string;
+    summary?: string;
+    emoji?: string;
+    tax_amount?: number;
+    tip_amount?: number;
+    confidence?: number;
+  },
+  itemAssignments?: Array<{
+    itemIndex: number;
+    assignedTo: string[];
+  }>
+): Promise<boolean> {
+  try {
+    // Start a transaction
+    await sql`BEGIN`
+
+    // Update expense fields individually to avoid SQL injection issues
+    // Always update the timestamp
+    await sql`UPDATE expenses SET updated_at = NOW() WHERE id = ${expenseId}`
+    
+    if (updateData.name !== undefined) {
+      await sql`UPDATE expenses SET name = ${updateData.name} WHERE id = ${expenseId}`
+    }
+    if (updateData.description !== undefined) {
+      await sql`UPDATE expenses SET description = ${updateData.description} WHERE id = ${expenseId}`
+    }
+    if (updateData.merchant_name !== undefined) {
+      await sql`UPDATE expenses SET merchant_name = ${updateData.merchant_name} WHERE id = ${expenseId}`
+    }
+    if (updateData.total_amount !== undefined) {
+      await sql`UPDATE expenses SET total_amount = ${updateData.total_amount} WHERE id = ${expenseId}`
+    }
+    if (updateData.currency !== undefined) {
+      await sql`UPDATE expenses SET currency = ${updateData.currency} WHERE id = ${expenseId}`
+    }
+    if (updateData.expense_date !== undefined) {
+      await sql`UPDATE expenses SET expense_date = ${updateData.expense_date} WHERE id = ${expenseId}`
+    }
+    if (updateData.split_mode !== undefined) {
+      await sql`UPDATE expenses SET split_mode = ${updateData.split_mode} WHERE id = ${expenseId}`
+    }
+    if (updateData.category !== undefined) {
+      await sql`UPDATE expenses SET category = ${updateData.category} WHERE id = ${expenseId}`
+    }
+    if (updateData.summary !== undefined) {
+      await sql`UPDATE expenses SET summary = ${updateData.summary} WHERE id = ${expenseId}`
+    }
+    if (updateData.emoji !== undefined) {
+      await sql`UPDATE expenses SET emoji = ${updateData.emoji} WHERE id = ${expenseId}`
+    }
+    if (updateData.tax_amount !== undefined) {
+      await sql`UPDATE expenses SET tax_amount = ${updateData.tax_amount} WHERE id = ${expenseId}`
+    }
+    if (updateData.tip_amount !== undefined) {
+      await sql`UPDATE expenses SET tip_amount = ${updateData.tip_amount} WHERE id = ${expenseId}`
+    }
+    if (updateData.confidence !== undefined) {
+      await sql`UPDATE expenses SET confidence = ${updateData.confidence} WHERE id = ${expenseId}`
+    }
+    
+    // Handle paid_by username update
+    if (updateData.paid_by_username) {
+      const user = await getUserByUsername(updateData.paid_by_username)
+      if (user) {
+        await sql`UPDATE expenses SET paid_by = ${user.id} WHERE id = ${expenseId}`
+      }
+    }
+
+    // Handle item assignments if provided
+    if (itemAssignments && itemAssignments.length > 0) {
+      // Get all expense items for this expense
+      const itemsResult = await sql`
+        SELECT id, item_order FROM expense_items 
+        WHERE expense_id = ${expenseId}
+        ORDER BY item_order
+      `
+      
+      const expenseItems = itemsResult.rows
+      
+      // Clear all existing assignments for this expense
+      await sql`
+        DELETE FROM item_assignments 
+        WHERE expense_item_id IN (
+          SELECT id FROM expense_items WHERE expense_id = ${expenseId}
+        )
+      `
+      
+      // Add new assignments
+      for (const assignment of itemAssignments) {
+        const itemId = expenseItems[assignment.itemIndex]?.id
+        
+        if (itemId) {
+          for (const username of assignment.assignedTo) {
+            const user = await getUserByUsername(username)
+            if (user) {
+              await sql`
+                INSERT INTO item_assignments (expense_item_id, user_id)
+                VALUES (${itemId}, ${user.id})
+                ON CONFLICT (expense_item_id, user_id) DO NOTHING
+              `
+            }
+          }
+        }
+      }
+    }
+
+    // Commit the transaction
+    await sql`COMMIT`
+    return true
+    
+  } catch (error) {
+    // Rollback on error
+    await sql`ROLLBACK`
+    console.error('Error updating expense:', error)
+    return false
+  }
+}
+
+// Update expense payment status (mark as paid/unpaid)
+export async function updateExpensePaymentStatus(expenseId: string, isPaid: boolean, markedByUsername: string): Promise<boolean> {
+  try {
+    const user = await getUserByUsername(markedByUsername)
+    if (!user) {
+      return false
+    }
+
+    await sql`
+      UPDATE expenses 
+      SET 
+        is_settled = ${isPaid},
+        settled_at = ${isPaid ? new Date().toISOString() : null},
+        settled_by_user_id = ${isPaid ? user.id : null},
+        updated_at = NOW()
+      WHERE id = ${expenseId}
+    `
+    
+    return true
+  } catch (error) {
+    console.error('Error updating expense payment status:', error)
+    return false
+  }
+}
+
+// Test new database connection
+export async function testNewDatabaseConnection() {
   try {
     const result = await sql`SELECT NOW() as current_time`
     console.log('✅ New database connection successful:', result.rows[0])

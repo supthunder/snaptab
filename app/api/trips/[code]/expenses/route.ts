@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { addExpenseToTrip, getTripExpenses } from '@/lib/neon-db-new'
+import { addExpenseToTrip, getExpensesForTrip } from '@/lib/neon-db-new'
 
 // GET /api/trips/[code]/expenses - Get all expenses for a trip
 export async function GET(
@@ -16,7 +16,7 @@ export async function GET(
       }, { status: 400 })
     }
 
-    const expenses = await getTripExpenses(tripCode)
+    const expenses = await getExpensesForTrip(tripCode)
     
     return NextResponse.json({ expenses })
 

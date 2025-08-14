@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTripByCode, getTripMembers, getTripExpenses } from '@/lib/neon-db-new'
+import { getTripByCode, getExpensesForTrip } from '@/lib/neon-db-new'
 
 // GET /api/trips/[code] - Get trip info by code
 export async function GET(
@@ -16,25 +16,22 @@ export async function GET(
       }, { status: 400 })
     }
 
-    const trip = await getTripByCode(tripCode)
+    const tripData = await getTripByCode(tripCode)
     
-    if (!trip) {
+    if (!tripData) {
       return NextResponse.json({ 
         error: 'Trip not found' 
       }, { status: 404 })
     }
 
-    // Get members and expenses
-    const [members, expenses] = await Promise.all([
-      getTripMembers(tripCode),
-      getTripExpenses(tripCode)
-    ])
+    // Get expenses (members are already included in getTripByCode)
+    const expenses = await getExpensesForTrip(tripCode)
 
     return NextResponse.json({ 
-      trip,
-      members,
+      trip: tripData.trip,
+      members: tripData.members,
       expenses,
-      memberCount: members.length
+      memberCount: tripData.members.length
     })
 
   } catch (error) {

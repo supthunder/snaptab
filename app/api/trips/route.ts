@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createTrip, getUserTrips } from '@/lib/neon-db-new'
+import { createTrip, getTripsForUser } from '@/lib/neon-db-new'
 
 // POST /api/trips - Create new trip
 export async function POST(request: NextRequest) {
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const trips = await getUserTrips(username)
+    const trips = await getTripsForUser(username)
     
     return NextResponse.json({ trips })
 

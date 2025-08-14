@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { 
   getTripByCode, 
-  syncSettlementPayments, 
+  calculateSettlementPayments, 
   getSettlementPayments, 
   updatePaymentStatus,
   getUserByUsername
@@ -30,8 +30,8 @@ export async function GET(
       }, { status: 404 })
     }
 
-    // Sync settlement payments first (creates/updates based on current balances)
-    await syncSettlementPayments(tripCode)
+    // Calculate settlement payments first (creates/updates based on current balances)
+    await calculateSettlementPayments(tripCode)
 
     // Get all settlement payments
     const payments = await getSettlementPayments(trip.id)

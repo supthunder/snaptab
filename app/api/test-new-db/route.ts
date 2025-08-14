@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { 
   initializeNewDatabase, 
-  testNewConnection, 
+  testNewDatabaseConnection, 
   createUser, 
   createTrip, 
-  joinTrip,
+  addUserToTrip,
   addExpenseToTrip,
   getTripByCode,
-  getTripMembers,
-  getTripExpenses
+  getExpensesForTrip
 } from '@/lib/neon-db-new'
 
 export async function GET(request: NextRequest) {
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Testing new SnapTab database system...')
     
     // Test connection
-    const connectionResult = await testNewConnection()
+    const connectionResult = await testNewDatabaseConnection()
     if (!connectionResult.success) {
       return NextResponse.json({ 
         error: 'Database connection failed', 
@@ -55,7 +54,7 @@ export async function GET(request: NextRequest) {
       }
 
       // User 2 joins the trip
-      const joinSuccess = await joinTrip(tripResult.tripCode, user2.username)
+      const joinSuccess = await addUserToTrip(tripResult.tripCode, user2.username)
       
       if (!joinSuccess) {
         throw new Error('Failed to join trip')
@@ -98,8 +97,9 @@ export async function GET(request: NextRequest) {
 
       // Get trip data to verify everything works
       const trip = await getTripByCode(tripResult.tripCode)
-      const members = await getTripMembers(tripResult.tripCode)
-      const expenses = await getTripExpenses(tripResult.tripCode)
+          const tripData = await getTripByCode(tripResult.tripCode)
+    const members = tripData?.members || []
+    const expenses = await getExpensesForTrip(tripResult.tripCode)
 
       return NextResponse.json({ 
         success: true,

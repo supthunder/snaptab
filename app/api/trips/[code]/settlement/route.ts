@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTripSettlement } from '@/lib/neon-db-new'
+import { getSettlementPayments } from '@/lib/neon-db-new'
 
 // GET /api/trips/[code]/settlement - Get settlement info for a trip
 export async function GET(
@@ -16,7 +16,7 @@ export async function GET(
       }, { status: 400 })
     }
 
-    const settlement = await getTripSettlement(tripCode)
+    const settlement = await getSettlementPayments(tripCode)
     
     if (!settlement) {
       return NextResponse.json({ 

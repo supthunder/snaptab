@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { joinTrip, getTripByCode, getTripMembers } from '@/lib/neon-db-new'
+import { addUserToTrip, getTripByCode } from '@/lib/neon-db-new'
 
 // POST /api/trips/[code]/join - Join trip with code
 export async function POST(
@@ -33,7 +33,7 @@ export async function POST(
     }
 
     // Join the trip
-    const success = await joinTrip(tripCode, username)
+    const success = await addUserToTrip(tripCode, username)
     
     if (!success) {
       return NextResponse.json({ 
@@ -41,8 +41,9 @@ export async function POST(
       }, { status: 400 })
     }
 
-    // Get updated member list
-    const members = await getTripMembers(tripCode)
+    // Get updated member list by fetching the trip again
+    const updatedTripData = await getTripByCode(tripCode)
+    const members = updatedTripData?.members || []
 
     return NextResponse.json({ 
       message: 'Successfully joined trip',

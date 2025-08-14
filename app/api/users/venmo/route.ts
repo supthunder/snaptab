@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserVenmoUsername, setUserVenmoUsername, removeUserVenmoUsername } from '@/lib/neon-db-new'
+import { getUserVenmoUsername, updateUserVenmoUsername, deleteUserVenmoUsername } from '@/lib/neon-db-new'
 
 // GET /api/users/venmo?username=<username> - Get user's Venmo username
 export async function GET(request: NextRequest) {
@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Venmo username is required' }, { status: 400 })
     }
 
-    const success = await setUserVenmoUsername(username, venmoUsername.trim())
+    const success = await updateUserVenmoUsername(username, venmoUsername.trim())
     
     if (!success) {
       return NextResponse.json({ error: 'Failed to set Venmo username' }, { status: 500 })
@@ -73,7 +73,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Username is required' }, { status: 400 })
     }
 
-    const success = await removeUserVenmoUsername(username)
+    const success = await deleteUserVenmoUsername(username)
     
     if (!success) {
       return NextResponse.json({ error: 'Failed to remove Venmo username' }, { status: 500 })

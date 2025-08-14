@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { 
   getCategoryColor, 
   type Trip, 
@@ -49,6 +50,9 @@ interface DatabaseExpense {
   confidence: number
   created_at: string
   updated_at: string
+  is_settled?: boolean
+  settled_at?: string
+  settled_by_user_id?: string
   items: any[]
 }
 
@@ -79,6 +83,14 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
   const [tripMembers, setTripMembers] = useState<string[]>([])
   const [receiptItems, setReceiptItems] = useState<any[]>([])
   const [itemAssignments, setItemAssignments] = useState<any[]>([])
+  
+  // Item assignment flow state
+  const [showItemFlow, setShowItemFlow] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0) // 0: select items, 1: assign person
+  const [selectedItems, setSelectedItems] = useState<number[]>([])
+  const [selectedPeople, setSelectedPeople] = useState<string[]>([])
+  const [availableItems, setAvailableItems] = useState<number[]>([])
+  const [isSettled, setIsSettled] = useState(false)
 
   useEffect(() => {
     // First get the params
@@ -109,6 +121,8 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
           setSplitMode(fetchedExpense.split_mode || 'even')
           setSelectedMembers(fetchedExpense.split_with_users?.map((u: any) => u.username) || [])
           setReceiptItems(fetchedExpense.items || [])
+          setAvailableItems((fetchedExpense.items || []).map((_: any, index: number) => index))
+          setIsSettled(fetchedExpense.is_settled || false)
 
           // Load trip data using the trip code from localStorage
           const tripCode = localStorage.getItem('snapTab_currentTripCode')
@@ -145,6 +159,129 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
   }
 
   const splitAmount = selectedMembers.length > 0 ? parseFloat(editForm.amount || '0') / selectedMembers.length : 0
+  
+  // Item assignment functions
+  const startItemAssignment = () => {
+    setShowItemFlow(true)
+    setCurrentStep(0)
+    setSelectedItems([])
+  }
+
+  const handleItemSelection = (itemIndex: number) => {
+    setSelectedItems(prev => 
+      prev.includes(itemIndex) 
+        ? prev.filter(i => i !== itemIndex)
+        : [...prev, itemIndex]
+    )
+  }
+
+  const handlePersonSelection = (person: string) => {
+    setSelectedPeople(prev => 
+      prev.includes(person) 
+        ? prev.filter(p => p !== person)
+        : [...prev, person]
+    )
+  }
+
+  const proceedToPersonSelection = () => {
+    if (selectedItems.length > 0) {
+      setCurrentStep(1)
+      setSelectedPeople([]) // Reset person selection
+    }
+  }
+
+  const assignItemsToSelectedPeople = () => {
+    if (selectedPeople.length === 0) return
+
+    setItemAssignments(prev => {
+      const updatedAssignments = [...prev]
+      
+      selectedItems.forEach(itemIndex => {
+        // Check if this item already has an assignment
+        const existingAssignmentIndex = updatedAssignments.findIndex(
+          assignment => assignment.itemIndex === itemIndex
+        )
+        
+        if (existingAssignmentIndex !== -1) {
+          // Item already assigned - add selected people to existing assignment (avoid duplicates)
+          const existingAssignment = updatedAssignments[existingAssignmentIndex]
+          const newPeople = selectedPeople.filter(person => !existingAssignment.assignedTo.includes(person))
+          if (newPeople.length > 0) {
+            updatedAssignments[existingAssignmentIndex] = {
+              ...existingAssignment,
+              assignedTo: [...existingAssignment.assignedTo, ...newPeople]
+            }
+          }
+        } else {
+          // Item not assigned yet - create new assignment
+          updatedAssignments.push({
+            itemIndex,
+            assignedTo: [...selectedPeople]
+          })
+        }
+      })
+      
+      return updatedAssignments
+    })
+
+    // Reset selections and go back to item selection
+    setSelectedItems([])
+    setSelectedPeople([])
+    setCurrentStep(0)
+  }
+
+  const getPersonAssignments = (person: string) => {
+    return itemAssignments
+      .filter(assignment => assignment.assignedTo.includes(person))
+      .map(assignment => ({
+        item: receiptItems[assignment.itemIndex],
+        cost: receiptItems[assignment.itemIndex].price / assignment.assignedTo.length,
+        shared: assignment.assignedTo.length > 1
+      }))
+  }
+
+  const finishItemAssignment = () => {
+    setShowItemFlow(false)
+    setCurrentStep(0)
+    setSelectedItems([])
+    setSelectedPeople([])
+  }
+
+  const selectRemainingItems = () => {
+    // Get all unassigned item indices
+    const unassignedItems = receiptItems
+      .map((_, index) => index)
+      .filter(itemIndex => !itemAssignments.find(a => a.itemIndex === itemIndex))
+    
+    // Add unassigned items to selection (avoid duplicates)
+    setSelectedItems(prev => {
+      const combined = [...prev, ...unassignedItems]
+      return Array.from(new Set(combined))
+    })
+  }
+
+  const calculateItemBasedSplit = () => {
+    const memberTotals: { [key: string]: number } = {}
+    
+    // Initialize all members with 0
+    selectedMembers.forEach(member => {
+      memberTotals[member] = 0
+    })
+
+    // Calculate totals based on item assignments
+    itemAssignments.forEach(assignment => {
+      const item = receiptItems[assignment.itemIndex]
+      const splitAmount = item.price / assignment.assignedTo.length
+      
+      assignment.assignedTo.forEach((person: string) => {
+        if (memberTotals[person] !== undefined) {
+          memberTotals[person] += splitAmount
+        }
+      })
+    })
+
+    return memberTotals
+  }
 
   const formatTimeAgo = (dateString: string) => {
     const now = new Date()
@@ -191,23 +328,50 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
     if (!expense || !trip) return
     
     try {
-      // TODO: Implement expense update API endpoint
-      console.log('Saving expense:', editForm)
-      // For now, just update local state
-      const updatedExpense = {
-        ...expense,
-        description: editForm.description,
+      const updateData = {
         name: editForm.description,
+        description: editForm.description,
+        merchant_name: expense.merchant_name, // Keep existing merchant name
         total_amount: parseFloat(editForm.amount),
+        currency: expense.currency, // Keep existing currency
+        expense_date: editForm.date,
         paid_by_username: editForm.paidBy,
-        expense_date: editForm.date
+        split_mode: splitMode,
+        category: expense.category,
+        summary: expense.summary,
+        emoji: expense.emoji,
+        tax_amount: expense.tax_amount,
+        tip_amount: expense.tip_amount,
+        confidence: expense.confidence,
+        item_assignments: splitMode === 'items' ? itemAssignments : undefined
       }
       
-      setExpense(updatedExpense)
+      console.log('Saving expense with data:', updateData)
+      
+      const response = await fetch(`/api/expenses/${expense.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update expense')
+      }
+      
+      const result = await response.json()
+      
+      // Update local state with the updated expense
+      if (result.expense) {
+        setExpense(result.expense)
+      }
+      
       setIsEditing(false)
       
-      // TODO: Make API call to update expense in database
-      alert('Expense updated successfully!')
+      // Refresh the page to show updated data
+      window.location.reload()
       
     } catch (error) {
       console.error('Failed to save expense:', error)
@@ -241,6 +405,51 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
     } catch (error) {
       console.error('Failed to delete expense:', error)
       alert('Failed to delete expense. Please try again.')
+    }
+  }
+
+  const handlePaymentStatusChange = async (isPaid: boolean) => {
+    if (!expense) return
+    
+    try {
+      const currentUsername = localStorage.getItem('snapTab_currentUsername')
+      if (!currentUsername) {
+        alert('Please log in to update payment status')
+        return
+      }
+
+      const response = await fetch(`/api/expenses/${expense.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isPaid,
+          markedByUsername: currentUsername
+        })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update payment status')
+      }
+      
+      const result = await response.json()
+      
+      // Update local state
+      setIsSettled(isPaid)
+      
+      // Update expense data if returned
+      if (result.expense) {
+        setExpense(result.expense)
+      }
+      
+      // Show success message
+      alert(`Expense marked as ${isPaid ? 'paid' : 'unpaid'}`)
+      
+    } catch (error) {
+      console.error('Failed to update payment status:', error)
+      alert('Failed to update payment status. Please try again.')
     }
   }
 
@@ -278,6 +487,230 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
             </CardContent>
           </Card>
         </main>
+      </div>
+    )
+  }
+
+  // Item assignment flow overlay
+  if (showItemFlow) {
+    const handleBackFromItemFlow = () => {
+      if (currentStep === 1) {
+        // Go back to item selection step
+        setCurrentStep(0)
+        setSelectedItems([])
+        setSelectedPeople([])
+      } else {
+        // Go back to main form
+        setShowItemFlow(false)
+        setCurrentStep(0)
+        setSelectedItems([])
+        setSelectedPeople([])
+      }
+    }
+
+    return (
+      <div className="flex flex-col h-screen bg-background">
+        <header className="p-6 pt-16 safe-area-top flex items-center">
+          <Button variant="ghost" size="icon" className="mr-4" onClick={handleBackFromItemFlow}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-medium">
+              {currentStep === 0 ? 'Select Items' : 'Assign To'}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {currentStep === 0 ? 'Choose items to assign' : 'Who got these items?'}
+            </p>
+          </div>
+        </header>
+
+        <main className="flex-1 px-6 pb-32 overflow-y-auto">
+          {currentStep === 0 && (
+            <div className="space-y-4">
+              {/* All Items - with assigned items grayed out */}
+              <Card className="minimal-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-medium">Items</h3>
+                    {receiptItems.some((_, index) => !itemAssignments.find(a => a.itemIndex === index)) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={selectRemainingItems}
+                        className="text-xs"
+                      >
+                        Select Remaining
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    {receiptItems.map((item, itemIndex) => {
+                      const assignment = itemAssignments.find(a => a.itemIndex === itemIndex)
+                      const isAssigned = !!assignment
+                      return (
+                        <div
+                          key={itemIndex}
+                          className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-colors ${
+                            selectedItems.includes(itemIndex)
+                              ? "bg-primary/10 border border-primary/20"
+                              : "bg-background border border-border"
+                          } ${isAssigned ? "opacity-60" : ""}`}
+                          onClick={() => handleItemSelection(itemIndex)}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                selectedItems.includes(itemIndex) ? "border-primary bg-primary" : "border-muted-foreground"
+                              }`}
+                            >
+                              {selectedItems.includes(itemIndex) && <Check className="h-3 w-3 text-primary-foreground" />}
+                            </div>
+                            <div>
+                              <span className={`font-medium ${isAssigned ? "text-muted-foreground" : ""}`}>
+                                {item.name}
+                              </span>
+                              {item.quantity && (
+                                <span className="text-sm text-muted-foreground ml-2">×{item.quantity}</span>
+                              )}
+                              {isAssigned && assignment && (
+                                <div className="text-xs text-muted-foreground">
+                                  Assigned to: {assignment.assignedTo.join(', ')}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className={`font-medium ${isAssigned ? "text-muted-foreground" : "text-primary"}`}>
+                              {trip?.currency} {Number(item.price || 0).toFixed(2)}
+                            </span>
+                            {isAssigned && assignment && assignment.assignedTo.length > 1 && (
+                              <div className="text-xs text-muted-foreground">
+                                {trip?.currency} {(Number(item.price || 0) / assignment.assignedTo.length).toFixed(2)} each
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {currentStep === 1 && (
+            <Card className="minimal-card">
+              <CardContent className="p-6">
+                <h3 className="font-medium mb-4">Select People</h3>
+                <div className="space-y-4">
+                  {selectedMembers.map((member) => {
+                    const assignments = getPersonAssignments(member)
+                    const totalCost = assignments.reduce((sum, a) => sum + a.cost, 0)
+                    
+                    return (
+                      <div
+                        key={member}
+                        className={`p-4 rounded-xl cursor-pointer transition-colors border ${
+                          selectedPeople.includes(member)
+                            ? "bg-primary/10 border-primary/20"
+                            : "bg-background border-border hover:bg-primary/5"
+                        }`}
+                        onClick={() => handlePersonSelection(member)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                selectedPeople.includes(member) ? "border-primary bg-primary" : "border-muted-foreground"
+                              }`}
+                            >
+                              {selectedPeople.includes(member) && <Check className="h-3 w-3 text-primary-foreground" />}
+                            </div>
+                            <div>
+                              <span className="font-medium">{member}</span>
+                              {assignments.length > 0 && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {assignments.length} item{assignments.length > 1 ? 's' : ''} • {trip?.currency}{Number(totalCost || 0).toFixed(2)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Compact assignment summary */}
+                        {assignments.length > 0 && (
+                          <div className="mt-3 pl-8">
+                            <div className="flex flex-wrap gap-1">
+                              {assignments.map((assignment, index) => (
+                                <span
+                                  key={index}
+                                  className={`inline-flex items-center px-2 py-1 rounded text-xs ${
+                                    assignment.shared 
+                                      ? "bg-orange-100 text-orange-700 border border-orange-200" 
+                                      : "bg-blue-100 text-blue-700 border border-blue-200"
+                                  }`}
+                                >
+                                  {assignment.item.name} {trip?.currency}{Number(assignment.cost || 0).toFixed(2)}
+                                  {assignment.shared && (
+                                    <Users className="h-3 w-3 ml-1" />
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </main>
+
+        {/* Bottom Actions */}
+        <div className="fixed bottom-0 left-0 right-0 safe-area-bottom">
+          <div className="p-8 bg-gradient-to-t from-background via-background/98 to-background/80 backdrop-blur-sm">
+            <div className="max-w-md mx-auto">
+              {currentStep === 0 && (
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-16 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    onClick={finishItemAssignment}
+                  >
+                    Done
+                  </Button>
+                  <Button
+                    className="flex-1 h-16 bg-primary hover:bg-primary/90 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    disabled={selectedItems.length === 0}
+                    onClick={proceedToPersonSelection}
+                  >
+                    Assign ({selectedItems.length})
+                  </Button>
+                </div>
+              )}
+              {currentStep === 1 && (
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-16 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    onClick={() => setCurrentStep(0)}
+                  >
+                    Back to Items
+                  </Button>
+                  <Button
+                    className="flex-1 h-16 bg-primary hover:bg-primary/90 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    disabled={selectedPeople.length === 0}
+                    onClick={assignItemsToSelectedPeople}
+                  >
+                    Assign to {selectedPeople.length || 0}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -346,8 +779,8 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
               {/* Split Mode Display */}
               <div className="text-center p-3 bg-muted/50 rounded-lg mb-4">
                 <p className="text-sm text-muted-foreground">
-                  {expense.split_mode === 'items' && expense.items?.length > 0 ? 
-                    `Split by ${expense.items.length} item${expense.items.length > 1 ? 's' : ''}` : 
+                  {(isEditing ? splitMode : expense.split_mode) === 'items' && receiptItems.length > 0 ? 
+                    `Split by ${receiptItems.length} item${receiptItems.length > 1 ? 's' : ''}` : 
                     'Split evenly'
                   }
                 </p>
@@ -403,13 +836,22 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                     />
                   </div>
                   <div>
-                    <Label htmlFor="paidBy">Paid By</Label>
-                    <Input
+                    <Label htmlFor="paidBy" className="text-muted-foreground text-sm">
+                      Paid by
+                    </Label>
+                    <select
                       id="paidBy"
                       value={editForm.paidBy}
                       onChange={(e) => setEditForm({...editForm, paidBy: e.target.value})}
-                      placeholder="Enter who paid"
-                    />
+                      className="mt-2 w-full bg-background border border-border rounded-xl h-12 px-4"
+                      required
+                    >
+                      {expense.split_with_users?.map((user: any, index: number) => (
+                        <option key={`${user.username}-${index}`} value={user.username}>
+                          {user.username}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <Label htmlFor="date">Date</Label>
@@ -510,23 +952,38 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
               {splitMode === 'items' && receiptItems.length > 0 && (
                 <Card className="minimal-card">
                   <CardContent className="p-6">
-                    <h3 className="font-medium mb-4">Split by Items</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Individual item assignment editing coming soon. For now, use "Split Evenly" mode.
-                    </p>
-                    <div className="space-y-3">
-                      {receiptItems.map((item: any, index: number) => (
-                        <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
-                          <div>
-                            <span className="font-medium">{item.name}</span>
-                            {item.quantity > 1 && (
-                              <span className="text-sm text-muted-foreground ml-2">×{item.quantity}</span>
-                            )}
-                          </div>
-                          <span className="text-primary font-medium">{trip?.currency} {Number(item.price || 0).toFixed(2)}</span>
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-medium">Split by Items</h3>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={startItemAssignment}
+                        className="rounded-xl"
+                      >
+                        Assign Items
+                      </Button>
                     </div>
+
+                    {/* Show current assignments */}
+                    {itemAssignments.length > 0 ? (
+                      <div className="space-y-3">
+                        {Object.entries(calculateItemBasedSplit()).map(([member, total]) => (
+                          <div
+                            key={member}
+                            className="flex items-center justify-between p-4 rounded-xl bg-primary/10 border border-primary/20"
+                          >
+                            <span className="font-medium">{member}</span>
+                            <span className="text-primary font-medium">{trip?.currency} {Number(total).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p className="mb-2">No items assigned yet</p>
+                        <p className="text-sm">Tap "Assign Items" to get started</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -538,13 +995,13 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
             <Card className="minimal-card">
               <CardContent className="p-6">
                 <h3 className="font-medium mb-4">
-                  {expense.split_mode === 'even' ? 'Split Evenly' : 'Item Assignments'}
+                  {(isEditing ? splitMode : expense.split_mode) === 'even' ? 'Split Evenly' : 'Item Assignments'}
                 </h3>
                 <div className="space-y-4">
                   {(() => {
                     const assignmentsByPerson: Record<string, Array<{item: any, cost: number, shared: boolean}>> = {}
                     
-                    if (expense.split_mode === 'even') {
+                    if ((isEditing ? splitMode : expense.split_mode) === 'even') {
                       // Even split: divide all items equally among split_with users
                       const splitUsers = expense.split_with_users || []
                       const numPeople = splitUsers.length
@@ -565,8 +1022,42 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                         })
                       }
                     } else {
-                      // Items mode: use actual item assignments from database
-                                              expense.items.forEach((item: any) => {
+                      // Items mode: use current item assignments when editing, otherwise use database data
+                      if (isEditing && itemAssignments.length > 0) {
+                        // Use current editing state
+                        receiptItems.forEach((item: any, itemIndex: number) => {
+                          const assignment = itemAssignments.find(a => a.itemIndex === itemIndex)
+                          
+                          if (assignment && assignment.assignedTo.length > 0) {
+                            assignment.assignedTo.forEach((personName: string) => {
+                              const itemCost = Number(item.price || 0) / assignment.assignedTo.length
+                              const isShared = assignment.assignedTo.length > 1
+                              
+                              if (!assignmentsByPerson[personName]) {
+                                assignmentsByPerson[personName] = []
+                              }
+                              
+                              assignmentsByPerson[personName].push({
+                                item: { ...item, originalPrice: Number(item.price || 0) },
+                                cost: itemCost,
+                                shared: isShared
+                              })
+                            })
+                          } else {
+                            // Unassigned items in edit mode
+                            if (!assignmentsByPerson['Unassigned']) {
+                              assignmentsByPerson['Unassigned'] = []
+                            }
+                            assignmentsByPerson['Unassigned'].push({
+                              item: { ...item, originalPrice: Number(item.price || 0) },
+                              cost: Number(item.price || 0),
+                              shared: false
+                            })
+                          }
+                        })
+                      } else {
+                        // Use database data for saved assignments
+                        expense.items.forEach((item: any) => {
                           if (item.assignments && item.assignments.length > 0) {
                             item.assignments.forEach((assignee: any) => {
                               const personName = assignee.username
@@ -584,7 +1075,7 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                               })
                             })
                           } else {
-                            // Unassigned items in items mode
+                            // Unassigned items from database
                             if (!assignmentsByPerson['Unassigned']) {
                               assignmentsByPerson['Unassigned'] = []
                             }
@@ -595,10 +1086,12 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                             })
                           }
                         })
+                      }
                     }
 
                     // Show split mode description for even split
-                    const splitDescription = expense.split_mode === 'even' && expense.split_with_users 
+                    const currentSplitMode = isEditing ? splitMode : expense.split_mode
+                    const splitDescription = currentSplitMode === 'even' && expense.split_with_users 
                       ? `${expense.split_with_users.length}-way split` 
                       : null
 
@@ -700,6 +1193,31 @@ export default function ExpenseDetailsPage({ params }: ExpenseDetailsPageProps) 
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Status */}
+          <Card className="minimal-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium">Payment Status</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {isSettled ? 'This expense has been marked as paid' : 'Mark this expense as paid when settled'}
+                  </p>
+                </div>
+                <Switch
+                  checked={isSettled}
+                  onCheckedChange={handlePaymentStatusChange}
+                />
+              </div>
+              {isSettled && (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-700">
+                    ✅ This expense is marked as settled and won't appear in balance calculations
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

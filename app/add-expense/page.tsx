@@ -257,6 +257,19 @@ export default function AddExpensePage() {
     setSelectedPeople([])
   }
 
+  const selectRemainingItems = () => {
+    // Get all unassigned item indices
+    const unassignedItems = receiptItems
+      .map((_, index) => index)
+      .filter(itemIndex => !itemAssignments.find(a => a.itemIndex === itemIndex))
+    
+    // Add unassigned items to selection (avoid duplicates)
+    setSelectedItems(prev => {
+      const combined = [...prev, ...unassignedItems]
+      return Array.from(new Set(combined))
+    })
+  }
+
   const calculateItemBasedSplit = () => {
     const memberTotals: { [key: string]: number } = {}
     
@@ -447,7 +460,19 @@ export default function AddExpensePage() {
               {/* All Items - with assigned items grayed out */}
               <Card className="minimal-card">
                 <CardContent className="p-6">
-                  <h3 className="font-medium mb-4">Items</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-medium">Items</h3>
+                    {receiptItems.some((_, index) => !itemAssignments.find(a => a.itemIndex === index)) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={selectRemainingItems}
+                        className="text-xs"
+                      >
+                        Select Remaining
+                      </Button>
+                    )}
+                  </div>
                   <div className="space-y-3">
                     {receiptItems.map((item, itemIndex) => {
                       const assignment = itemAssignments.find(a => a.itemIndex === itemIndex)
