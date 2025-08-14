@@ -677,46 +677,61 @@ export async function deleteExpense(expenseId: string): Promise<boolean> {
 // Calculate user balance for database-based trips
 export async function getUserBalanceFromDB(tripCode: number, username: string): Promise<number> {
   try {
+    console.log(`💰 Calculating balance for user: ${username} in trip: ${tripCode}`)
+    
     const user = await getUserByUsername(username)
     if (!user) {
+      console.log(`❌ User not found: ${username}`)
       return 0
     }
+
+    console.log(`👤 Found user: ${username} with ID: ${user.id}`)
 
     const tripResult = await sql`
       SELECT id FROM trips WHERE trip_code = ${tripCode}
     `
     
     if (tripResult.rows.length === 0) {
+      console.log(`❌ Trip not found: ${tripCode}`)
       return 0
     }
     
     const tripId = tripResult.rows[0].id
+    console.log(`🚗 Found trip: ${tripCode} with ID: ${tripId}`)
 
     // Get all expenses for this trip (excluding settled ones)
     const expensesResult = await sql`
       SELECT 
-        id, paid_by, total_amount, split_with, split_mode
+        id, paid_by, total_amount, split_with, split_mode, is_settled
       FROM expenses 
       WHERE trip_id = ${tripId} AND (is_settled IS NULL OR is_settled = false)
     `
+
+    console.log(`📊 Found ${expensesResult.rows.length} unsettled expenses`)
 
     let balance = 0
 
     for (const expense of expensesResult.rows) {
       const expenseAmount = parseFloat(expense.total_amount.toString())
+      console.log(`💰 Processing expense ${expense.id}: $${expenseAmount}, split_mode: ${expense.split_mode}, paid_by: ${expense.paid_by}, is_settled: ${expense.is_settled}`)
       
       // If user paid for this expense, they get credited
       if (expense.paid_by === user.id) {
         balance += expenseAmount
+        console.log(`   ➕ User paid: +$${expenseAmount} (balance now: $${balance})`)
       }
 
       // Calculate how much this user owes for this expense
       if (expense.split_mode === 'even') {
         // Even split among split_with users
         const splitWithIds = expense.split_with || []
+        console.log(`   📋 Split with IDs: ${JSON.stringify(splitWithIds)}`)
         if (splitWithIds.includes(user.id)) {
           const shareAmount = expenseAmount / splitWithIds.length
           balance -= shareAmount
+          console.log(`   ➖ User owes: -$${shareAmount} (balance now: $${balance})`)
+        } else {
+          console.log(`   ⏭️ User not in split_with array`)
         }
       } else if (expense.split_mode === 'items') {
         // Item-based split - get user's assigned items
@@ -737,10 +752,12 @@ export async function getUserBalanceFromDB(tripCode: number, username: string): 
           const assignmentCount = parseInt(assignedItem.assignment_count)
           const shareAmount = itemPrice / assignmentCount
           balance -= shareAmount
+          console.log(`   ➖ Item: $${itemPrice} ÷ ${assignmentCount} people = -$${shareAmount} (balance now: $${balance})`)
         }
       }
     }
 
+    console.log(`🏁 Final balance for ${username}: $${balance}`)
     return balance
   } catch (error) {
     console.error('Error calculating user balance from DB:', error)
