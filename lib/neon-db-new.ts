@@ -821,6 +821,8 @@ export async function calculateSettlementPayments(tripCode: number): Promise<Arr
       balances[member.username] = await getUserBalanceFromDB(tripCode, member.username)
     }
 
+    console.log(`💳 Settlement balances for trip ${tripCode}:`, balances)
+
     // Calculate settlement payments using a simple algorithm
     const settlements: Array<{
       from_username: string;
@@ -830,6 +832,9 @@ export async function calculateSettlementPayments(tripCode: number): Promise<Arr
 
     const creditors = Object.entries(balances).filter(([_, balance]) => balance > 0.01).sort((a, b) => b[1] - a[1])
     const debtors = Object.entries(balances).filter(([_, balance]) => balance < -0.01).sort((a, b) => a[1] - b[1])
+
+    console.log(`👥 Creditors (owed money):`, creditors)
+    console.log(`💸 Debtors (owe money):`, debtors)
 
     let creditorIndex = 0
     let debtorIndex = 0

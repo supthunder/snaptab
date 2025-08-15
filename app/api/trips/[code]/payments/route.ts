@@ -34,7 +34,7 @@ export async function GET(
     await calculateSettlementPayments(tripCode)
 
     // Get all settlement payments
-    const payments = await getSettlementPayments(trip.id)
+    const payments = await getSettlementPayments(tripCode)
 
     return NextResponse.json({ payments })
 
