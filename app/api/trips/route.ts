@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const result = await createTrip(name, currency || 'USD', username)
+    const result = await createTrip(name, username, undefined, undefined, currency || 'USD')
     
     if (!result) {
       return NextResponse.json({ 
