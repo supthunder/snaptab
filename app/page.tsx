@@ -1361,6 +1361,54 @@ export default function HomePage() {
                     {Math.abs(Number(userBalance || 0)).toFixed(2)}
                   </span>
                 </div>
+                
+                {/* Request All Button - Only show if user is owed money */}
+                {userBalance > 0 && getOwedToYouPayments().length > 0 && (
+                  <div className="mt-4">
+                    <a
+                      href={(() => {
+                        const owedToYouPayments = getOwedToYouPayments()
+                        const totalAmount = owedToYouPayments.reduce((sum, payment) => sum + Number(payment.amount), 0)
+                        const recipients = owedToYouPayments.map(payment => payment.from_username).join(',')
+                        
+                        // Create detailed breakdown for the note
+                        const breakdown = owedToYouPayments
+                          .map(payment => `${payment.from_display_name || payment.from_username}: ${getCurrencySymbol(activeTrip.currency)}${Number(payment.amount).toFixed(2)}`)
+                          .join(', ')
+                        
+                        const note = `${activeTrip.name} settlement - ${breakdown}`
+                        
+                        return `venmo://paycharge?txn=charge&amount=${totalAmount.toFixed(2)}&note=${encodeURIComponent(note)}&recipients=${recipients}`
+                      })()}
+                      className="flex items-center justify-center gap-2 w-full py-3 bg-[#3D95CE] hover:bg-[#3D95CE]/90 rounded-xl transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        // Mark all payments as requested when clicked
+                        const owedToYouPayments = getOwedToYouPayments()
+                        owedToYouPayments.forEach(payment => {
+                          handleTogglePaymentPaid(payment.id)
+                        })
+                      }}
+                    >
+                      <svg 
+                        width="20" 
+                        height="20" 
+                        viewBox="0 0 48 48" 
+                        fill="none" 
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path 
+                          d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z" 
+                          fill="white"
+                          stroke="white"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span className="text-white font-medium">Request All</span>
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Expanded Settlement Details */}
