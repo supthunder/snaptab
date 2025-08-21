@@ -1362,8 +1362,8 @@ export default function HomePage() {
                   </span>
                 </div>
                 
-                {/* Request All Button - Only show if user is owed money */}
-                {userBalance > 0 && getOwedToYouPayments().length > 0 && (
+                {/* Request All Button - Only show if user is owed money and balance is expanded */}
+                {userBalance > 0 && getOwedToYouPayments().length > 0 && isBalanceExpanded && (
                   <div className="mt-4">
                     <a
                       href={(() => {
