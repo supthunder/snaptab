@@ -704,31 +704,22 @@ export async function getUserBalanceFromDB(tripCode: number, username: string): 
 
     for (const expense of expensesResult.rows) {
       const expenseAmount = parseFloat(expense.total_amount.toString())
-      console.log(`\n--- Processing expense ${expense.id} for ${username} ---`)
-      console.log(`Expense amount: $${expenseAmount}, Split mode: ${expense.split_mode}`)
-      console.log(`Paid by user ID: ${expense.paid_by}, Current user ID: ${user.id}`)
       
       // If user paid for this expense, they get credited
       if (expense.paid_by === user.id) {
         balance += expenseAmount
-        console.log(`User paid for expense, credited +$${expenseAmount}, balance now: $${balance}`)
       }
 
       // Calculate how much this user owes for this expense
       if (expense.split_mode === 'even') {
         // Even split among split_with users
         const splitWithIds = expense.split_with || []
-        console.log(`Even split with users:`, splitWithIds)
         if (splitWithIds.includes(user.id)) {
           const shareAmount = expenseAmount / splitWithIds.length
           balance -= shareAmount
-          console.log(`User owes $${shareAmount} (${expenseAmount}/${splitWithIds.length}), balance now: $${balance}`)
-        } else {
-          console.log(`User not in split_with list, no charge`)
         }
       } else if (expense.split_mode === 'items') {
         // Item-based split - get user's assigned items
-        console.log(`Item-based split, checking assigned items...`)
         const assignedItemsResult = await sql`
           SELECT ei.price, ia_count.assignment_count
           FROM expense_items ei
@@ -741,21 +732,12 @@ export async function getUserBalanceFromDB(tripCode: number, username: string): 
           WHERE ei.expense_id = ${expense.id} AND ia.user_id = ${user.id}
         `
         
-        console.log(`Found ${assignedItemsResult.rows.length} assigned items for user`)
         for (const assignedItem of assignedItemsResult.rows) {
           const itemPrice = parseFloat(assignedItem.price.toString())
           const assignmentCount = parseInt(assignedItem.assignment_count)
           const shareAmount = itemPrice / assignmentCount
           balance -= shareAmount
-          console.log(`Item: $${itemPrice} / ${assignmentCount} people = $${shareAmount}, balance now: $${balance}`)
         }
-        
-        // Also check if there are any expense items at all
-        const allItemsResult = await sql`
-          SELECT ei.id, ei.price FROM expense_items ei
-          WHERE ei.expense_id = ${expense.id}
-        `
-        console.log(`Total items in expense: ${allItemsResult.rows.length}`)
       }
     }
 
