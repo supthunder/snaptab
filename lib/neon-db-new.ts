@@ -910,13 +910,33 @@ export async function getSettlementPayments(tripCode: number): Promise<Array<{
 
     const existingPayments = existingResult.rows
 
-    // Create or update settlement payments based on calculated settlements
+    // Preserve existing payment statuses while updating settlements
+    const paymentStatusMap = new Map()
+    for (const payment of existingPayments) {
+      const key = `${payment.from_username}->${payment.to_username}`
+      paymentStatusMap.set(key, {
+        is_paid: payment.is_paid,
+        paid_at: payment.paid_at,
+        marked_by_user_id: payment.marked_by_user_id
+      })
+    }
+    
+    // Clear existing settlement payments and recreate them
+    await sql`DELETE FROM settlement_payments WHERE trip_id = ${tripId}`
+    
+    // Create new settlement payments based on calculated settlements, preserving payment status
     for (const settlement of calculatedSettlements) {
+      const key = `${settlement.from_username}->${settlement.to_username}`
+      const existingStatus = paymentStatusMap.get(key)
+      
       await createOrUpdateSettlementPayment(
         tripId,
         settlement.from_username,
         settlement.to_username,
-        settlement.amount
+        settlement.amount,
+        existingStatus?.is_paid || false,
+        existingStatus?.paid_at || null,
+        existingStatus?.marked_by_user_id || null
       )
     }
 
@@ -945,7 +965,10 @@ export async function createOrUpdateSettlementPayment(
   tripId: string,
   fromUsername: string,
   toUsername: string,
-  amount: number
+  amount: number,
+  isPaid: boolean = false,
+  paidAt: string | null = null,
+  markedByUserId: string | null = null
 ): Promise<boolean> {
   try {
     const fromUser = await getUserByUsername(fromUsername)
@@ -956,11 +979,14 @@ export async function createOrUpdateSettlementPayment(
     }
 
     const result = await sql`
-      INSERT INTO settlement_payments (trip_id, from_user_id, to_user_id, amount)
-      VALUES (${tripId}, ${fromUser.id}, ${toUser.id}, ${amount})
+      INSERT INTO settlement_payments (trip_id, from_user_id, to_user_id, amount, is_paid, paid_at, marked_by_user_id)
+      VALUES (${tripId}, ${fromUser.id}, ${toUser.id}, ${amount}, ${isPaid}, ${paidAt}, ${markedByUserId})
       ON CONFLICT (trip_id, from_user_id, to_user_id) 
       DO UPDATE SET 
         amount = EXCLUDED.amount,
+        is_paid = EXCLUDED.is_paid,
+        paid_at = EXCLUDED.paid_at,
+        marked_by_user_id = EXCLUDED.marked_by_user_id,
         updated_at = NOW()
       RETURNING id, trip_id, from_user_id, to_user_id, 
                 CAST(amount AS FLOAT) as amount,
