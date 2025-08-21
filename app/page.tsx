@@ -1634,17 +1634,34 @@ export default function HomePage() {
                                         <Check className="h-4 w-4 text-white" />
                                       </Button>
                                     ) : (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-8 h-8 p-0 border-2 border-dashed border-muted-foreground/30 hover:border-green-400 hover:bg-green-400/10"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          handleTogglePaymentPaid(payment.id)
-                                        }}
-                                      >
-                                        <Check className="h-4 w-4 text-muted-foreground hover:text-green-400" />
-                                      </Button>
+                                      <div className="flex items-center gap-2">
+                                        <a
+                                          href={`venmo://paycharge?txn=charge&recipients=${payment.from_username}&note=${encodeURIComponent(`${activeTrip.name} - request from SnapTab`)}&amount=${Number(payment.amount).toFixed(2)}`}
+                                          className="flex items-center justify-center w-10 h-10 bg-[#3D95CE] hover:bg-[#3D95CE]/90 rounded-lg transition-colors p-2"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            // Also mark as paid when Venmo request is sent
+                                            handleTogglePaymentPaid(payment.id)
+                                          }}
+                                          title="Request payment via Venmo"
+                                        >
+                                          <svg 
+                                            width="24" 
+                                            height="24" 
+                                            viewBox="0 0 48 48" 
+                                            fill="none" 
+                                            xmlns="http://www.w3.org/2000/svg"
+                                          >
+                                            <path 
+                                              d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z" 
+                                              fill="white"
+                                              stroke="white"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            />
+                                          </svg>
+                                        </a>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
