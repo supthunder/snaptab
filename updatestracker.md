@@ -4,7 +4,7 @@
 This file tracks all updates, features, and improvements made to the SnapTab expense tracking app.
 
 ## 🎯 **Current Session Status** (January 21, 2025)
-**Latest Completed**: Update #81 - Venmo Icon Integration for Payment Interface  
+**Latest Completed**: Update #82 - Settlement Calculation Bug Fix and Request All Feature  
 **Key Achievements**: 
 - ✅ Complete settlement system with animated balance card expansion
 - ✅ Venmo payment integration with native deeplinks
@@ -15,8 +15,10 @@ This file tracks all updates, features, and improvements made to the SnapTab exp
 - ✅ Dark theme consistency across all settlement components
 - ✅ Payment state management with bidirectional toggle functionality
 - ✅ Venmo icon integration replacing generic "Pay" buttons
+- ✅ "Request All" button for batch Venmo payment requests
+- ✅ Fixed settlement calculation preserving payment status
 
-**System Status**: All major features operational, settlement flow complete with polished UI, customizable Venmo integration, and branded payment interface.
+**System Status**: All major features operational, settlement flow complete with polished UI, customizable Venmo integration, branded payment interface, and robust settlement calculations with proper net balance handling.
 
 ---
 
