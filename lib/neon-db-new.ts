@@ -219,17 +219,17 @@ export async function initializeNewDatabase() {
   }
 }
 
-// Create a new user with passkey
+// Create a new user (without passkey initially)
 export async function createUser(username: string, displayName?: string, passkeyCredential?: any): Promise<User | null> {
   try {
     const result = await sql`
-      INSERT INTO users (username, display_name, passkey_credential)
-      VALUES (${username}, ${displayName || null}, ${passkeyCredential ? JSON.stringify(passkeyCredential) : null})
+      INSERT INTO users (username, display_name)
+      VALUES (${username}, ${displayName || null})
       RETURNING *
     `
     
     if (result.rows.length > 0) {
-    return result.rows[0] as User
+      return result.rows[0] as User
     }
     return null
   } catch (error) {
@@ -251,6 +251,30 @@ export async function getUserByUsername(username: string): Promise<User | null> 
     return null
   } catch (error) {
     console.error('Error getting user by username:', error)
+    return null
+  }
+}
+
+// Save passkey credential for a user
+export async function savePasskeyCredential(
+  userId: string, 
+  credentialId: string, 
+  publicKey: string, 
+  deviceName?: string
+): Promise<any | null> {
+  try {
+    const result = await sql`
+      INSERT INTO passkey_credentials (user_id, credential_id, public_key)
+      VALUES (${userId}, ${credentialId}, ${publicKey})
+      RETURNING *
+    `
+    
+    if (result.rows.length > 0) {
+      return result.rows[0]
+    }
+    return null
+  } catch (error) {
+    console.error('Error saving passkey credential:', error)
     return null
   }
 }
